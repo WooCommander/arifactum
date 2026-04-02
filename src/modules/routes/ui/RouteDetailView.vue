@@ -1,17 +1,91 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRoutesStore } from '../state/useRoutesStore'
 import { FpSpinner, FpBackButton } from '@/design-system'
-import { MapPin, Info, Users } from 'lucide-vue-next'
+import ArtMap from '@/shared/ui/ArtMap.vue'
+import { MapPin, Info, Users, Navigation } from 'lucide-vue-next'
+import { Geolocation } from '@capacitor/geolocation'
+import { isWithinRange } from '@/shared/lib/geoUtils'
+import confetti from 'canvas-confetti'
+import { useRewardsStore } from '@/modules/rewards'
 
 const route = useRoute()
 const router = useRouter()
 const { currentRoute, currentCheckpoints, isLoading, error, fetchRouteDetails, clearCurrentRoute } = useRoutesStore()
 
-onMounted(() => {
+const isActiveMode = ref(false)
+const userLocation = ref<[number, number] | null>(null)
+const completedCheckpointIds = ref<Set<string>>(new Set())
+
+const mapPoints = computed(() => 
+  currentCheckpoints.value.map(cp => ({
+    lat: cp.latitude,
+    lng: cp.longitude,
+    id: cp.id,
+    title: cp.title,
+    isCompleted: completedCheckpointIds.value.has(cp.id)
+  }))
+)
+
+const nextCheckpoint = computed(() => {
+  return currentCheckpoints.value.find(cp => !completedCheckpointIds.value.has(cp.id))
+})
+
+const isNearNext = computed(() => {
+  if (!nextCheckpoint.value || !userLocation.value) return false
+  return isWithinRange(
+    userLocation.value[0],
+    userLocation.value[1],
+    nextCheckpoint.value.latitude,
+    nextCheckpoint.value.longitude,
+    100 // Увеличим до 100м для теста
+  )
+})
+
+const { awardCompletion } = useRewardsStore()
+
+const handleCheckIn = async () => {
+  if (nextCheckpoint.value) {
+    completedCheckpointIds.value.add(nextCheckpoint.value.id)
+    
+    // Check if that was the last one
+    if (completedCheckpointIds.value.size === currentCheckpoints.value.length) {
+       confetti({
+         particleCount: 150,
+         spread: 70,
+         origin: { y: 0.6 },
+         colors: ['#FFD700', '#1E90FF', '#ffffff']
+       })
+       
+       if (currentRoute.value) {
+         try {
+           await awardCompletion(currentRoute.value.id, currentRoute.value.title)
+         } catch (e) {
+           console.error('Failed to award completion:', e)
+         }
+       }
+       
+       // Success timeout
+       setTimeout(() => {
+         isActiveMode.value = false
+         alert('Поздравляем! Вы прошли маршрут и получили артефакт!')
+       }, 2000)
+    }
+  }
+}
+
+onMounted(async () => {
   const id = route.params.id as string
   if (id) fetchRouteDetails(id)
+  
+  // Try to get location
+  try {
+    const pos = await Geolocation.getCurrentPosition()
+    userLocation.value = [pos.coords.latitude, pos.coords.longitude]
+  } catch (e) {
+    console.warn('Geolocation not available')
+  }
 })
 
 onUnmounted(() => {
@@ -32,7 +106,14 @@ onUnmounted(() => {
 
     <div v-else-if="currentRoute" class="route-detail-content">
       <div class="route-hero">
-        <img v-if="currentRoute.imageUrl" :src="currentRoute.imageUrl" :alt="currentRoute.title" />
+        <ArtMap 
+          v-if="mapPoints.length > 0" 
+          :points="mapPoints" 
+          :interactive="!isActiveMode"
+        />
+        <div v-else-if="currentRoute.imageUrl" class="hero-image-wrap">
+          <img :src="currentRoute.imageUrl" :alt="currentRoute.title" />
+        </div>
         <div v-else class="hero-placeholder">
           <MapPin :size="64" />
         </div>
@@ -68,18 +149,38 @@ onUnmounted(() => {
             v-for="cp in currentCheckpoints" 
             :key="cp.id" 
             class="checkpoint-item"
+            :class="{ completed: completedCheckpointIds.has(cp.id), next: nextCheckpoint?.id === cp.id }"
           >
             <div class="checkpoint-number">{{ cp.order }}</div>
             <div class="checkpoint-body">
               <h3>{{ cp.title }}</h3>
               <p>{{ cp.description }}</p>
             </div>
+            <div v-if="completedCheckpointIds.has(cp.id)" class="check-icon">✅</div>
           </div>
         </div>
       </div>
 
       <div class="bottom-action">
-        <button class="start-btn">Начать маршрут</button>
+        <template v-if="!isActiveMode">
+          <button class="start-btn" @click="isActiveMode = true">
+            <Navigation :size="20" /> Начать маршрут
+          </button>
+        </template>
+        <template v-else>
+          <div class="active-actions">
+            <button class="stop-btn" @click="isActiveMode = false">
+              Выход
+            </button>
+            <button 
+              class="check-btn" 
+              :disabled="!isNearNext || !nextCheckpoint"
+              @click="handleCheckIn"
+            >
+              Отметиться ({{ nextCheckpoint?.order || '-' }})
+            </button>
+          </div>
+        </template>
       </div>
     </div>
   </div>
@@ -197,6 +298,21 @@ onUnmounted(() => {
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-sm);
+  transition: all 0.3s ease;
+
+  &.completed {
+    border-color: var(--color-success);
+    background: color-mix(in srgb, var(--color-success) 5%, var(--color-surface));
+    opacity: 0.8;
+    .checkpoint-number { background: var(--color-success); }
+  }
+
+  &.next {
+    border-color: var(--color-primary);
+    border-width: 2px;
+    box-shadow: var(--shadow-2);
+    transform: scale(1.02);
+  }
 }
 
 .checkpoint-number {
@@ -225,6 +341,46 @@ onUnmounted(() => {
   }
 }
 
+.check-icon {
+  font-size: 20px;
+  margin-left: auto;
+}
+
+.active-actions {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.stop-btn {
+  flex: 1;
+  padding: 18px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  border: 1.5px solid var(--color-border);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.check-btn {
+  flex: 2;
+  padding: 18px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border: none;
+  font-size: 18px;
+  font-weight: 800;
+  box-shadow: var(--shadow-3);
+  
+  &:disabled {
+    background: var(--color-text-disabled);
+    box-shadow: none;
+    opacity: 0.6;
+  }
+}
+
 .bottom-action {
   position: fixed;
   bottom: 24px;
@@ -243,7 +399,10 @@ onUnmounted(() => {
   font-size: 18px;
   font-weight: 800;
   box-shadow: var(--shadow-3);
-  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 
   &:active {
     transform: scale(0.98);

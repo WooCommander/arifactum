@@ -32,5 +32,27 @@ export const routeService = {
 
         if (error) throw error
         return data || []
+    },
+
+    async createRoute(route: Omit<RouteDTO, 'id' | 'created_at' | 'updated_at' | 'checkpoints_count' | 'rating_avg'>): Promise<RouteDTO> {
+        const { data, error } = await supabase
+            .from('routes')
+            .insert(route)
+            .select()
+            .single()
+
+        if (error) throw error
+        return data
+    },
+
+    async createCheckpoint(checkpoint: Omit<CheckpointDTO, 'id' | 'created_at'>): Promise<CheckpointDTO> {
+        const { data, error } = await supabase
+            .from('checkpoints')
+            .insert(checkpoint)
+            .select()
+            .single()
+
+        if (error) throw error
+        return data
     }
 }

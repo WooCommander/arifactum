@@ -1,42 +1,21 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted } from 'vue'
 import { useTheme } from '@/composables/useTheme'
 import MainLayout from '@/layouts/MainLayout.vue'
 import FpNotificationContainer from '@/design-system/components/FpNotificationContainer.vue'
-import { checkForUpdate, installUpdate, type UpdateInfo } from '@/modules/updates/UpdateService'
 import { DeviceService } from '@/app/services/DeviceService'
-import { appService } from '@/app/services/app-service'
 
 const { initTheme } = useTheme()
-
-const update = ref<UpdateInfo | null>(null)
 
 onMounted(async () => {
   initTheme()
   DeviceService.initStatusBar()
-  appService.initBirthdayReminders() // Проверка ДР
-  const result = await checkForUpdate()
-  if (result.hasUpdate) update.value = result
 })
 </script>
 
 <template>
   <MainLayout />
   <FpNotificationContainer />
-
-  <!-- Update banner -->
-  <Transition name="slide-up">
-    <div v-if="update" class="update-banner">
-      <div class="update-text">
-        <span class="update-title">Доступно обновление {{ update.version }}</span>
-        <span v-if="update.notes" class="update-notes">{{ update.notes }}</span>
-      </div>
-      <div class="update-actions">
-        <button class="btn-dismiss" @click="update = null">Позже</button>
-        <button class="btn-install" @click="installUpdate(update!.apkUrl!)">Обновить</button>
-      </div>
-    </div>
-  </Transition>
 </template>
 
 <style lang="scss">

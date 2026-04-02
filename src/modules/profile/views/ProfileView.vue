@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { Edit2 } from 'lucide-vue-next'
+import { Edit2, Wallet, Trophy } from 'lucide-vue-next'
 import { AuthService } from '@/modules/auth/services/AuthService'
 import FpCard from '@/design-system/components/FpCard.vue'
 import FpNumberInput from '@/design-system/components/FpNumberInput.vue'
@@ -13,6 +13,7 @@ import { useNotify } from '@/composables/useNotify'
 import { useI18n } from 'vue-i18n'
 import { FpHaptics } from '@/shared/lib/haptics'
 import confetti from 'canvas-confetti'
+import { ArtifactsList, useRewardsStore } from '@/modules/rewards'
 
 type CurrencyCode = 'RUB' | 'USD' | 'EUR'
 
@@ -30,6 +31,7 @@ const formatPrice = computed(() => (price: number) => {
 const currencySaved = ref(false)
 const ratesSaved = ref(false)
 const { t, locale } = useI18n()
+const { totalBonuses, fetchRewards } = useRewardsStore()
 
 const changeCurrency = (code: CurrencyCode) => {
   catalogStore.setCurrency(code)
@@ -182,6 +184,7 @@ const savePersonalProfile = async () => {
 
 onMounted(async () => {
   try {
+    await fetchRewards()
     const { user: authUser } = await AuthService.getUser()
     if (authUser) {
       user.value.email = authUser.email || ''
@@ -272,6 +275,29 @@ onMounted(async () => {
         </div>
         <span class="xp-text">{{ stats.reputation }} / {{ stats.nextLevelThreshold }} XP</span>
       </FpCard>
+
+      <!-- Stats Summary -->
+      <div class="stats-summary">
+        <div class="stat-item">
+          <div class="stat-icon bonus"><Wallet :size="20" /></div>
+          <div class="stat-info">
+            <span class="stat-value">{{ totalBonuses }}</span>
+            <span class="stat-label">Бонусы</span>
+          </div>
+        </div>
+        <div class="stat-item" @click="router.push('/activity')">
+          <div class="stat-icon quests"><Trophy :size="20" /></div>
+          <div class="stat-info">
+            <span class="stat-value">Artifactum</span>
+            <span class="stat-label">Ранг</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Artifacts Section -->
+      <section class="profile-section">
+        <ArtifactsList />
+      </section>
 
       <FpCard class="stat-card">
         <span class="stat-value">{{ stats.pricesSubmitted }}</span>
@@ -614,6 +640,63 @@ onMounted(async () => {
       color: var(--color-text-secondary);
     }
   }
+}
+
+.stats-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--color-surface);
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  flex: 1;
+}
+
+.stat-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  &.bonus {
+    background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+    color: var(--color-primary);
+  }
+  
+  &.quests {
+    background: color-mix(in srgb, var(--color-secondary) 15%, transparent);
+    color: var(--color-secondary);
+  }
+}
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-value {
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.profile-section {
+  margin-bottom: 24px;
 }
 
 .settings-section {
