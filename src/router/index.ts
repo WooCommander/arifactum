@@ -13,6 +13,16 @@ const routes = [
         component: () => import('@/views/HomeView.vue')
     },
     {
+        path: '/routes',
+        name: 'Routes',
+        component: () => import('@/modules/routes').then(m => m.RoutesView)
+    },
+    {
+        path: '/route/:id',
+        name: 'RouteDetail',
+        component: () => import('@/modules/routes').then(m => m.RouteDetailView)
+    },
+    {
         path: '/profile',
         name: 'Profile',
         component: () => import('@/modules/profile/views/ProfileView.vue'),

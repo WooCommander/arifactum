@@ -111,7 +111,7 @@ onMounted(loadData)
         <div class="hero-top">
           <div class="hero-content">
             <h1 class="welcome-text">{{ greeting }}, <span class="accent">{{ userName }}</span></h1>
-            <p class="hero-subtitle">Твой прогресс в Fair Price</p>
+            <p class="hero-subtitle">Твой прогресс в Artifactum</p>
           </div>
 
         </div>
@@ -138,8 +138,25 @@ onMounted(loadData)
         </FpCard>
       </header>
 
-      <div class="dashboard-content">
-        <!-- Personalized Stats -->
+        <div class="dashboard-content">
+          <!-- Artifactum Routes Section -->
+          <section class="routes-highlight">
+            <div class="section-header">
+              <h2 class="section-title">Маршруты и квесты 🗺️</h2>
+              <FpButton variant="text" size="sm" @click="router.push('/routes')">Все</FpButton>
+            </div>
+            <FpCard class="route-promo-card" @click="router.push('/routes')">
+              <div class="promo-content">
+                <div class="promo-text">
+                  <h3>Начни свое приключение</h3>
+                  <p>Исследуй город, находи скрытые точки и получай артефакты.</p>
+                </div>
+                <div class="promo-icon">🧭</div>
+              </div>
+            </FpCard>
+          </section>
+
+          <!-- Personalized Stats -->
         <section class="stats-grid">
           <FpCard class="stat-card" @click="router.push('/shopping-list')">
             <div class="stat-icon list">🛒</div>
@@ -685,6 +702,59 @@ onMounted(loadData)
     font-size: 11px;
     color: var(--color-text-tertiary);
   }
+}
+
+// Routes Highlight
+.routes-highlight {
+  display: flex;
+  flex-direction: column;
+}
+
+.route-promo-card {
+  padding: 20px;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-variant) 100%);
+  color: var(--color-on-primary);
+  border: none;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: -20px;
+    right: -20px;
+    width: 100px;
+    height: 100px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+  }
+
+  h3 {
+    font-size: 18px;
+    font-weight: 800;
+    margin: 0 0 4px;
+    color: var(--color-on-primary);
+  }
+
+  p {
+    font-size: 13px;
+    margin: 0;
+    opacity: 0.9;
+    color: var(--color-on-primary);
+  }
+}
+
+.promo-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.promo-icon {
+  font-size: 40px;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
 }
 
 .section-header {
