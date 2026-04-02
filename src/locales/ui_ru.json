@@ -1,0 +1,98 @@
+{
+  "nav": {
+    "home": "Главная",
+    "search": "Поиск",
+    "favorites": "Избранное",
+    "profile": "Профиль",
+    "catalog": "Каталог",
+    "stores": "Магазины",
+    "leaderboard": "Рейтинг",
+    "shoppingList": "Список",
+    "addPrice": "Цена",
+    "quickCalc": "Расчет",
+    "menu": "Меню",
+    "tools": "Инструменты",
+    "dev": "Разработчику",
+    "designSystem": "Стенд",
+    "changelog": "Changelog"
+  },
+  "auth": {
+    "guest": "Гость",
+    "login": "Войти",
+    "logout": "Выйти"
+  },
+  "theme": {
+    "light": "Светлая тема",
+    "dark": "Тёмная тема"
+  },
+  "login": {
+    "title": "Вход",
+    "registerTitle": "Регистрация",
+    "email": "Email",
+    "password": "Пароль",
+    "submitLogin": "Войти",
+    "submitRegister": "Создать аккаунт",
+    "noAccount": "Нет аккаунта?",
+    "create": "Создать",
+    "haveAccount": "Есть аккаунт?",
+    "enter": "Войти",
+    "errors": {
+      "fillAll": "Заполните все поля",
+      "shortPassword": "Пароль должен быть не менее 6 символов",
+      "loginFailed": "Ошибка входа",
+      "registerFailed": "Ошибка регистрации",
+      "notConfirmed": "Email не подтверждён. Проверьте почту.",
+      "invalidCredentials": "Неверный email или пароль"
+    },
+    "successRegister": "Регистрация успешна! Проверьте почту для подтверждения."
+  },
+  "profile": {
+    "activityTitle": "Последняя активность",
+    "viewAll": "Смотреть всё",
+    "currencyTitle": "Валюта отображения",
+    "ratesHint": "Курс к рублю",
+    "applyRates": "Применить курсы",
+    "moderation": {
+      "title": "На модерации",
+      "empty": "Новых товаров для модерации нет",
+      "pending": "На модерации",
+      "caption": "Товары других пользователей не учитываются, пока не утверждены"
+    },
+    "stats": {
+      "reputation": "Репутация",
+      "prices": "Цен добавлено",
+      "favorites": "Избранное"
+    },
+    "personal": {
+      "title": "Личные данные",
+      "edit": "Изменить",
+      "name": "Имя",
+      "lastName": "Фамилия",
+      "gender": "Пол",
+      "birthDate": "Дата рождения",
+      "save": "Сохранить",
+      "cancel": "Отмена",
+      "placeholderName": "Введите имя",
+      "placeholderLastName": "Введите фамилию"
+    },
+    "gender": {
+      "male": "Мужской",
+      "female": "Женский",
+      "other": "Другой"
+    },
+    "labels": {
+      "name": "Имя",
+      "lastName": "Фамилия",
+      "gender": "Пол",
+      "birthDate": "Дата рождения",
+      "category": "Категория"
+    },
+    "saved": "Сохранено",
+    "noActivity": "Нет активности"
+  },
+  "rates": {
+    "usdInRub": "1 $ в рублях",
+    "eurInRub": "1 € в рублях"
+  }
+}
+

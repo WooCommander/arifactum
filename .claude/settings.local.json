@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la src/modules/*/)",
+      "Bash(npx vue-tsc --noEmit)",
+      "Bash(npm install @capgo/capacitor-updater)",
+      "Bash(gradlew assembleDebug --stacktrace)",
+      "Bash(./gradlew assembleDebug --stacktrace)",
+      "Bash(./gradlew assembleDebug)",
+      "Bash(\"/c/Program Files/Android/Android Studio/jbr/bin/java\" -version)",
+      "Bash(npm uninstall @capgo/capacitor-updater)",
+      "Bash(npm run update-android)"
+    ]
+  }
+}

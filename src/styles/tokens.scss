@@ -1,0 +1,192 @@
+// --- Colors (Artifactum Theme) ---
+// Primary (Brand) - Metallic Gold / Amber
+$color-primary: #FFD700;
+$color-primary-variant: #E6B800;
+$color-on-primary: #1B1D21; // Dark text on gold for better contrast
+
+// Secondary (Accent) - Deep Sea Blue
+$color-secondary: #1E90FF;
+$color-accent-warm: #FF4500; // Orange Red for quests/alerts
+
+// Backgrounds & Surfaces (Light)
+$color-background: #F8FAFC;
+$color-surface: #ffffff;
+$color-surface-translucent: rgba(255, 255, 255, 0.7);
+$color-surface-hover: #F1F5F9;
+
+// Status & Alerts
+$color-success: #10B981;
+$color-error: #EF4444;
+$color-warning: #F59E0B;
+$color-info: #3B82F6;
+
+// Levels (Leaderboard)
+$color-level-1: #9e9e9e;
+$color-level-2: #4caf50;
+$color-level-3: #2196f3;
+$color-level-4: #9c27b0;
+$color-level-5: #ff9800;
+
+// Charts
+$color-chart-primary: #18a058;
+$color-chart-secondary: #6200ee;
+
+// Text / Content
+$color-text-primary: #0F172A; // Slate 900
+$color-text-secondary: #475569; // Slate 600
+$color-text-disabled: #94A3B8;
+$color-text-tertiary: #64748B;
+
+// Borders
+$color-border: #E2E8F0;
+
+// --- Typography ---
+$font-family: 'Outfit', sans-serif;
+$font-heading: 'Outfit', sans-serif;
+
+$text-h1: 3rem; // 48px
+$text-h2: 2.5rem; // 40px
+$text-h3: 2rem; // 32px
+$text-h4: 1.75rem; // 28px
+$text-h5: 1.5rem; // 24px
+$text-h6: 1.25rem; // 20px
+
+$text-body-1: 1.125rem; // 18px
+$text-body-2: 1rem; // 16px (Base minimum)
+
+$text-button: 1rem; // 16px
+$text-caption: 1rem; // 16px (Enforced min)
+$text-overline: 1rem;
+
+// --- Spacing & Sizing (remapped logic: xs=0.5rem) ---
+$spacing-xs: 0.5rem; // 8px
+$spacing-sm: 0.75rem; // 12px
+$spacing-md: 1.25rem; // 20px
+$spacing-lg: 2rem; // 32px
+$spacing-xl: 3rem; // 48px
+$spacing-2xl: 4rem; // 64px
+
+// --- Radii ---
+$radius-sm: 0.5rem; // 8px
+$radius-md: 0.75rem; // 12px
+$radius-lg: 1.25rem; // 20px
+$radius-pill: 62.5rem; // 1000px appx
+
+// --- Shadows (using rem for offsets) ---
+$shadow-sm: 0 0.0625rem 0.125rem 0 rgba(0, 0, 0, 0.05);
+$shadow-1: 0px 0.5rem 1rem -0.25rem rgba(27, 29, 33, 0.04);
+$shadow-2: 0px 0.75rem 2rem -0.5rem rgba(108, 93, 211, 0.15); // Violet tint
+$shadow-3: 0px 1rem 2.5rem -0.5rem rgba(108, 93, 211, 0.25);
+
+// --- Layout ---
+$layout-max-width: 75rem; // 1200px
+
+// Dark Theme Overrides (Artifactum Dark)
+$dark-color-primary: #FFD700;
+$dark-color-on-primary: #1B1D21;
+
+$dark-color-background: #020617; // Slate 950
+$dark-color-surface: #0F172A; // Slate 900
+$dark-color-surface-translucent: rgba(15, 23, 42, 0.8);
+$dark-color-surface-hover: #1E293B; // Slate 800
+
+$dark-color-text-primary: #F8FAFC;
+$dark-color-text-secondary: #94A3B8;
+$dark-color-text-disabled: #475569;
+$dark-color-text-tertiary: #64748B;
+
+$dark-color-border: #1E293B;
+
+$dark-shadow-1: 0px 0.5rem 1rem -0.25rem rgba(0, 0, 0, 0.4);
+$dark-shadow-2: 0px 0.75rem 2rem -0.5rem rgba(0, 0, 0, 0.6);
+$dark-shadow-3: 0px 1rem 2.5rem -0.5rem rgba(0, 0, 0, 0.8);
+
+// Export to Native CSS Variables
+:root {
+  --color-primary: #{$color-primary};
+  --color-primary-variant: #{$color-primary-variant};
+  --color-on-primary: #{$color-on-primary};
+  --color-secondary: #{$color-secondary};
+  --color-accent-warm: #{$color-accent-warm};
+
+  --color-background: #{$color-background};
+  --color-surface: #{$color-surface};
+  --color-surface-translucent: #{$color-surface-translucent};
+  --color-surface-hover: #{$color-surface-hover};
+
+  --color-success: #{$color-success};
+  --color-error: #{$color-error};
+  --color-warning: #{$color-warning};
+  --color-info: #{$color-info};
+
+  --color-level-1: #{$color-level-1};
+  --color-level-2: #{$color-level-2};
+  --color-level-3: #{$color-level-3};
+  --color-level-4: #{$color-level-4};
+  --color-level-5: #{$color-level-5};
+
+  --color-chart-primary: #{$color-chart-primary};
+  --color-chart-secondary: #{$color-chart-secondary};
+
+  --color-text-primary: #{$color-text-primary};
+  --color-text-secondary: #{$color-text-secondary};
+  --color-text-disabled: #{$color-text-disabled};
+  --color-text-tertiary: #{$color-text-tertiary};
+
+  --color-border: #{$color-border};
+
+  --font-family: #{$font-family};
+  --font-heading: #{$font-heading};
+
+  --text-h1: #{$text-h1};
+  --text-h2: #{$text-h2};
+  --text-h3: #{$text-h3};
+  --text-h4: #{$text-h4};
+  --text-h5: #{$text-h5};
+  --text-h6: #{$text-h6};
+
+  --text-body-1: #{$text-body-1};
+  --text-body-2: #{$text-body-2};
+
+  --text-button: #{$text-button};
+  --text-caption: #{$text-caption};
+  --text-overline: #{$text-overline};
+
+  --spacing-xs: #{$spacing-xs};
+  --spacing-sm: #{$spacing-sm};
+  --spacing-md: #{$spacing-md};
+  --spacing-lg: #{$spacing-lg};
+  --spacing-xl: #{$spacing-xl};
+  --spacing-2xl: #{$spacing-2xl};
+
+  --radius-sm: #{$radius-sm};
+  --radius-md: #{$radius-md};
+  --radius-lg: #{$radius-lg};
+  --radius-pill: #{$radius-pill};
+
+  --shadow-sm: #{$shadow-sm};
+  --shadow-1: #{$shadow-1};
+  --shadow-2: #{$shadow-2};
+  --shadow-3: #{$shadow-3};
+
+  --layout-max-width: #{$layout-max-width};
+}
+
+body.dark-theme {
+  --color-primary: #{$dark-color-primary};
+  --color-on-primary: #{$dark-color-on-primary};
+
+  --color-background: #{$dark-color-background};
+  --color-surface: #{$dark-color-surface};
+  --color-surface-translucent: #{$dark-color-surface-translucent};
+  --color-surface-hover: #{$dark-color-surface-hover};
+
+  --color-text-primary: #{$dark-color-text-primary};
+  --color-text-secondary: #{$dark-color-text-secondary};
+  --color-text-disabled: #{$dark-color-text-disabled};
+  --color-text-tertiary: #{$dark-color-text-tertiary};
+
+  --color-border: #{$dark-color-border};
+
+  --shadow-1: #{$dark-shadow-1};
+  --shadow-2: #{$dark-shadow-2}
