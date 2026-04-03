@@ -1,0 +1,11 @@
+src/modules/profile/views/ActivityView.vue(7,33): error TS2307: Cannot find module '@/modules/catalog/services/CurrencyService' or its corresponding type declarations.
+src/modules/profile/views/ActivityView.vue(8,30): error TS2307: Cannot find module '@/modules/catalog/store/catalogStore' or its corresponding type declarations.
+src/modules/profile/views/ProfileView.vue(9,30): error TS2307: Cannot find module '@/modules/catalog/store/catalogStore' or its corresponding type declarations.
+src/modules/profile/views/ProfileView.vue(10,33): error TS2307: Cannot find module '@/modules/catalog/services/CurrencyService' or its corresponding type declarations.
+src/modules/profile/views/ProfileView.vue(11,32): error TS2307: Cannot find module '@/modules/catalog/services/CatalogService' or its corresponding type declarations.
+src/modules/rewards/services/rewardService.ts(2,30): error TS6196: 'RewardType' is declared but never used.
+src/modules/rewards/ui/ArtifactsList.vue(5,10): error TS6133: 'Shield' is declared but its value is never read.
+src/modules/routes/adapters/routeAdapter.ts(5,9): error TS2741: Property 'images' is missing in type '{ id: string; title: string; description: string; authorId: string; checkpointsCount: number; rating: number; difficulty: "easy" | "medium" | "hard"; imageUrl: string | null; }' but required in type 'Route'.
+src/modules/routes/adapters/routeAdapter.ts(18,9): error TS2741: Property 'images' is missing in type '{ id: string; routeId: string; title: string; description: string; latitude: number; longitude: number; photoUrl: string | null; order: number; }' but required in type 'Checkpoint'.
+src/shared/ui/ArtMap.vue(89,3): error TS2349: This expression is not callable.
+  Type 'void' has no call signatures.

@@ -4,55 +4,15 @@ import { useRouter } from 'vue-router'
 import { Edit2, Wallet, Trophy } from 'lucide-vue-next'
 import { AuthService } from '@/modules/auth/services/AuthService'
 import FpCard from '@/design-system/components/FpCard.vue'
-import FpNumberInput from '@/design-system/components/FpNumberInput.vue'
 import FpButton from '@/design-system/components/FpButton.vue'
-import { catalogStore } from '@/modules/catalog/store/catalogStore'
-import { CurrencyService } from '@/modules/catalog/services/CurrencyService'
-import { CatalogService } from '@/modules/catalog/services/CatalogService'
 import { useNotify } from '@/composables/useNotify'
 import { useI18n } from 'vue-i18n'
 import { FpHaptics } from '@/shared/lib/haptics'
 import confetti from 'canvas-confetti'
-import { ArtifactsList, useRewardsStore } from '@/modules/rewards'
+import { useRewardsStore } from '@/modules/rewards'
 
-type CurrencyCode = 'RUB' | 'USD' | 'EUR'
-
-const currencies = computed((): { code: CurrencyCode; symbol: string; label: string }[] => ([
-  { code: 'RUB', symbol: '₽', label: 'RUB' },
-  { code: 'USD', symbol: '$', label: 'USD' },
-  { code: 'EUR', symbol: '€', label: 'EUR' }
-]))
-
-const { currentCurrency } = catalogStore
-const formatPrice = computed(() => (price: number) => {
-  const currency = currentCurrency.value
-  return CurrencyService.format(CurrencyService.convert(price, 'RUB', currency), currency)
-})
-const currencySaved = ref(false)
-const ratesSaved = ref(false)
 const { t, locale } = useI18n()
 const { totalBonuses, fetchRewards } = useRewardsStore()
-
-const changeCurrency = (code: CurrencyCode) => {
-  catalogStore.setCurrency(code)
-  currencySaved.value = true
-  setTimeout(() => { currencySaved.value = false }, 2000)
-}
-
-// Exchange rates
-const savedRates = CurrencyService.getRates()
-const usdRate = ref(savedRates.USD)
-const eurRate = ref(savedRates.EUR)
-
-const saveRates = async () => {
-  const usd = Number(usdRate.value)
-  const eur = Number(eurRate.value)
-  if (usd <= 0 || eur <= 0) return
-  CurrencyService.setRates(usd, eur)
-  await AuthService.setExchangeRates(usd, eur)
-  ratesSaved.value = true
-  setTimeout(() => { ratesSaved.value = false }, 2000)
-}
 
 const router = useRouter()
 
@@ -71,45 +31,12 @@ const isLoading = ref(true)
 const stats = ref<UserStats | null>(null)
 const activityFeed = ref<any[]>([])
 const user = ref({ email: '', id: '', role: '' })
-const pendingProducts = ref<Array<{ id: string, name: string, category: string, created_at: string, created_by: string, prices: Array<{ price: number, stores: { name: string } | null }> }>>([])
-const getMinPrice = (prices: Array<{ price: number, stores: { name: string } | null }>) => {
-  if (!prices?.length) return null
-  return prices.reduce((min, p) => p.price < min.price ? p : min, prices[0])
-}
-const pendingError = ref('')
-const moderatingId = ref<string | null>(null)
-const { notify } = useNotify()
-
-const approveProduct = async (id: string) => {
-  moderatingId.value = id
-  try {
-    await CatalogService.approveProduct(id)
-    pendingProducts.value = pendingProducts.value.filter(p => p.id !== id)
-    notify('Товар одобрен', 'success')
-  } catch (e: any) {
-    notify(e?.message || 'Ошибка', 'error')
-  } finally {
-    moderatingId.value = null
-  }
-}
-
-const rejectProduct = async (id: string) => {
-  moderatingId.value = id
-  try {
-    await CatalogService.rejectProduct(id)
-    pendingProducts.value = pendingProducts.value.filter(p => p.id !== id)
-    notify('Товар отклонён', 'success')
-  } catch (e: any) {
-    notify(e?.message || 'Ошибка', 'error')
-  } finally {
-    moderatingId.value = null
-  }
-}
 
 // Display name
 const displayName = ref('')
 const displayNameEdit = ref('')
 const isEditingName = ref(false)
+const { notify } = useNotify()
 const isSavingName = ref(false)
 
 const startEditName = () => {
@@ -219,12 +146,8 @@ onMounted(async () => {
       localStorage.setItem('fp_last_seen_level', String(stats.value.level))
     }
     activityFeed.value = await AuthService.getUserActivity()
-    try {
-      pendingProducts.value = await CatalogService.getPendingProductsForModeration()
-    } catch (err: any) {
-      pendingError.value = err?.message || t('login.errors.registerFailed')
-      notify(pendingError.value, 'error')
-    }
+  } catch(err) {
+      console.error('Failed to load profile data', err)
   } finally {
     isLoading.value = false
   }
@@ -294,15 +217,6 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- Artifacts Section -->
-      <section class="profile-section">
-        <ArtifactsList />
-      </section>
-
-      <FpCard class="stat-card">
-        <span class="stat-value">{{ stats.pricesSubmitted }}</span>
-        <span class="stat-label">{{ t('profile.stats.prices') }}</span>
-      </FpCard>
       <FpCard class="stat-card" @click="router.push('/favorites')" style="cursor: pointer">
         <span class="stat-value">⭐</span>
         <span class="stat-label">{{ t('profile.stats.favorites') }}</span>
@@ -371,31 +285,6 @@ onMounted(async () => {
       </FpCard>
     </section>
 
-    <!-- Currency Settings -->
-    <section class="settings-section">
-      <h2>{{ t('profile.currencyTitle') }}</h2>
-      <div class="currency-options">
-        <button v-for="c in currencies" :key="c.code" class="currency-option-btn"
-          :class="{ active: currentCurrency === c.code }" @click="changeCurrency(c.code)">
-          <span class="currency-symbol">{{ c.symbol }}</span>
-          <span class="currency-code">{{ c.code }}</span>
-          <span class="currency-label">{{ c.label }}</span>
-        </button>
-      </div>
-      <p class="settings-saved" v-if="currencySaved">✓ {{ t('profile.saved') }}</p>
-
-      <!-- Exchange Rates -->
-      <div class="rates-section">
-        <p class="rates-hint">{{ t('profile.ratesHint') }}</p>
-        <div class="rates-inputs">
-          <FpNumberInput v-model="usdRate" :label="t('rates.usdInRub')" :min="1" :step="0.5" />
-          <FpNumberInput v-model="eurRate" :label="t('rates.eurInRub')" :min="1" :step="0.5" />
-        </div>
-        <button class="save-rates-btn" @click="saveRates">{{ t('profile.applyRates') }}</button>
-        <p class="settings-saved" v-if="ratesSaved">✓ {{ t('profile.saved') }}</p>
-      </div>
-    </section>
-
     <section class="activity-section">
       <div class="section-title-row">
         <h2>{{ t('profile.activityTitle') }}</h2>
@@ -413,49 +302,11 @@ onMounted(async () => {
               <span class="act-time">{{ act.time }}</span>
             </div>
             <span class="act-item">{{ act.item }}</span>
-            <span class="act-details">{{ formatPrice(act.price) }}</span>
           </div>
         </FpCard>
       </div>
     </section>
 
-    <section class="moderation-section">
-      <div class="section-title-row">
-        <h2>{{ t('profile.moderation.title') }}</h2>
-        <span class="caption" v-if="pendingProducts.length">{{ t('profile.moderation.caption') }}</span>
-      </div>
-
-      <div v-if="pendingError" class="error-alert">{{ pendingError }}</div>
-
-      <div v-else-if="pendingProducts.length === 0" class="empty-feed">
-        {{ t('profile.moderation.empty') }}
-      </div>
-
-      <div v-else class="pending-list">
-        <FpCard v-for="p in pendingProducts" :key="p.id" class="pending-item" padding="sm">
-          <div class="pending-main">
-            <div class="pending-name">{{ p.name }}</div>
-            <div class="pending-meta">
-              <span class="badge muted">{{ t('profile.labels.category') }}: {{ p.category || '—' }}</span>
-              <span v-if="getMinPrice(p.prices)" class="badge price">
-                {{ formatPrice(getMinPrice(p.prices)!.price) }}
-                <template v-if="getMinPrice(p.prices)!.stores?.name"> · {{ getMinPrice(p.prices)!.stores!.name
-                }}</template>
-              </span>
-              <span v-else class="badge muted">Без цены</span>
-              <span class="badge warning">{{ t('profile.moderation.pending') }}</span>
-            </div>
-          </div>
-          <div class="pending-right">
-            <div class="pending-date">{{ new Date(p.created_at).toLocaleDateString('ru-RU') }}</div>
-            <div class="moderation-actions">
-              <button class="mod-btn approve" :disabled="moderatingId === p.id" @click="approveProduct(p.id)">✓</button>
-              <button class="mod-btn reject" :disabled="moderatingId === p.id" @click="rejectProduct(p.id)">✕</button>
-            </div>
-          </div>
-        </FpCard>
-      </div>
-    </section>
   </div>
 </template>
 

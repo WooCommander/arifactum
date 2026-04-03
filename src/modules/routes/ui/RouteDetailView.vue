@@ -124,6 +124,13 @@ onUnmounted(() => {
 
       <div class="route-info-card">
         <h1>{{ currentRoute.title }}</h1>
+        
+        <div v-if="currentRoute.images && currentRoute.images.length > 0" class="route-gallery">
+          <div v-for="(img, idx) in currentRoute.images" :key="idx" class="gallery-item">
+            <img :src="img" alt="Gallery image" />
+          </div>
+        </div>
+
         <p class="description">{{ currentRoute.description }}</p>
         
         <div class="detail-stats">
@@ -155,6 +162,12 @@ onUnmounted(() => {
             <div class="checkpoint-body">
               <h3>{{ cp.title }}</h3>
               <p>{{ cp.description }}</p>
+              
+              <div v-if="cp.images && cp.images.length > 0" class="checkpoint-gallery">
+                <div v-for="(img, idx) in cp.images" :key="idx" class="gallery-thumb">
+                  <img :src="img" alt="Checkpoint image" />
+                </div>
+              </div>
             </div>
             <div v-if="completedCheckpointIds.has(cp.id)" class="check-icon">✅</div>
           </div>
@@ -236,6 +249,35 @@ onUnmounted(() => {
     font-weight: 800;
     color: var(--color-text-primary);
     margin: 0 0 12px;
+  }
+
+  .route-gallery {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding: 4px 0 16px;
+    margin: 0 -4px;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar { display: none; }
+
+    .gallery-item {
+      flex: 0 0 120px;
+      height: 80px;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      cursor: pointer;
+      transition: transform 0.2s;
+
+      &:active { transform: scale(0.95); }
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+    }
   }
 
   .description {
@@ -337,7 +379,29 @@ onUnmounted(() => {
   p {
     font-size: 14px;
     color: var(--color-text-secondary);
-    margin: 0;
+    margin: 0 0 8px;
+  }
+}
+
+.checkpoint-gallery {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 0;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+
+  .gallery-thumb {
+    flex: 0 0 60px;
+    height: 44px;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
   }
 }
 

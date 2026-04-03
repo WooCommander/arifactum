@@ -1,18 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { AuthService } from '@/modules/auth/services/AuthService'
 import FpCard from '@/design-system/components/FpCard.vue'
 import { FpSkeleton } from '@/design-system'
-import { CurrencyService } from '@/modules/catalog/services/CurrencyService'
-import { catalogStore } from '@/modules/catalog/store/catalogStore'
-
 const router = useRouter()
-const { currentCurrency } = catalogStore
-const formatPrice = computed(() => (price: number) => {
-    const currency = currentCurrency.value
-    return CurrencyService.format(CurrencyService.convert(price, 'RUB', currency), currency)
-})
 
 const activityData = ref<any[]>([])
 const isLoading = ref(true)
@@ -28,11 +20,7 @@ onMounted(async () => {
     }
 })
 
-const goToProduct = (id: string) => {
-    if (id) {
-        router.push(`/product/${id}`)
-    }
-}
+
 </script>
 
 <template>
@@ -57,8 +45,7 @@ const goToProduct = (id: string) => {
         </div>
 
         <TransitionGroup name="list" tag="div" v-else-if="activityData.length > 0" class="activity-list">
-            <FpCard v-for="act in activityData" :key="act.id" class="activity-item fp-interactive" padding="sm"
-                @click="goToProduct(act.productId)">
+            <FpCard v-for="act in activityData" :key="act.id" class="activity-item fp-interactive" padding="sm">
                 <div class="act-icon">{{ act.icon }}</div>
                 <div class="act-content">
                     <div class="act-header">
@@ -66,7 +53,6 @@ const goToProduct = (id: string) => {
                         <span class="act-time">{{ act.time }}</span>
                     </div>
                     <span class="act-item">{{ act.item }}</span>
-                    <span class="act-details">{{ formatPrice(act.price) }}</span>
                 </div>
             </FpCard>
         </TransitionGroup>

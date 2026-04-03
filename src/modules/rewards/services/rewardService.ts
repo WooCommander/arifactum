@@ -1,5 +1,5 @@
 import { supabase } from '@/api/supabase'
-import type { UserRewardDTO, RewardType } from '../types'
+import type { UserRewardDTO } from '../types'
 
 export const rewardService = {
   async getMyRewards(): Promise<UserRewardDTO[]> {

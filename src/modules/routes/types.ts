@@ -8,6 +8,7 @@ export interface RouteDTO {
     rating_avg: number
     difficulty: 'easy' | 'medium' | 'hard'
     image_url: string | null
+    images: readonly string[]
 }
 
 export interface Route {
@@ -19,6 +20,7 @@ export interface Route {
     rating: number
     difficulty: 'easy' | 'medium' | 'hard'
     imageUrl: string | null
+    images: readonly string[]
 }
 
 export interface CheckpointDTO {
@@ -29,6 +31,7 @@ export interface CheckpointDTO {
     lat: number
     lng: number
     photo_url: string | null
+    images: readonly string[]
     order_index: number
 }
 
@@ -40,5 +43,6 @@ export interface Checkpoint {
     latitude: number
     longitude: number
     photoUrl: string | null
+    images: readonly string[]
     order: number
 }

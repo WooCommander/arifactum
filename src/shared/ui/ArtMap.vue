@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, shallowRef, onMounted, onUnmounted, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -28,82 +28,82 @@ const emit = defineEmits<{
 }>()
 
 const mapContainer = ref<HTMLElement | null>(null)
-const map = ref<L.Map | null>(null)
+const map = shallowRef<L.Map | null>(null)
 const markers = ref<L.Marker[]>([])
 
-const initMap = () => {
-  if (!mapContainer.value) return
+const refreshMarkersLayer = () => {
+    if (!map.value) return
 
-  const initialCenter = props.center || [
-    props.points[0]?.lat || 55.751244,
-    props.points[0]?.lng || 37.618423
-  ]
+    // Clear existing markers
+    markers.value.forEach(m => m.remove())
+    markers.value = []
 
-  map.value = L.map(mapContainer.value, {
-    zoomControl: false,
-    attributionControl: false,
-    scrollWheelZoom: props.interactive,
-    dragging: props.interactive,
-    touchZoom: props.interactive
-  }).setView(initialCenter as [number, number], props.zoom)
+    // Add new markers
+    const group = L.featureGroup()
+    
+    props.points.forEach(p => {
+        const marker = L.marker([p.lat, p.lng], {
+          icon: L.divIcon({
+            className: 'art-marker',
+            html: `<div class="marker-dot"></div>`,
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+          })
+        })
 
-  L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
-    maxZoom: 19
-  }).addTo(map.value!)
+        if (p.id) {
+            marker.on('click', () => emit('markerClick', p.id!))
+        }
 
-  if (props.interactive) {
-    L.control.zoom({ position: 'bottomright' }).addTo(map.value!)
-  }
-
-  updateMarkers()
-
-  map.value!.on('click', (e: L.LeafletMouseEvent) => {
-    emit('mapClick', e.latlng.lat, e.latlng.lng)
-  })
-}
-
-const updateMarkers = () => {
-  if (!map.value) return
-
-  // Clear existing markers
-  markers.value.forEach(m => m.remove())
-  markers.value = []
-
-  // Add new markers
-  const group = L.featureGroup()
-  
-  props.points.forEach(p => {
-    const marker = L.marker([p.lat, p.lng], {
-      icon: L.divIcon({
-        className: 'art-marker',
-        html: `<div class="marker-dot"></div>`,
-        iconSize: [24, 24],
-        iconAnchor: [12, 12]
-      })
+        marker.addTo(map.value as L.Map)
+        markers.value.push(marker)
+        group.addLayer(marker)
     })
 
-    if (p.id) {
-        marker.on('click', () => emit('markerClick', p.id!))
+    // Fit bounds if more than 1 point and no specific center provided
+    if (props.points.length > 1 && !props.center) {
+        (map.value as L.Map).fitBounds(group.getBounds(), { padding: [40, 40] })
+    }
+}
+
+const initializeLeafletMap = () => {
+    if (!mapContainer.value) return
+
+    const initialCenter = props.center || [
+      props.points[0]?.lat || 55.751244,
+      props.points[0]?.lng || 37.618423
+    ]
+
+    map.value = L.map(mapContainer.value, {
+      zoomControl: false,
+      attributionControl: false,
+      scrollWheelZoom: props.interactive,
+      dragging: props.interactive,
+      touchZoom: props.interactive
+    }).setView(initialCenter as [number, number], props.zoom)
+
+    L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+      maxZoom: 19
+    }).addTo(map.value as L.Map)
+
+    if (props.interactive) {
+      L.control.zoom({ position: 'bottomright' }).addTo(map.value as L.Map)
     }
 
-    marker.addTo(map.value!)
-    markers.value.push(marker)
-    group.addLayer(marker)
-  })
+    refreshMarkersLayer()
 
-  // Fit bounds if more than 1 point and no specific center provided
-  if (props.points.length > 1 && !props.center) {
-    map.value.fitBounds(group.getBounds(), { padding: [40, 40] })
-  }
+    ;(map.value as L.Map).on('click', (e: L.LeafletMouseEvent) => {
+      emit('mapClick', e.latlng.lat, e.latlng.lng)
+    })
 }
 
 watch(() => props.points, () => {
-    updateMarkers()
+    refreshMarkersLayer()
 }, { deep: true })
 
 onMounted(() => {
   // Little delay to ensure container size is correct in some layouts
-  setTimeout(initMap, 100)
+  setTimeout(initializeLeafletMap, 100)
 })
 
 onUnmounted(() => {

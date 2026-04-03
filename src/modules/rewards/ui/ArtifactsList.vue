@@ -2,7 +2,7 @@
 import { onMounted } from 'vue'
 import { useRewardsStore } from '../state/useRewardsStore'
 import { FpCard, FpSpinner } from '@/design-system'
-import { Shield, Trophy, Star } from 'lucide-vue-next'
+import { Trophy, Star } from 'lucide-vue-next'
 
 const { artifacts, isLoading, fetchRewards } = useRewardsStore()
 

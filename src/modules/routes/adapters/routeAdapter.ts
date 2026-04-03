@@ -10,7 +10,8 @@ export const routeAdapter = {
             checkpointsCount: dto.checkpoints_count,
             rating: dto.rating_avg,
             difficulty: dto.difficulty,
-            imageUrl: dto.image_url
+            imageUrl: dto.image_url,
+            images: dto.images || []
         }
     },
 
@@ -23,6 +24,7 @@ export const routeAdapter = {
             latitude: dto.lat,
             longitude: dto.lng,
             photoUrl: dto.photo_url,
+            images: dto.images || [],
             order: dto.order_index
         }
     }

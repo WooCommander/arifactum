@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { useRouter, useRoute } from 'vue-router'
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { useTheme } from '@/composables/useTheme'
 import { authStore } from '@/modules/auth/store/authStore'
-import { CatalogService } from '@/modules/catalog/services/CatalogService'
+
 import { changelog } from '@/data/changelog'
 import { setLocale, supportedLocales, i18n } from '@/i18n'
 import { useI18n } from 'vue-i18n'
-import { Home, Star, User, Package, Store, Trophy, Menu, X, CheckSquare, Calculator, Palette, FileText, LogOut, Sun, Moon, Plus, ShoppingCart, Gamepad2, StickyNote, Gift, Receipt } from 'lucide-vue-next'
+import { Home, User, Trophy, Menu, X, LogOut, Sun, Moon, Users, Navigation, Palette, FileText, Plus } from 'lucide-vue-next'
 import { FpHaptics } from '@/shared/lib/haptics'
 const refreshKey = ref(0)
 const forceRefresh = () => { refreshKey.value += 1 }
@@ -29,16 +29,7 @@ const avatarUrl = computed(() => {
 })
 const avatarLetter = computed(() => userRef.value?.email?.charAt(0).toUpperCase() || '?')
 const profileTooltip = computed(() => userRef.value?.email || t('auth.guest'))
-const pendingModerationCount = ref(0)
-const loadPendingCount = async () => {
-	if (!userRef.value) return
-	try {
-		const items = await CatalogService.getPendingProductsForModeration()
-		pendingModerationCount.value = items.length
-	} catch { pendingModerationCount.value = 0 }
-}
-onMounted(loadPendingCount)
-watch(userRef, loadPendingCount)
+
 
 const handleProfileClick = async () => {
 	FpHaptics.light()
@@ -56,38 +47,7 @@ const handleProfileClick = async () => {
 	}
 }
 
-const navItems = computed(() => [
-	{
-		label: t('nav.home'),
-		path: '/',
-		icon: Home
-	},
-	{
-		label: t('nav.favorites'),
-		path: '/favorites',
-		icon: Star
-	},
-	{
-		label: t('nav.profile'),
-		path: '/profile',
-		icon: User
-	},
-	{
-		label: t('nav.catalog'),
-		path: '/catalog',
-		icon: Package
-	},
-	{
-		label: t('nav.stores'),
-		path: '/stores',
-		icon: Store
-	},
-	{
-		label: t('nav.leaderboard'),
-		path: '/leaderboard',
-		icon: Trophy
-	}
-])
+
 
 const currentPath = computed(() => route.path)
 
@@ -126,7 +86,7 @@ const handleLogout = async () => {
 					</button>
 
 					<div class="logo" @click="router.push('/')">
-						Fair Price
+						Artifactum
 						<span v-if="appVersion" class="version-pill">v{{ appVersion }}</span>
 					</div>
 				</div>
@@ -144,7 +104,7 @@ const handleLogout = async () => {
 					<div class="profile-chip" :class="{ guest: !userRef }" :title="profileTooltip" @click="handleProfileClick">
 						<img v-if="avatarUrl" :src="avatarUrl" alt="avatar" referrerpolicy="no-referrer" />
 						<span v-else class="avatar-letter">{{ avatarLetter }}</span>
-						<span v-if="pendingModerationCount > 0" class="moderation-badge">{{ pendingModerationCount > 99 ? '99+' : pendingModerationCount }}</span>
+
 					</div>
 				</div>
 			</div>
@@ -165,26 +125,25 @@ const handleLogout = async () => {
 		<nav class="bottom-nav">
 			<a class="nav-item" :class="{ active: route.path === '/' }" @click.prevent="navigate('/')">
 				<Home class="icon" :size="20" />
-				<span class="label">{{ t('nav.home') }}</span>
+				<span class="label">Главная</span>
 			</a>
-			<a class="nav-item" :class="{ active: route.path === '/catalog' }" @click.prevent="navigate('/catalog')">
-				<Package class="icon" :size="20" />
-				<span class="label">{{ t('nav.catalog') }}</span>
+			<a class="nav-item" :class="{ active: route.path === '/routes' }" @click.prevent="navigate('/routes')">
+				<Navigation class="icon" :size="20" />
+				<span class="label">Маршруты</span>
 			</a>
-			<div class="nav-item action" @click="navigate('/add-price')">
-				<div class="plus-btn" :class="{ active: route.path === '/add-price' }">
+			<div class="nav-item action" @click="navigate('/create-route')">
+				<div class="plus-btn" :class="{ active: route.path === '/create-route' }">
 					<Plus :size="24" :stroke-width="3" />
 				</div>
-				<span class="label">{{ t('nav.addPrice') }}</span>
+				<span class="label">Создать</span>
 			</div>
-			<a class="nav-item" :class="{ active: route.path === '/shopping-list' }"
-				@click.prevent="navigate('/shopping-list')">
-				<ShoppingCart class="icon" :size="20" />
-				<span class="label">{{ t('nav.shoppingList') }}</span>
+			<a class="nav-item" :class="{ active: route.path === '/teams' }" @click.prevent="navigate('/teams')">
+				<Users class="icon" :size="20" />
+				<span class="label">Команды</span>
 			</a>
-			<a class="nav-item" :class="{ active: route.path === '/quick-calc' }" @click.prevent="navigate('/quick-calc')">
-				<Calculator class="icon" :size="20" />
-				<span class="label">{{ t('nav.quickCalc') }}</span>
+			<a class="nav-item" :class="{ active: route.path === '/profile' }" @click.prevent="navigate('/profile')">
+				<User class="icon" :size="20" />
+				<span class="label">Профиль</span>
 			</a>
 		</nav>
 
@@ -223,86 +182,46 @@ const handleLogout = async () => {
 
 				<div class="drawer-content">
 					<div class="nav-group">
-						<span class="nav-label">{{ t('nav.menu') }}</span>
-						<a v-for="item in navItems" :key="item.path" class="drawer-link"
-							:class="{ active: currentPath === item.path }" @click.prevent="navigate(item.path); isMenuOpen = false">
-							<span class="link-icon"><component :is="item.icon" :size="24" /></span>
-							{{ item.label }}
+						<span class="nav-label">Приключение</span>
+						<a class="drawer-link" :class="{ active: currentPath === '/' }" @click.prevent="navigate('/'); isMenuOpen = false">
+							<span class="link-icon"><Home :size="24" /></span>
+							Главная
+						</a>
+						<a class="drawer-link" :class="{ active: currentPath === '/routes' }" @click.prevent="navigate('/routes'); isMenuOpen = false">
+							<span class="link-icon"><Navigation :size="24" /></span>
+							Маршруты
+						</a>
+						<a class="drawer-link" :class="{ active: currentPath === '/teams' }" @click.prevent="navigate('/teams'); isMenuOpen = false">
+							<span class="link-icon"><Users :size="24" /></span>
+							Команды
+						</a>
+						<a class="drawer-link" :class="{ active: currentPath === '/leaderboard' }" @click.prevent="navigate('/leaderboard'); isMenuOpen = false">
+							<span class="link-icon"><Trophy :size="24" /></span>
+							Лидерборд
 						</a>
 					</div>
 
 					<div class="nav-group">
-						<span class="nav-label">{{ t('nav.tools') }}</span>
-						<a class="drawer-link" :class="{ active: currentPath === '/shopping-list' }"
-							@click.prevent="navigate('/shopping-list'); isMenuOpen = false">
-							<span class="link-icon">
-								<CheckSquare :size="24" />
-							</span>
-							{{ t('nav.shoppingList') }}
+						<span class="nav-label">Управление</span>
+						<a class="drawer-link" :class="{ active: currentPath === '/create-route' }" @click.prevent="navigate('/create-route'); isMenuOpen = false">
+							<span class="link-icon"><Plus :size="24" /></span>
+							Создать маршрут
 						</a>
-						<a class="drawer-link" :class="{ active: currentPath === '/quick-calc' }"
-							@click.prevent="navigate('/quick-calc'); isMenuOpen = false">
-							<span class="link-icon">
-								<Calculator :size="24" />
-							</span>
-							{{ t('nav.quickCalc') }}
-						</a>
-						<a class="drawer-link" :class="{ active: currentPath === '/notes' }"
-							@click.prevent="navigate('/notes'); isMenuOpen = false">
-							<span class="link-icon">
-								<StickyNote :size="24" />
-							</span>
-							Заметки
-						</a>
-						<a class="drawer-link" :class="{ active: currentPath === '/birthdays' }"
-							@click.prevent="navigate('/birthdays'); isMenuOpen = false">
-							<span class="link-icon">
-								<Gift :size="24" />
-							</span>
-							Дни Рождения
-						</a>
-						<a class="drawer-link" :class="{ active: currentPath === '/receipts' }"
-							@click.prevent="navigate('/receipts'); isMenuOpen = false">
-							<span class="link-icon">
-								<Receipt :size="24" />
-							</span>
-							Мои Чеки
-						</a>
-						<a class="drawer-link" :class="{ active: currentPath === '/favorites' }"
-							@click.prevent="navigate('/favorites'); isMenuOpen = false">
-							<span class="link-icon">
-								<Star :size="24" />
-							</span>
-							{{ t('nav.favorites') }}
+						<a class="drawer-link" :class="{ active: currentPath === '/profile' }" @click.prevent="navigate('/profile'); isMenuOpen = false">
+							<span class="link-icon"><User :size="24" /></span>
+							Мой профиль
 						</a>
 					</div>
 
 					<div class="nav-group">
-						<span class="nav-label">{{ t('nav.dev') }}</span>
-						<a class="drawer-link" :class="{ active: currentPath === '/design-system' }"
-							@click.prevent="navigate('/design-system'); isMenuOpen = false">
-							<span class="link-icon">
-								<Palette :size="24" />
-							</span>
-							{{ t('nav.designSystem') }}
+						<span class="nav-label">Система</span>
+						<a class="drawer-link" :class="{ active: currentPath === '/design-system' }" @click.prevent="navigate('/design-system'); isMenuOpen = false">
+							<span class="link-icon"><Palette :size="24" /></span>
+							Design System
 						</a>
-						<a class="drawer-link" :class="{ active: currentPath === '/changelog' }"
-							@click.prevent="navigate('/changelog'); isMenuOpen = false">
-							<span class="link-icon">
-								<FileText :size="24" />
-							</span>
-							{{ t('nav.changelog') }}
-						</a>
-					</div>
-
-					<div class="nav-group">
-						<span class="nav-label">Развлечения</span>
-						<a class="drawer-link" :class="{ active: currentPath.startsWith('/games') }"
-							@click.prevent="navigate('/games'); isMenuOpen = false">
-							<span class="link-icon">
-								<Gamepad2 :size="24" />
-							</span>
-							Игры
+						<a class="drawer-link" :class="{ active: currentPath === '/changelog' }" @click.prevent="navigate('/changelog'); isMenuOpen = false">
+							<span class="link-icon"><FileText :size="24" /></span>
+							Что нового
 						</a>
 					</div>
 				</div>
