@@ -1,4 +1,4 @@
-import { DbService } from './DbService'
+import { DbService } from '../services/DbService'
 
 export class TileCache {
   private static TILE_URL = 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png'

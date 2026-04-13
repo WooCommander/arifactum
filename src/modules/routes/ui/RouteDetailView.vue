@@ -16,7 +16,7 @@ import { ArService } from '@/modules/ar/services/ArService'
 import ArOverlay from '@/modules/ar/ui/ArOverlay.vue'
 import { OfflineService } from '@/modules/offline/services/OfflineService'
 import { TileCache } from '@/modules/offline/lib/TileCache'
-import { Download, CloudOff, CheckCircle } from 'lucide-vue-next'
+import { Download, CheckCircle } from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()

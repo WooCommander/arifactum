@@ -12,7 +12,7 @@ export class OfflineService {
     return this.downloadedIds.value.includes(id)
   }
 
-  static async downloadRoute(route: any, checkpoints: any[]): Promise<void> {
+  static async downloadRoute(route: any, checkpoints: readonly any[]): Promise<void> {
     if (this.downloadedIds.value.length >= this.MAX_DOWNLOADS) {
       throw new Error(`Лимит достигнут! Вы можете скачать максимум ${this.MAX_DOWNLOADS} маршрутов.`)
     }
