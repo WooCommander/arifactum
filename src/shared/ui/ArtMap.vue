@@ -15,11 +15,15 @@ interface Props {
   center?: [number, number]
   zoom?: number
   interactive?: boolean
+  userLocation?: [number, number] | null
+  followUser?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   zoom: 13,
-  interactive: true
+  interactive: true,
+  userLocation: null,
+  followUser: false
 })
 
 const emit = defineEmits<{
@@ -30,6 +34,7 @@ const emit = defineEmits<{
 const mapContainer = ref<HTMLElement | null>(null)
 const map = shallowRef<L.Map | null>(null)
 const markers = ref<L.Marker[]>([])
+const userMarker = shallowRef<L.Marker | null>(null)
 
 const refreshMarkersLayer = () => {
     if (!map.value) return
@@ -60,16 +65,49 @@ const refreshMarkersLayer = () => {
         group.addLayer(marker)
     })
 
-    // Fit bounds if more than 1 point and no specific center provided
-    if (props.points.length > 1 && !props.center) {
+    // Fit bounds if more than 1 point and no specific center provided and NOT in follow mode
+    if (props.points.length > 1 && !props.center && !props.followUser) {
         (map.value as L.Map).fitBounds(group.getBounds(), { padding: [40, 40] })
     }
+}
+
+const updateUserMarker = () => {
+  if (!map.value || !props.userLocation) {
+    if (userMarker.value) {
+      userMarker.value.remove()
+      userMarker.value = null
+    }
+    return
+  }
+
+  const [lat, lng] = props.userLocation
+
+  if (!userMarker.value) {
+    userMarker.value = L.marker([lat, lng], {
+      icon: L.divIcon({
+        className: 'user-location-marker',
+        html: `
+          <div class="user-pulse"></div>
+          <div class="user-dot"></div>
+        `,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+      }),
+      zIndexOffset: 1000
+    }).addTo(map.value)
+  } else {
+    userMarker.value.setLatLng([lat, lng])
+  }
+
+  if (props.followUser) {
+    map.value.panTo([lat, lng], { animate: true, duration: 0.5 })
+  }
 }
 
 const initializeLeafletMap = () => {
     if (!mapContainer.value) return
 
-    const initialCenter = props.center || [
+    const initialCenter = props.center || props.userLocation || [
       props.points[0]?.lat || 55.751244,
       props.points[0]?.lng || 37.618423
     ]
@@ -91,6 +129,7 @@ const initializeLeafletMap = () => {
     }
 
     refreshMarkersLayer()
+    updateUserMarker()
 
     ;(map.value as L.Map).on('click', (e: L.LeafletMouseEvent) => {
       emit('mapClick', e.latlng.lat, e.latlng.lng)
@@ -99,6 +138,10 @@ const initializeLeafletMap = () => {
 
 watch(() => props.points, () => {
     refreshMarkersLayer()
+}, { deep: true })
+
+watch(() => props.userLocation, () => {
+    updateUserMarker()
 }, { deep: true })
 
 onMounted(() => {
@@ -120,6 +163,37 @@ onUnmounted(() => {
 </template>
 
 <style lang="scss">
+.user-location-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  .user-dot {
+    width: 14px;
+    height: 14px;
+    background: #4285F4;
+    border: 3px solid white;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+    z-index: 2;
+  }
+  
+  .user-pulse {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    background: rgba(66, 133, 244, 0.3);
+    border-radius: 50%;
+    z-index: 1;
+    animation: user-pulse 2s infinite;
+  }
+}
+
+@keyframes user-pulse {
+  0% { transform: scale(0.5); opacity: 1; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
 .art-marker {
   display: flex;
   align-items: center;

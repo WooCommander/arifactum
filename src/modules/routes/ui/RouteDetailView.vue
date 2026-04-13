@@ -342,6 +342,8 @@ onUnmounted(() => {
           v-if="mapPoints.length > 0" 
           :points="mapPoints" 
           :interactive="!isActiveMode"
+          :user-location="userLocation"
+          :follow-user="isActiveMode"
           class="inline-map"
         />
       </div>
