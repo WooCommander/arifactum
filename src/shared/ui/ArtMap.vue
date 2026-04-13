@@ -17,13 +17,25 @@ interface Props {
   interactive?: boolean
   userLocation?: [number, number] | null
   followUser?: boolean
+  teammates?: TeammateLocation[]
+  showNames?: boolean
+}
+
+interface TeammateLocation {
+  user_id: string
+  lat: number
+  lng: number
+  user_name?: string
+  avatar_url?: string | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
   zoom: 13,
   interactive: true,
   userLocation: null,
-  followUser: false
+  followUser: false,
+  teammates: () => [],
+  showNames: false
 })
 
 const emit = defineEmits<{
@@ -35,6 +47,7 @@ const mapContainer = ref<HTMLElement | null>(null)
 const map = shallowRef<L.Map | null>(null)
 const markers = ref<L.Marker[]>([])
 const userMarker = shallowRef<L.Marker | null>(null)
+const teammateMarkers = ref<Map<string, L.Marker>>(new Map())
 
 const refreshMarkersLayer = () => {
     if (!map.value) return
@@ -104,6 +117,60 @@ const updateUserMarker = () => {
   }
 }
 
+const updateTeammateMarkers = () => {
+  if (!map.value) return
+
+  // Remove markers for users no longer in the list
+  const currentIds = new Set(props.teammates.map(t => t.user_id))
+  for (const [id, marker] of teammateMarkers.value.entries()) {
+    if (!currentIds.has(id)) {
+      marker.remove()
+      teammateMarkers.value.delete(id)
+    }
+  }
+
+  // Add or update markers
+  props.teammates.forEach(t => {
+    // Don't show ourselves again if userLocation is already handled
+    const { data: { user } } = { data: { user: { id: null } } } // Placeholder, better if we check id from props
+    // We'll filter this in the parent for simplicity or here if needed
+
+    const existing = teammateMarkers.value.get(t.user_id)
+    if (existing) {
+      existing.setLatLng([t.lat, t.lng])
+      // Update name visibility if needed (re-render icon)
+      if (props.showNames !== (existing as any)._wasShowingNames) {
+        existing.setIcon(createTeammateIcon(t))
+        ;(existing as any)._wasShowingNames = props.showNames
+      }
+    } else {
+      const marker = L.marker([t.lat, t.lng], {
+        icon: createTeammateIcon(t),
+        zIndexOffset: 500
+      }).addTo(map.value as L.Map)
+      
+      ;(marker as any)._wasShowingNames = props.showNames
+      teammateMarkers.value.set(t.user_id, marker)
+    }
+  })
+}
+
+const createTeammateIcon = (t: TeammateLocation) => {
+  return L.divIcon({
+    className: 'teammate-marker',
+    html: `
+      <div class="teammate-wrap">
+        ${props.showNames ? `<div class="teammate-label">${t.user_name || 'Игрок'}</div>` : ''}
+        <div class="teammate-dot" style="${t.avatar_url ? `background-image: url(${t.avatar_url})` : ''}">
+          ${!t.avatar_url ? (t.user_name?.[0] || 'U') : ''}
+        </div>
+      </div>
+    `,
+    iconSize: [40, 48],
+    iconAnchor: [20, 24]
+  })
+}
+
 const initializeLeafletMap = () => {
     if (!mapContainer.value) return
 
@@ -130,6 +197,7 @@ const initializeLeafletMap = () => {
 
     refreshMarkersLayer()
     updateUserMarker()
+    updateTeammateMarkers()
 
     ;(map.value as L.Map).on('click', (e: L.LeafletMouseEvent) => {
       emit('mapClick', e.latlng.lat, e.latlng.lng)
@@ -143,6 +211,14 @@ watch(() => props.points, () => {
 watch(() => props.userLocation, () => {
     updateUserMarker()
 }, { deep: true })
+
+watch(() => props.teammates, () => {
+    updateTeammateMarkers()
+}, { deep: true })
+
+watch(() => props.showNames, () => {
+    updateTeammateMarkers()
+})
 
 onMounted(() => {
   // Little delay to ensure container size is correct in some layouts
@@ -192,6 +268,47 @@ onUnmounted(() => {
 @keyframes user-pulse {
   0% { transform: scale(0.5); opacity: 1; }
   100% { transform: scale(2.5); opacity: 0; }
+}
+
+/* Teammate Markers */
+.teammate-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  .teammate-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+  }
+  
+  .teammate-dot {
+    width: 32px;
+    height: 32px;
+    background: var(--color-primary);
+    color: white;
+    border: 3px solid white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 14px;
+    background-size: cover;
+    background-position: center;
+  }
+  
+  .teammate-label {
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    white-space: nowrap;
+    backdrop-filter: blur(4px);
+  }
 }
 
 .art-marker {

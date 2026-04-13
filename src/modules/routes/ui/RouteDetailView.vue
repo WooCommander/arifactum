@@ -5,8 +5,10 @@ import { useRoutesStore } from '../state/useRoutesStore'
 import { FpSpinner, FpBackButton, FpConfirmationModal } from '@/design-system'
 import ArtMap from '@/shared/ui/ArtMap.vue'
 import { authStore } from '@/modules/auth/store/authStore'
-import { MapPin, Info, Navigation, Trash2, Send, Globe, Pencil } from 'lucide-vue-next'
+import { MapPin, Info, Navigation, Trash2, Send, Globe, Pencil, MapPinOff } from 'lucide-vue-next'
 import { Geolocation, type WatchPositionCallback } from '@capacitor/geolocation'
+import { locationsService, type TeammateLocation } from '@/modules/teams/services/locationsService'
+import { teamService } from '@/modules/teams/services/teamService'
 import { getDistance } from '@/shared/lib/geoUtils'
 import confetti from 'canvas-confetti'
 import { useRewardsStore } from '@/modules/rewards'
@@ -58,6 +60,14 @@ const watchId = ref<string | null>(null)
 const startTime = ref<number | null>(null)
 const elapsedTime = ref('00:00')
 let timerInterval: any = null
+
+// Real-time location sharing state
+const isSharingLocation = ref(false)
+const showTeammateNames = ref(false)
+const teammateLocations = ref<TeammateLocation[]>([])
+const currentTeamId = ref<string | null>(null)
+let locationUpdateInterval: any = null
+let locationSubscription: any = null
 
 const startTimer = () => {
   startTime.value = Date.now()
@@ -162,6 +172,16 @@ const startTracking = async () => {
     // Initial position
     const pos = await Geolocation.getCurrentPosition()
     userLocation.value = [pos.coords.latitude, pos.coords.longitude]
+    
+    // Attempt to find user's team for sharing
+    try {
+      const myTeams = await teamService.getMyTeams()
+      if (myTeams.length > 0) {
+        currentTeamId.value = myTeams[0].id
+      }
+    } catch (e) {
+      console.warn('Failed to fetch teams', e)
+    }
 
     // Start watching
     const callback: WatchPositionCallback = (position, err) => {
@@ -190,6 +210,58 @@ const stopTracking = () => {
   }
 }
 
+// Location Sharing Logic
+const toggleLocationSharing = async () => {
+  if (isSharingLocation.value) {
+    stopLocationSharing()
+  } else {
+    await startLocationSharing()
+  }
+}
+
+const startLocationSharing = async () => {
+  if (!currentTeamId.value || !userLocation.value) {
+    alert('Необходимо состоять в команде и иметь активный GPS для шеринга')
+    return
+  }
+  
+  isSharingLocation.value = true
+  
+  // 1. Start periodic updates (every 7 seconds)
+  locationUpdateInterval = setInterval(() => {
+    if (userLocation.value && currentTeamId.value) {
+      locationsService.updateMyLocation(
+        currentTeamId.value, 
+        userLocation.value[0], 
+        userLocation.value[1]
+      )
+    }
+  }, 7000)
+
+  // 2. Subscribe to teammates
+  locationSubscription = locationsService.subscribeToTeamLocations(
+    currentTeamId.value,
+    (locations) => {
+      // Filter out self
+      teammateLocations.value = locations.filter(l => l.user_id !== authStore.currentUserId.value)
+    }
+  )
+}
+
+const stopLocationSharing = () => {
+  isSharingLocation.value = false
+  if (locationUpdateInterval) {
+    clearInterval(locationUpdateInterval)
+    locationUpdateInterval = null
+  }
+  if (locationSubscription) {
+    locationSubscription.unsubscribe()
+    locationSubscription = null
+  }
+  locationsService.clearMyLocation()
+  teammateLocations.value = []
+}
+
 // React to active mode changes
 import { watch } from 'vue'
 watch(isActiveMode, (active) => {
@@ -199,6 +271,7 @@ watch(isActiveMode, (active) => {
   } else {
     stopTracking()
     stopTimer()
+    stopLocationSharing()
   }
 })
 
@@ -241,6 +314,27 @@ onUnmounted(() => {
               <span class="label">Точка</span>
               <span class="value">{{ completedCheckpointIds.size + 1 }} / {{ currentCheckpoints.length }}</span>
             </div>
+            
+            <div class="hud-controls">
+              <button 
+                class="hud-btn" 
+                :class="{ active: isSharingLocation }"
+                @click="toggleLocationSharing"
+                title="Поделиться локацией"
+              >
+                <component :is="isSharingLocation ? 'MapPin' : 'MapPinOff'" :size="18" />
+              </button>
+              <button 
+                v-if="isSharingLocation"
+                class="hud-btn" 
+                :class="{ active: showTeammateNames }"
+                @click="showTeammateNames = !showTeammateNames"
+                title="Имена игроков"
+              >
+                <span class="btn-text">ID</span>
+              </button>
+            </div>
+
             <div class="hud-timer">
               <span class="label">Время</span>
               <span class="value">{{ elapsedTime }}</span>
@@ -341,9 +435,12 @@ onUnmounted(() => {
         <ArtMap 
           v-if="mapPoints.length > 0" 
           :points="mapPoints" 
+          :center="!isActiveMode ? undefined : (userLocation as [number, number])"
           :interactive="!isActiveMode"
           :user-location="userLocation"
           :follow-user="isActiveMode"
+          :teammates="teammateLocations"
+          :show-names="showTeammateNames"
           class="inline-map"
         />
       </div>
@@ -490,6 +587,40 @@ onUnmounted(() => {
   border: 1px solid var(--color-border);
   pointer-events: auto;
   margin-bottom: 12px;
+}
+
+.hud-controls {
+  display: flex;
+  gap: 8px;
+  background: var(--color-background);
+  padding: 4px;
+  border-radius: 12px;
+  pointer-events: auto;
+  margin: 0 8px;
+}
+
+.hud-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--color-text-muted);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &.active {
+    background: var(--color-primary);
+    color: white;
+  }
+  
+  .btn-text {
+    font-size: 10px;
+    font-weight: 800;
+  }
 }
 
 .hud-stat, .hud-timer {
