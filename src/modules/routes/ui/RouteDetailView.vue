@@ -151,6 +151,14 @@ const handleCheckIn = async () => {
 
 const startTracking = async () => {
   try {
+    const status = await Geolocation.checkPermissions()
+    if (status.location === 'prompt' || status.location === 'prompt-with-rationale') {
+      await Geolocation.requestPermissions()
+    } else if (status.location === 'denied') {
+      alert('Доступ к геопозиции запрещен. Пожалуйста, разрешите его в настройках телефона для работы навигации.')
+      return
+    }
+
     // Initial position
     const pos = await Geolocation.getCurrentPosition()
     userLocation.value = [pos.coords.latitude, pos.coords.longitude]
@@ -243,7 +251,12 @@ onUnmounted(() => {
             <div class="target-header">
               <span class="target-badge">Текущая цель</span>
               <span class="target-distance" :class="{ near: isNearNext }">
-                 {{ formatDistance(distanceToNext) }}
+                 <template v-if="userLocation">
+                   {{ formatDistance(distanceToNext) }}
+                 </template>
+                 <template v-else>
+                   <span class="gps-waiting">Ожидание GPS...</span>
+                 </template>
               </span>
             </div>
             <h3>{{ nextCheckpoint.title }}</h3>
@@ -252,7 +265,7 @@ onUnmounted(() => {
         </div>
       </transition>
 
-      <div class="route-hero">
+      <div v-if="!isActiveMode" class="route-hero">
         <div v-if="currentRoute.imageUrl" class="hero-image-wrap">
           <img :src="currentRoute.imageUrl" :alt="currentRoute.title" />
           <div class="hero-overlay"></div>
@@ -323,8 +336,8 @@ onUnmounted(() => {
         />
       </div>
 
-      <div class="section">
-        <h2>Карта маршрута</h2>
+      <div class="map-section" :class="{ 'sticky-map': isActiveMode }">
+        <h2 v-if="!isActiveMode">Карта маршрута</h2>
         <ArtMap 
           v-if="mapPoints.length > 0" 
           :points="mapPoints" 
@@ -378,7 +391,12 @@ onUnmounted(() => {
               @click="handleCheckIn"
             >
               <span v-if="!isNearNext" class="distance-status">
-                До точки: {{ formatDistance(distanceToNext) }}
+                <template v-if="userLocation">
+                  До точки: {{ formatDistance(distanceToNext) }}
+                </template>
+                <template v-else>
+                  Ожидание сигнала GPS...
+                </template>
               </span>
               <span v-else>Отметиться ({{ (nextCheckpoint as any)?.order + 1 || '-' }})</span>
             </button>
@@ -393,24 +411,70 @@ onUnmounted(() => {
 .route-detail-view {
   min-height: 100vh;
   background: var(--color-background);
-  padding-bottom: 120px;
+  padding-bottom: calc(160px + env(safe-area-inset-bottom));
   transition: padding 0.3s ease;
   
   &.active-mode {
-    padding-bottom: 200px;
+    padding-bottom: calc(240px + env(safe-area-inset-bottom));
+  }
+}
+
+.map-section {
+  padding: 32px 20px 0;
+  
+  &.sticky-map {
+    position: sticky;
+    top: 64px; // Below top nav
+    z-index: 100;
+    padding: 0;
+    margin: 0;
+    height: 30vh;
+    box-shadow: var(--shadow-2);
+    
+    .inline-map {
+      height: 100%;
+      border-radius: 0;
+      border: none;
+      border-bottom: 2px solid var(--color-primary);
+    }
   }
 }
 
 /* Active HUD Styles */
 .active-hud {
   position: fixed;
-  top: 0;
+  top: 64px;
   left: 0;
   right: 0;
-  z-index: 1000;
+  z-index: 1010; // Slightly above header (1000) and sticky map
   background: linear-gradient(to bottom, var(--color-background) 80%, transparent);
   padding: 12px 20px 30px;
   pointer-events: none;
+}
+
+.gps-waiting {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-warning);
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  
+  &::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--color-warning);
+    animation: blink 1s infinite;
+  }
+}
+
+@keyframes blink {
+  0% { opacity: 1; }
+  50% { opacity: 0.3; }
+  100% { opacity: 1; }
 }
 
 .hud-top {
@@ -833,10 +897,10 @@ onUnmounted(() => {
 
 .bottom-action {
   position: fixed;
-  bottom: 24px;
+  bottom: calc(88px + env(safe-area-inset-bottom));
   left: 20px;
   right: 20px;
-  z-index: 100;
+  z-index: 1100;
 }
 
 .start-btn {
