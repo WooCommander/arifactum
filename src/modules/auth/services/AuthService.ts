@@ -47,38 +47,33 @@ class AuthService {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return null
 
-        // Parallel fetch for speed
-        const [products, prices, verStats] = await Promise.all([
-            supabase.from('products').select('id', { count: 'exact', head: true }).eq('created_by', user.id),
-            supabase.from('prices').select('id', { count: 'exact', head: true }).eq('created_by', user.id),
-            supabase.from('price_verifications')
-                .select('vote, prices!inner(created_by)')
-                .eq('prices.created_by', user.id)
-        ])
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('xp, level, total_distance_meters, routes_completed_count, total_seconds_spent')
+            .eq('id', user.id)
+            .single()
 
-        const verificationPoints = (verStats.data || []).reduce((acc: number, v: any) =>
-            acc + (v.vote === 'confirm' ? 1 : -1), 0)
-
-        // Level Calculation
-        const totalPoints = (products.count || 0) * 20 + (prices.count || 0) * 5 + verificationPoints
-        let level = 1
+        const xp = profile?.xp || 0
+        const level = profile?.level || 1
+        const nextLevelXP = level * 1000
+        
         let title = 'Новичок'
-        let nextLevelThreshold = 100
-
-        if (totalPoints >= 2500) { level = 5; title = 'Хранитель'; nextLevelThreshold = 5000 }
-        else if (totalPoints >= 1000) { level = 4; title = 'Мастер'; nextLevelThreshold = 2500 }
-        else if (totalPoints >= 500) { level = 3; title = 'Эксперт'; nextLevelThreshold = 1000 }
-        else if (totalPoints >= 100) { level = 2; title = 'Исследователь'; nextLevelThreshold = 500 }
+        if (level >= 10) title = 'Артефактор'
+        else if (level >= 7) title = 'Легенда'
+        else if (level >= 5) title = 'Хранитель'
+        else if (level >= 3) title = 'Исследователь'
 
         return {
             joinedDate: new Date(user.created_at || Date.now()),
-            reputation: totalPoints,
-            pricesSubmitted: prices.count || 0,
-            productsCreated: products.count || 0,
-            topCategory: 'Бакалея', // Placeholder
+            xp,
             level,
             levelTitle: title,
-            nextLevelThreshold
+            nextLevelThreshold: nextLevelXP,
+            totalDistance: (profile?.total_distance_meters || 0) / 1000, // km
+            routesCompleted: profile?.routes_completed_count || 0,
+            avgSpeed: (profile?.total_seconds_spent || 0) > 0 
+                ? ((profile?.total_distance_meters || 0) / 1000) / ((profile?.total_seconds_spent || 0) / 3600)
+                : 0
         }
     }
 

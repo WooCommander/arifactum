@@ -18,13 +18,13 @@ const router = useRouter()
 
 interface UserStats {
   joinedDate: Date
-  reputation: number
-  pricesSubmitted: number
-  productsCreated: number
-  topCategory: string
+  xp: number
   level: number
   levelTitle: string
   nextLevelThreshold: number
+  totalDistance: number
+  routesCompleted: number
+  avgSpeed: number
 }
 
 const isLoading = ref(true)
@@ -177,8 +177,8 @@ onMounted(async () => {
         </div>
         <p class="email">{{ user.email }}</p>
         <div class="badges">
-          <span class="badge" v-if="stats">⭐ {{ stats.reputation }} {{ t('profile.stats.reputation') }}</span>
-          <span class="badge id-badge" title="User ID">🆔 {{ user.id.slice(0, 26) }}...</span>
+          <span class="badge" v-if="stats">⚡ {{ stats.xp }} XP</span>
+          <span class="badge id-badge" title="User ID">🆔 {{ user.id.slice(0, 12) }}...</span>
         </div>
       </div>
     </section>
@@ -193,10 +193,31 @@ onMounted(async () => {
         </div>
         <div class="progress-bar-container">
           <div class="progress-bar"
-            :style="{ width: Math.min((stats.reputation / stats.nextLevelThreshold) * 100, 100) + '%' }">
+            :style="{ width: Math.min((stats.xp / stats.nextLevelThreshold) * 100, 100) + '%' }">
           </div>
         </div>
-        <span class="xp-text">{{ stats.reputation }} / {{ stats.nextLevelThreshold }} XP</span>
+        <span class="xp-text">{{ stats.xp }} / {{ stats.nextLevelThreshold }} XP</span>
+      </FpCard>
+
+      <!-- Distance Card -->
+      <FpCard class="stat-card">
+        <div class="stat-label">Общий путь</div>
+        <div class="stat-value">{{ stats.totalDistance.toFixed(1) }} <span>км</span></div>
+        <div class="stat-desc">За все время</div>
+      </FpCard>
+
+      <!-- Pace Card -->
+      <FpCard class="stat-card">
+        <div class="stat-label">Средний темп</div>
+        <div class="stat-value">{{ stats.avgSpeed.toFixed(1) }} <span>км/ч</span></div>
+        <div class="stat-desc">Скорость прохождения</div>
+      </FpCard>
+
+      <!-- Quests Card -->
+      <FpCard class="stat-card">
+        <div class="stat-label">Квесты</div>
+        <div class="stat-value">{{ stats.routesCompleted }}</div>
+        <div class="stat-desc">Завершено маршрутов</div>
       </FpCard>
 
       <!-- Stats Summary -->

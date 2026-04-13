@@ -4,20 +4,14 @@ import { useRoute, useRouter } from 'vue-router'
 import { useRoutesStore } from '../state/useRoutesStore'
 import { FpSpinner, FpBackButton, FpConfirmationModal } from '@/design-system'
 import ArtMap from '@/shared/ui/ArtMap.vue'
-import { authStore } from '@/modules/auth/store/authStore'
-import { MapPin, Info, Navigation, Trash2, Send, Globe, Pencil } from 'lucide-vue-next'
-import { Geolocation, type WatchPositionCallback } from '@capacitor/geolocation'
-import { locationsService, type TeammateLocation } from '@/modules/teams/services/locationsService'
-import { teamService } from '@/modules/teams/services/teamService'
-import { getDistance } from '@/shared/lib/geoUtils'
-import confetti from 'canvas-confetti'
-import { useRewardsStore } from '@/modules/rewards'
-import { ArService } from '@/modules/ar/services/ArService'
-import ArOverlay from '@/modules/ar/ui/ArOverlay.vue'
-import { OfflineService } from '@/modules/offline/services/OfflineService'
-import { TileCache } from '@/modules/offline/lib/TileCache'
 import { useSocialStore } from '@/modules/social/state/useSocialStore'
-import { Download, CheckCircle, Heart, Bookmark, Share2, MessageSquare, Send, Trash2, Tag } from 'lucide-vue-next'
+import { RewardsService, type RouteStats } from '@/modules/rewards/services/RewardsService'
+import { AudioService } from '@/shared/lib/AudioService'
+import { 
+  Download, CheckCircle, Heart, Bookmark, Share2, 
+  MessageSquare, Send, Trash2, Tag, Trophy, MapPin, Clock, Zap,
+  Navigation, Globe, Pencil, Info
+} from 'lucide-vue-next'
 import { Haptics } from '@capacitor/haptics'
 import { Share } from '@capacitor/share'
 
@@ -130,9 +124,9 @@ const handleRemoveOffline = async () => {
 // Social Logic
 const socialStore = useSocialStore()
 const isLiked = ref(false)
-const isFavorite = ref(false)
-const commentText = ref('')
 const isSubmittingComment = ref(false)
+const showVictoryModal = ref(false)
+const routeStats = ref<RouteStats | null>(null)
 
 const syncSocialStatus = async () => {
   if (!currentRoute.value || !authStore.currentUserId.value) return
@@ -261,13 +255,12 @@ const isNearNext = computed(() => {
   return distanceToNext.value <= 50 // 50 meters radius
 })
 
-const { awardCompletion } = useRewardsStore()
-
 const handleCheckIn = async () => {
   if (nextCheckpoint.value) {
     completedCheckpointIds.value.add(nextCheckpoint.value.id)
     
     if (completedCheckpointIds.value.size === currentCheckpoints.value.length) {
+       stopTimer()
        confetti({
          particleCount: 150,
          spread: 70,
@@ -277,17 +270,27 @@ const handleCheckIn = async () => {
        
        if (currentRoute.value) {
          try {
-           await awardCompletion(currentRoute.value.id, currentRoute.value.title)
+           const duration = Math.floor((Date.now() - startTime.value!) / 1000)
+           routeStats.value = await RewardsService.finishRoute(
+             authStore.currentUserId.value!, 
+             currentRoute.value.id, 
+             duration, 
+             currentCheckpoints.value
+           )
+           showVictoryModal.value = true
+           await Haptics.heavy()
          } catch (e) {
-           console.error('Failed to award completion:', e)
+           console.error('Failed to reward completion:', e)
          }
        }
        
        setTimeout(() => {
          stopTracking()
          isActiveMode.value = false
-         alert('Поздравляем! Вы прошли маршрут и получили артефакт!')
        }, 2000)
+    } else {
+      await AudioService.playSuccess()
+      await Haptics.vibrate()
     }
   }
 }
@@ -1592,6 +1595,183 @@ onUnmounted(() => {
       color: var(--color-error);
     }
   }
+}
+
+    </FpPullToRefresh>
+
+    <!-- Victory Modal -->
+    <Teleport to="body">
+      <div v-if="showVictoryModal" class="victory-overlay">
+        <FpCard class="victory-modal">
+          <div class="victory-header">
+            <Trophy :size="64" class="trophy-icon" />
+            <h2>Маршрут пройден!</h2>
+            <p>Вы настоящий исследователь Артефактума</p>
+          </div>
+
+          <div class="victory-stats" v-if="routeStats">
+            <div class="v-stat">
+              <MapPin :size="20" />
+              <div class="v-val">{{ routeStats.distanceMeters }} м</div>
+              <div class="v-label">Дистанция</div>
+            </div>
+            <div class="v-stat">
+              <Clock :size="20" />
+              <div class="v-val">{{ elapsedTime }}</div>
+              <div class="v-label">Время</div>
+            </div>
+            <div class="v-stat">
+              <Zap :size="20" />
+              <div class="v-val">{{ routeStats.avgSpeedKmh }} км/ч</div>
+              <div class="v-label">Скорость</div>
+            </div>
+          </div>
+
+          <div class="xp-gain" v-if="routeStats">
+            <span class="xp-val">+{{ routeStats.xpGained }} XP</span>
+            <div class="level-gained" v-if="routeStats.levelGained">
+              НОВЫЙ УРОВЕНЬ!
+            </div>
+          </div>
+
+          <FpButton variant="primary" class="final-btn" @click="router.push('/routes')">
+            К списку маршрутов
+          </FpButton>
+        </FpCard>
+      </div>
+    </Teleport>
+  </div>
+</template>
+
+<style scoped lang="scss">
+.route-detail-view {
+  min-height: 100vh;
+  padding-bottom: 80px;
+  background: var(--color-background);
+}
+
+.victory-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 9999;
+  animation: v-fade 0.3s ease;
+}
+
+.victory-modal {
+  width: 100%;
+  max-width: 360px;
+  padding: 40px 24px;
+  text-align: center;
+  border: 2px solid var(--color-primary);
+  background: var(--color-surface);
+  animation: v-pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+  .victory-header {
+    margin-bottom: 32px;
+    
+    .trophy-icon {
+      color: var(--color-warning);
+      margin-bottom: 16px;
+      filter: drop-shadow(0 0 12px rgba(255, 184, 0, 0.4));
+    }
+
+    h2 {
+      font-size: 26px;
+      font-weight: 900;
+      color: var(--color-text-primary);
+      margin: 0;
+    }
+
+    p {
+      color: var(--color-text-tertiary);
+      margin-top: 8px;
+      font-size: 14px;
+    }
+  }
+}
+
+.victory-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 32px;
+
+  .v-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+
+    svg {
+      color: var(--color-primary);
+      margin-bottom: 4px;
+    }
+
+    .v-val {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--color-text-primary);
+    }
+
+    .v-label {
+      font-size: 10px;
+      color: var(--color-text-tertiary);
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+  }
+}
+
+.xp-gain {
+  margin-bottom: 32px;
+  
+  .xp-val {
+    display: inline-block;
+    padding: 10px 24px;
+    background: var(--color-primary);
+    color: white;
+    border-radius: var(--radius-pill);
+    font-size: 20px;
+    font-weight: 900;
+    box-shadow: 0 4px 15px rgba(108, 93, 211, 0.3);
+  }
+
+  .level-gained {
+    margin-top: 12px;
+    color: var(--color-success);
+    font-weight: 900;
+    font-size: 18px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    animation: v-pulse 1.5s infinite;
+  }
+}
+
+.final-btn {
+  width: 100%;
+}
+
+@keyframes v-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes v-pop {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes v-pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 .loader, .error-state {
