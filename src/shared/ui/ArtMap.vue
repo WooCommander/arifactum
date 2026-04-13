@@ -8,6 +8,8 @@ interface Point {
   lng: number
   title?: string
   id?: string
+  isCompleted?: boolean
+  order?: number
 }
 
 interface Props {
@@ -194,7 +196,6 @@ const updateNavigationLine = () => {
 
   if (navArrow.value) {
     navArrow.value.setLatLng(props.targetLocation)
-    const icon = navArrow.value.getIcon()
     // We update the rotation via CSS class or re-creating icon
     navArrow.value.setIcon(createArrowIcon(angle))
   } else {
