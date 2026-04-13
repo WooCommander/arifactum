@@ -1,7 +1,7 @@
 {
   "name": "artifactum",
   "private": true,
-  "version": "2.4.0",
+  "version": "2.5.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -16,6 +16,7 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@capacitor-community/camera-preview": "^8.0.0",
     "@capacitor/android": "^8.1.0",
     "@capacitor/cli": "^8.1.0",
     "@capacitor/core": "^8.1.0",

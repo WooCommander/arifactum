@@ -12,6 +12,8 @@ import { teamService } from '@/modules/teams/services/teamService'
 import { getDistance } from '@/shared/lib/geoUtils'
 import confetti from 'canvas-confetti'
 import { useRewardsStore } from '@/modules/rewards'
+import { ArService } from '@/modules/ar/services/ArService'
+import ArOverlay from '@/modules/ar/ui/ArOverlay.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -68,6 +70,26 @@ const teammateLocations = ref<TeammateLocation[]>([])
 const currentTeamId = ref<string | null>(null)
 let locationUpdateInterval: any = null
 let locationSubscription: any = null
+
+// AR State
+const isArMode = ref(false)
+
+const startArSession = async () => {
+  const success = await ArService.start()
+  if (success) {
+    isArMode.value = true
+  }
+}
+
+const stopArSession = async () => {
+  await ArService.stop()
+  isArMode.value = false
+}
+
+const onArtifactCapture = async () => {
+  await stopArSession()
+  handleCheckIn()
+}
 
 const startTimer = () => {
   startTime.value = Date.now()
@@ -494,9 +516,20 @@ onUnmounted(() => {
             <button class="stop-btn" @click="isActiveMode = false">
               Выход
             </button>
+
+            <!-- New AR Seek Button -->
+            <button 
+              v-if="isNearNext && !isArMode" 
+              class="btn-seek-ar" 
+              @click="startArSession"
+            >
+              <Navigation :size="20" />
+              <span>Искать</span>
+            </button>
+
             <button 
               class="check-btn" 
-              :disabled="!isNearNext || !nextCheckpoint"
+              :disabled="!isNearNext || !nextCheckpoint || isArMode"
               @click="handleCheckIn"
             >
               <span v-if="!isNearNext" class="distance-status">
@@ -507,12 +540,19 @@ onUnmounted(() => {
                   Ожидание сигнала GPS...
                 </template>
               </span>
-              <span v-else>Отметиться ({{ (nextCheckpoint as any)?.order + 1 || '-' }})</span>
+              <span v-else>Забрать ({{ (nextCheckpoint as any)?.order || '-' }})</span>
             </button>
           </div>
         </template>
       </div>
     </div>
+
+    <!-- AR Overlay -->
+    <ArOverlay 
+      v-if="isArMode" 
+      @capture="onArtifactCapture" 
+      @close="stopArSession"
+    />
   </div>
 </template>
 
@@ -999,31 +1039,31 @@ onUnmounted(() => {
 }
 
 .stop-btn {
-  flex: 1;
-  padding: 18px;
+  flex: 0.5;
+  padding: 16px 12px;
   border-radius: var(--radius-md);
   background: var(--color-surface);
   color: var(--color-text-secondary);
   border: 1.5px solid var(--color-border);
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
 }
 
 .check-btn {
-  flex: 2;
-  padding: 18px;
+  flex: 1;
+  padding: 16px;
   border-radius: var(--radius-md);
   background: var(--color-primary);
   color: var(--color-on-primary);
   border: none;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 800;
   box-shadow: var(--shadow-3);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 2px;
   
   &:disabled {
     background: var(--color-text-disabled);
@@ -1064,6 +1104,37 @@ onUnmounted(() => {
   &:active {
     transform: scale(0.98);
   }
+}
+
+.btn-seek-ar {
+  flex: 1;
+  padding: 16px;
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s;
+  animation: pulse-border 2s infinite;
+
+  span {
+    font-size: 14px;
+  }
+
+  &:active {
+    transform: scale(0.96);
+  }
+}
+
+@keyframes pulse-border {
+  0% { border-color: var(--color-primary); box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 30%, transparent); }
+  70% { border-color: var(--color-primary); box-shadow: 0 0 0 8px transparent; }
+  100% { border-color: var(--color-primary); box-shadow: 0 0 0 0 transparent; }
 }
 
 .loader, .error-state {

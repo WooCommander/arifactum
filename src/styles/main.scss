@@ -281,3 +281,23 @@ h4 {
         opacity: 0.85;
     }
 }
+
+/* AR Mode Transparency */
+body.ar-mode-active {
+  background: transparent !important;
+  
+  .main-layout, 
+  .page-content, 
+  .content-container,
+  .top-nav,
+  .bottom-nav {
+    background-color: transparent !important;
+    background: transparent !important;
+    border-color: transparent !important;
+    backdrop-filter: none !important;
+  }
+
+  .top-nav {
+    border-bottom: none !important;
+  }
+}
