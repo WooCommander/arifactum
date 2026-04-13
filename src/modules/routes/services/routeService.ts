@@ -1,5 +1,7 @@
 import { supabase } from '@/api/supabase'
 import type { RouteDTO, CheckpointDTO } from '../types'
+import { OfflineService } from '@/modules/offline/services/OfflineService'
+import { DbService } from '@/modules/offline/services/DbService'
 
 export const routeService = {
     async getRoutes(userId?: string): Promise<RouteDTO[]> {
@@ -23,6 +25,12 @@ export const routeService = {
     },
 
     async getRouteById(id: string): Promise<RouteDTO> {
+        // Check offline first
+        if (OfflineService.isDownloaded(id)) {
+            const local = await DbService.get('routes', id)
+            if (local) return local
+        }
+
         const { data, error } = await supabase
             .from('routes')
             .select('*')
@@ -34,6 +42,12 @@ export const routeService = {
     },
 
     async getCheckpoints(routeId: string): Promise<CheckpointDTO[]> {
+        // Check offline first
+        if (OfflineService.isDownloaded(routeId)) {
+            const local = await DbService.get('checkpoints', routeId)
+            if (local) return local
+        }
+
         const { data, error } = await supabase
             .from('checkpoints')
             .select('*')

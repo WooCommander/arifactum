@@ -14,6 +14,9 @@ import confetti from 'canvas-confetti'
 import { useRewardsStore } from '@/modules/rewards'
 import { ArService } from '@/modules/ar/services/ArService'
 import ArOverlay from '@/modules/ar/ui/ArOverlay.vue'
+import { OfflineService } from '@/modules/offline/services/OfflineService'
+import { TileCache } from '@/modules/offline/lib/TileCache'
+import { Download, CloudOff, CheckCircle } from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()
@@ -89,6 +92,36 @@ const stopArSession = async () => {
 const onArtifactCapture = async () => {
   await stopArSession()
   handleCheckIn()
+}
+
+// Offline Logic
+const isDownloading = ref(false)
+const isRouteDownloaded = computed(() => OfflineService.isDownloaded(currentRoute.value?.id || ''))
+
+const handleDownload = async () => {
+  if (!currentRoute.value || isDownloading.value) return
+  
+  isDownloading.value = true
+  try {
+    // 1. Download Data & Images
+    await OfflineService.downloadRoute(currentRoute.value, currentCheckpoints.value)
+    
+    // 2. Warm up Map Cache
+    const points: [number, number][] = currentCheckpoints.value.map(cp => [cp.latitude, cp.longitude])
+    await TileCache.cacheArea(points, 500)
+    
+  } catch (e: any) {
+    alert(e.message || 'Ошибка при скачивании')
+  } finally {
+    isDownloading.value = false
+  }
+}
+
+const handleRemoveOffline = async () => {
+  if (!currentRoute.value) return
+  if (confirm('Удалить оффлайн-копию маршрута?')) {
+    await OfflineService.removeRoute(currentRoute.value.id)
+  }
 }
 
 const startTimer = () => {
@@ -432,6 +465,28 @@ onUnmounted(() => {
           <div class="stat">
             <Globe :size="20" />
             <span>{{ currentRoute.isPublic ? 'Публичный' : 'Приватный' }}</span>
+          </div>
+        </div>
+
+        <!-- Offline Download Button -->
+        <div class="offline-actions" v-if="!isAuthor">
+          <FpButton 
+            v-if="!isRouteDownloaded" 
+            variant="outline" 
+            size="sm" 
+            class="download-btn"
+            :disabled="isDownloading"
+            @click="handleDownload"
+          >
+            <FpSpinner v-if="isDownloading" size="sm" />
+            <Download v-else :size="18" />
+            <span>{{ isDownloading ? 'Скачивание...' : 'Скачать для оффлайн' }}</span>
+          </FpButton>
+          
+          <div v-else class="download-status" @click="handleRemoveOffline">
+            <CheckCircle :size="18" class="icon-success" />
+            <span>Доступно оффлайн</span>
+            <Trash2 :size="16" class="btn-remove" />
           </div>
         </div>
 
@@ -1135,6 +1190,44 @@ onUnmounted(() => {
   0% { border-color: var(--color-primary); box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 30%, transparent); }
   70% { border-color: var(--color-primary); box-shadow: 0 0 0 8px transparent; }
   100% { border-color: var(--color-primary); box-shadow: 0 0 0 0 transparent; }
+}
+
+.offline-actions {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border);
+}
+
+.download-btn {
+  width: 100%;
+  gap: 8px;
+  border-style: dashed;
+}
+
+.download-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: var(--color-surface-hover);
+  border-radius: var(--radius-md);
+  color: var(--color-success);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+
+  .icon-success {
+    color: var(--color-success);
+  }
+
+  .btn-remove {
+    margin-left: auto;
+    color: var(--color-text-tertiary);
+    
+    &:hover {
+      color: var(--color-error);
+    }
+  }
 }
 
 .loader, .error-state {

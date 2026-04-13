@@ -2,6 +2,46 @@
 import { ref, shallowRef, onMounted, onUnmounted, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { DbService } from '@/modules/offline/services/DbService'
+
+/**
+ * Custom TileLayer that checks IndexedDB for cached tiles
+ */
+const OfflineTileLayer = L.TileLayer.extend({
+  async createTile(coords: any, done: any) {
+    const tile = document.createElement('img')
+    const tilePath = `${coords.z}/${coords.x}/${coords.y}`
+
+    try {
+      const blob = await DbService.get('tiles', tilePath)
+      if (blob) {
+        const url = URL.createObjectURL(blob)
+        tile.src = url
+        tile.onload = () => {
+          done(null, tile)
+          URL.revokeObjectURL(url)
+        }
+      } else {
+        // Fallback to original implementation if not in cache
+        const url = (this as any).getTileUrl(coords)
+        tile.src = url
+        tile.onload = () => done(null, tile)
+      }
+    } catch (e) {
+      const url = (this as any).getTileUrl(coords)
+      tile.src = url
+      tile.onload = () => done(null, tile)
+    }
+
+    tile.onerror = () => {
+      const url = (this as any).getTileUrl(coords)
+      tile.src = url
+      done(null, tile)
+    }
+
+    return tile
+  }
+})
 
 interface Point {
   lat: number
@@ -286,8 +326,10 @@ const initializeLeafletMap = () => {
       touchZoom: props.interactive
     }).setView(initialCenter as [number, number], props.zoom)
 
-    L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
-      maxZoom: 19
+    // @ts-ignore
+    new OfflineTileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      crossOrigin: true
     }).addTo(map.value as L.Map)
 
     if (props.interactive) {

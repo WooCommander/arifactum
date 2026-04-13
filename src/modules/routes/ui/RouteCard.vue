@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { Route } from '../types'
-import { MapPin, Star, ChevronRight, Clock, Lock } from 'lucide-vue-next'
+import { MapPin, Star, ChevronRight, Clock, Lock, CloudOff } from 'lucide-vue-next'
 import { authStore } from '@/modules/auth/store/authStore'
+import { OfflineService } from '@/modules/offline/services/OfflineService'
 import { computed } from 'vue'
 
 interface Props {
@@ -11,6 +12,7 @@ interface Props {
 const props = defineProps<Props>()
 
 const isAuthor = computed(() => props.route.authorId === authStore.currentUserId.value)
+const isDownloaded = computed(() => OfflineService.isDownloaded(props.route.id))
 
 const emit = defineEmits<{
   (e: 'click', id: string): void
@@ -47,6 +49,10 @@ const emit = defineEmits<{
         <div class="meta-item">
           <Star :size="16" class="star-icon" />
           <span>{{ props.route.rating.toFixed(1) }}</span>
+        </div>
+        <div class="meta-item" v-if="isDownloaded">
+          <CloudOff :size="16" class="offline-icon" />
+          <span class="offline-text">Оффлайн</span>
         </div>
         <div class="spacer"></div>
         <ChevronRight :size="20" class="arrow-icon" />
@@ -181,5 +187,14 @@ const emit = defineEmits<{
 
 .arrow-icon {
   color: var(--color-primary);
+}
+
+.offline-icon {
+  color: var(--color-success);
+}
+
+.offline-text {
+  color: var(--color-success);
+  font-weight: 700;
 }
 </style>
