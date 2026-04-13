@@ -509,13 +509,33 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
 
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  .marker-pin {
+    width: 32px;
+    height: 32px;
+    background: var(--color-primary);
+    border: 2px solid white;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
     transition: transform 0.2s ease;
+    
+    &.completed {
+      background: var(--color-success);
+    }
+  }
+  
+  .marker-number {
+    transform: rotate(45deg);
+    color: white;
+    font-size: 14px;
+    font-weight: 900;
   }
 
-  &:hover .marker-dot {
-    transform: scale(1.3);
-    background: var(--color-secondary);
+  &:hover .marker-pin {
+    transform: rotate(-45deg) scale(1.1);
   }
 }
 
