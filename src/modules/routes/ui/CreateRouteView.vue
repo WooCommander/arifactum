@@ -6,7 +6,9 @@ import { routeService } from '../services/routeService'
 import { authStore } from '@/modules/auth/store/authStore'
 import { FpBackButton, FpInput, FpButton, FpSpinner, FpImageUpload } from '@/design-system'
 import ArtMap from '@/shared/ui/ArtMap.vue'
-import { Save, Plus, Trash2, MapPin, Star, X } from 'lucide-vue-next'
+import { Save, Plus, Trash2, MapPin, Star, X, MapPinOff } from 'lucide-vue-next'
+import { Geolocation } from '@capacitor/geolocation'
+import { Haptics } from '@capacitor/haptics'
 
 const router = useRouter()
 const route = useRoute()
@@ -147,6 +149,29 @@ const removeCheckpoint = (index: number) => {
   checkpoints.value.splice(index, 1)
   checkpoints.value.forEach((cp, i) => cp.order_index = i)
   if (checkpoints.value.length === 0) addCheckpoint()
+}
+
+const isLocating = ref<number | null>(null)
+
+const captureCurrentLocation = async (index: number) => {
+  isLocating.value = index
+  try {
+    const position = await Geolocation.getCurrentPosition({
+      enableHighAccuracy: true,
+      timeout: 10000
+    })
+    
+    const cp = checkpoints.value[index]
+    cp.lat = Number(position.coords.latitude.toFixed(6))
+    cp.lng = Number(position.coords.longitude.toFixed(6))
+    
+    await Haptics.vibrate()
+  } catch (e) {
+    console.error('Failed to get location:', e)
+    alert('Не удалось определить местоположение. Проверьте разрешения GPS.')
+  } finally {
+    isLocating.value = null
+  }
 }
 
 const handleSave = async () => {
@@ -308,20 +333,40 @@ const handleSave = async () => {
             </div>
             
             <div class="lat-lng-row">
-               <FpInput v-model.number="cp.lat" type="number" label="Широта (Lat)" />
-               <FpInput v-model.number="cp.lng" type="number" label="Долгота (Lng)" />
+               <div class="coord-field">
+                 <FpInput v-model.number="cp.lat" type="number" label="Широта" />
+               </div>
+               <div class="coord-field">
+                 <FpInput v-model.number="cp.lng" type="number" label="Долгота" />
+               </div>
             </div>
-            
-            <FpButton 
-              variant="outline" 
-              size="sm" 
-              class="pick-map-btn"
-              :class="{ active: activeMarkerIndex === index }"
-              @click="activeMarkerIndex = activeMarkerIndex === index ? null : index"
-            >
-              <MapPin :size="16" /> 
-              {{ activeMarkerIndex === index ? 'Выберите на карте...' : 'Указать на карте' }}
-            </FpButton>
+
+            <div class="cp-actions-row">
+              <FpButton 
+                variant="outline" 
+                size="sm" 
+                class="pick-map-btn"
+                :class="{ active: activeMarkerIndex === index }"
+                @click="activeMarkerIndex = activeMarkerIndex === index ? null : index"
+              >
+                <MapPin :size="16" /> 
+                <span>{{ activeMarkerIndex === index ? 'Выбор...' : 'Карта' }}</span>
+              </FpButton>
+
+              <FpButton 
+                variant="primary" 
+                size="sm" 
+                class="capture-gps-btn"
+                :disabled="isLocating !== null"
+                @click="captureCurrentLocation(index)"
+              >
+                <FpSpinner v-if="isLocating === index" size="sm" />
+                <template v-else>
+                  <MapPinOff :size="16" />
+                  <span>Я здесь!</span>
+                </template>
+              </FpButton>
+            </div>
           </div>
         </div>
       </section>
@@ -571,11 +616,12 @@ const handleSave = async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: -8px;
 }
 
 .cp-number {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   background: var(--color-primary);
   color: var(--color-on-primary);
   border-radius: 50%;
@@ -583,7 +629,7 @@ const handleSave = async () => {
   align-items: center;
   justify-content: center;
   font-weight: 800;
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .delete-cp {
@@ -600,11 +646,21 @@ const handleSave = async () => {
   gap: 12px;
 }
 
-.pick-map-btn {
-  margin-top: 8px;
-  width: 100%;
-  border-style: dashed;
+.cp-actions-row {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.pick-map-btn, .capture-gps-btn {
+  height: 44px;
   gap: 8px;
+  font-size: 14px;
+}
+
+.pick-map-btn {
+  border-style: dashed;
   
   &.active {
     background: color-mix(in srgb, var(--color-primary) 15%, transparent);
@@ -612,6 +668,16 @@ const handleSave = async () => {
     border-color: var(--color-primary);
     border-style: solid;
     animation: blink 1.5s infinite;
+  }
+}
+
+.capture-gps-btn {
+  background: var(--color-primary);
+  color: white;
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--color-primary) 20%, transparent);
+
+  &:active {
+    transform: scale(0.96);
   }
 }
 
@@ -623,10 +689,15 @@ const handleSave = async () => {
 
 .actions {
   position: fixed;
-  bottom: 88px;
-  left: 20px;
-  right: 20px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20px;
+  background: var(--color-surface-translucent);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--color-border);
   z-index: 1100;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
 }
 
 .save-btn {

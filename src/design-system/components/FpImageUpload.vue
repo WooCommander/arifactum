@@ -3,6 +3,8 @@ import { ref } from 'vue'
 import { uploadImage } from '@/shared/lib/storage'
 import { FpSpinner, FpButton } from '@/design-system'
 import { Upload, X, AlertCircle } from 'lucide-vue-next'
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera'
+import { Capacitor } from '@capacitor/core'
 
 interface Props {
   label?: string
@@ -27,8 +29,42 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const isUploading = ref(false)
 const error = ref<string | null>(null)
 
-function triggerUpload() {
-  fileInput.value?.click()
+async function triggerUpload() {
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const image = await Camera.getPhoto({
+        quality: 85,
+        allowEditing: true,
+        resultType: CameraResultType.Base64,
+        source: CameraSource.Prompt, // Camera or Photos
+        width: 1600,
+        height: 1600
+      })
+
+      if (image.base64String) {
+        handleBase64Upload(image.base64String, `image.${image.format}`)
+      }
+    } catch (e) {
+      console.warn('Camera/Gallery selection cancelled or failed', e)
+    }
+  } else {
+    fileInput.value?.click()
+  }
+}
+
+async function handleBase64Upload(base64: string, filename: string) {
+  isUploading.value = true
+  error.value = null
+  try {
+    const blob = await (await fetch(`data:image/jpeg;base64,${base64}`)).blob()
+    const file = new File([blob], filename, { type: blob.type })
+    const url = await uploadImage(file, props.bucket)
+    emit('uploaded', url)
+  } catch (e: any) {
+    error.value = e.message || 'Ошибка загрузки с камеры'
+  } finally {
+    isUploading.value = false
+  }
 }
 
 async function handleFileChange(event: Event) {
