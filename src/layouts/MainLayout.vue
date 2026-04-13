@@ -182,46 +182,46 @@ const handleLogout = async () => {
 
 				<div class="drawer-content">
 					<div class="nav-group">
-						<span class="nav-label">Приключение</span>
+						<span class="nav-label">{{ t('nav.adventure') }}</span>
 						<a class="drawer-link" :class="{ active: currentPath === '/' }" @click.prevent="navigate('/'); isMenuOpen = false">
 							<span class="link-icon"><Home :size="24" /></span>
-							Главная
+							{{ t('nav.home') }}
 						</a>
 						<a class="drawer-link" :class="{ active: currentPath === '/routes' }" @click.prevent="navigate('/routes'); isMenuOpen = false">
 							<span class="link-icon"><Navigation :size="24" /></span>
-							Маршруты
+							{{ t('nav.routes') }}
 						</a>
 						<a class="drawer-link" :class="{ active: currentPath === '/teams' }" @click.prevent="navigate('/teams'); isMenuOpen = false">
 							<span class="link-icon"><Users :size="24" /></span>
-							Команды
+							{{ t('nav.teams') }}
 						</a>
 						<a class="drawer-link" :class="{ active: currentPath === '/leaderboard' }" @click.prevent="navigate('/leaderboard'); isMenuOpen = false">
 							<span class="link-icon"><Trophy :size="24" /></span>
-							Лидерборд
+							{{ t('nav.leaderboard') }}
 						</a>
 					</div>
 
 					<div class="nav-group">
-						<span class="nav-label">Управление</span>
+						<span class="nav-label">{{ t('nav.management') }}</span>
 						<a class="drawer-link" :class="{ active: currentPath === '/create-route' }" @click.prevent="navigate('/create-route'); isMenuOpen = false">
 							<span class="link-icon"><Plus :size="24" /></span>
-							Создать маршрут
+							{{ t('nav.createRoute') }}
 						</a>
 						<a class="drawer-link" :class="{ active: currentPath === '/profile' }" @click.prevent="navigate('/profile'); isMenuOpen = false">
 							<span class="link-icon"><User :size="24" /></span>
-							Мой профиль
+							{{ t('nav.profile') }}
 						</a>
 					</div>
 
 					<div class="nav-group">
-						<span class="nav-label">Система</span>
+						<span class="nav-label">{{ t('nav.system') }}</span>
 						<a class="drawer-link" :class="{ active: currentPath === '/design-system' }" @click.prevent="navigate('/design-system'); isMenuOpen = false">
 							<span class="link-icon"><Palette :size="24" /></span>
-							Design System
+							{{ t('nav.designSystem') }}
 						</a>
 						<a class="drawer-link" :class="{ active: currentPath === '/changelog' }" @click.prevent="navigate('/changelog'); isMenuOpen = false">
 							<span class="link-icon"><FileText :size="24" /></span>
-							Что нового
+							{{ t('nav.changelog') }}
 						</a>
 					</div>
 				</div>

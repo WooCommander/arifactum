@@ -2,24 +2,89 @@
 import { onMounted, onUnmounted, ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRoutesStore } from '../state/useRoutesStore'
-import { FpSpinner, FpBackButton } from '@/design-system'
+import { FpSpinner, FpBackButton, FpConfirmationModal } from '@/design-system'
 import ArtMap from '@/shared/ui/ArtMap.vue'
-import { MapPin, Info, Users, Navigation } from 'lucide-vue-next'
-import { Geolocation } from '@capacitor/geolocation'
-import { isWithinRange } from '@/shared/lib/geoUtils'
+import { authStore } from '@/modules/auth/store/authStore'
+import { MapPin, Info, Navigation, Trash2, Send, Globe, Pencil } from 'lucide-vue-next'
+import { Geolocation, type WatchPositionCallback } from '@capacitor/geolocation'
+import { getDistance } from '@/shared/lib/geoUtils'
 import confetti from 'canvas-confetti'
 import { useRewardsStore } from '@/modules/rewards'
 
 const route = useRoute()
 const router = useRouter()
-const { currentRoute, currentCheckpoints, isLoading, error, fetchRouteDetails, clearCurrentRoute } = useRoutesStore()
+const { 
+  currentRoute, 
+  currentCheckpoints, 
+  isLoading, 
+  error, 
+  fetchRouteDetails, 
+  clearCurrentRoute,
+  deleteRoute,
+  publishRoute
+} = useRoutesStore()
+
+const isAuthor = computed(() => currentRoute.value?.authorId === authStore.currentUserId.value)
+const isDraft = computed(() => currentRoute.value?.status === 'draft')
+const isPending = computed(() => currentRoute.value?.status === 'pending')
+
+const showDeleteConfirm = ref(false)
+const showPublishConfirm = ref(false)
+
+const handleDelete = async () => {
+  try {
+    await deleteRoute(currentRoute.value!.id)
+    router.push('/routes')
+  } catch (e) {
+    alert('Ошибка при удалении')
+  }
+}
+
+const handlePublish = async () => {
+  if (!currentRoute.value || isPending.value) return
+  try {
+    await publishRoute(currentRoute.value!.id)
+  } catch (e) {
+    alert('Ошибка при публикации')
+  }
+}
 
 const isActiveMode = ref(false)
 const userLocation = ref<[number, number] | null>(null)
 const completedCheckpointIds = ref<Set<string>>(new Set())
+const watchId = ref<string | null>(null)
+
+// Timer logic
+const startTime = ref<number | null>(null)
+const elapsedTime = ref('00:00')
+let timerInterval: any = null
+
+const startTimer = () => {
+  startTime.value = Date.now()
+  timerInterval = setInterval(() => {
+    if (!startTime.value) return
+    const diff = Math.floor((Date.now() - startTime.value) / 1000)
+    const h = Math.floor(diff / 3600)
+    const m = Math.floor((diff % 3600) / 60)
+    const s = diff % 60
+    
+    if (h > 0) {
+      elapsedTime.value = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+    } else {
+      elapsedTime.value = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+    }
+  }, 1000)
+}
+
+const stopTimer = () => {
+  if (timerInterval) clearInterval(timerInterval)
+  timerInterval = null
+  // We don't reset elapsedTime here if we want to show it at the end, 
+  // but for a new start, startTimer will reset it via startTime.
+}
 
 const mapPoints = computed(() => 
-  currentCheckpoints.value.map(cp => ({
+  currentCheckpoints.value.map((cp: any) => ({
     lat: cp.latitude,
     lng: cp.longitude,
     id: cp.id,
@@ -29,18 +94,28 @@ const mapPoints = computed(() =>
 )
 
 const nextCheckpoint = computed(() => {
-  return currentCheckpoints.value.find(cp => !completedCheckpointIds.value.has(cp.id))
+  return currentCheckpoints.value.find((cp: any) => !completedCheckpointIds.value.has(cp.id))
 })
 
-const isNearNext = computed(() => {
-  if (!nextCheckpoint.value || !userLocation.value) return false
-  return isWithinRange(
+const distanceToNext = computed(() => {
+  if (!nextCheckpoint.value || !userLocation.value) return null
+  return getDistance(
     userLocation.value[0],
     userLocation.value[1],
-    nextCheckpoint.value.latitude,
-    nextCheckpoint.value.longitude,
-    100 // Увеличим до 100м для теста
+    (nextCheckpoint.value as any).latitude,
+    (nextCheckpoint.value as any).longitude
   )
+})
+
+const formatDistance = (meters: number | null) => {
+  if (meters === null) return ''
+  if (meters < 1000) return `${Math.round(meters)} м`
+  return `${(meters / 1000).toFixed(1)} км`
+}
+
+const isNearNext = computed(() => {
+  if (distanceToNext.value === null) return false
+  return distanceToNext.value <= 50 // 50 meters radius
 })
 
 const { awardCompletion } = useRewardsStore()
@@ -49,7 +124,6 @@ const handleCheckIn = async () => {
   if (nextCheckpoint.value) {
     completedCheckpointIds.value.add(nextCheckpoint.value.id)
     
-    // Check if that was the last one
     if (completedCheckpointIds.value.size === currentCheckpoints.value.length) {
        confetti({
          particleCount: 150,
@@ -66,8 +140,8 @@ const handleCheckIn = async () => {
          }
        }
        
-       // Success timeout
        setTimeout(() => {
+         stopTracking()
          isActiveMode.value = false
          alert('Поздравляем! Вы прошли маршрут и получили артефакт!')
        }, 2000)
@@ -75,20 +149,66 @@ const handleCheckIn = async () => {
   }
 }
 
+const startTracking = async () => {
+  try {
+    // Initial position
+    const pos = await Geolocation.getCurrentPosition()
+    userLocation.value = [pos.coords.latitude, pos.coords.longitude]
+
+    // Start watching
+    const callback: WatchPositionCallback = (position, err) => {
+      if (err) {
+        console.error('WatchPosition error:', err)
+        return
+      }
+      if (position) {
+        userLocation.value = [position.coords.latitude, position.coords.longitude]
+      }
+    }
+
+    watchId.value = await Geolocation.watchPosition({
+      enableHighAccuracy: true,
+      timeout: 10000
+    }, callback)
+  } catch (e) {
+    console.warn('Geolocation not available', e)
+  }
+}
+
+const stopTracking = () => {
+  if (watchId.value) {
+    Geolocation.clearWatch({ id: watchId.value })
+    watchId.value = null
+  }
+}
+
+// React to active mode changes
+import { watch } from 'vue'
+watch(isActiveMode, (active) => {
+  if (active) {
+    startTracking()
+    startTimer()
+  } else {
+    stopTracking()
+    stopTimer()
+  }
+})
+
 onMounted(async () => {
   const id = route.params.id as string
   if (id) fetchRouteDetails(id)
   
-  // Try to get location
+  // Just a quick check on start, not full tracking yet
   try {
     const pos = await Geolocation.getCurrentPosition()
     userLocation.value = [pos.coords.latitude, pos.coords.longitude]
   } catch (e) {
-    console.warn('Geolocation not available')
+    console.warn('Initial geolocation fails')
   }
 })
 
 onUnmounted(() => {
+  stopTracking()
   clearCurrentRoute()
 })
 </script>
@@ -104,33 +224,63 @@ onUnmounted(() => {
       <FpBackButton @click="router.back()" />
     </div>
 
-    <div v-else-if="currentRoute" class="route-detail-content">
+    <div v-else-if="currentRoute" class="route-detail-content" :class="{ 'active-mode': isActiveMode }">
+      <!-- Active HUD Overlay -->
+      <transition name="fade-slide">
+        <div v-if="isActiveMode" class="active-hud">
+          <div class="hud-top">
+            <div class="hud-stat">
+              <span class="label">Точка</span>
+              <span class="value">{{ completedCheckpointIds.size + 1 }} / {{ currentCheckpoints.length }}</span>
+            </div>
+            <div class="hud-timer">
+              <span class="label">Время</span>
+              <span class="value">{{ elapsedTime }}</span>
+            </div>
+          </div>
+
+          <div v-if="nextCheckpoint" class="target-card">
+            <div class="target-header">
+              <span class="target-badge">Текущая цель</span>
+              <span class="target-distance" :class="{ near: isNearNext }">
+                 {{ formatDistance(distanceToNext) }}
+              </span>
+            </div>
+            <h3>{{ nextCheckpoint.title }}</h3>
+            <p>{{ nextCheckpoint.description }}</p>
+          </div>
+        </div>
+      </transition>
+
       <div class="route-hero">
-        <ArtMap 
-          v-if="mapPoints.length > 0" 
-          :points="mapPoints" 
-          :interactive="!isActiveMode"
-        />
-        <div v-else-if="currentRoute.imageUrl" class="hero-image-wrap">
+        <div v-if="currentRoute.imageUrl" class="hero-image-wrap">
           <img :src="currentRoute.imageUrl" :alt="currentRoute.title" />
+          <div class="hero-overlay"></div>
         </div>
         <div v-else class="hero-placeholder">
           <MapPin :size="64" />
         </div>
+        
         <div class="hero-header">
            <FpBackButton @click="router.back()" class="back-btn" />
+           
+           <div v-if="isAuthor" class="author-actions">
+             <button class="action-icon edit" @click="router.push(`/edit-route/${currentRoute.id}`)">
+               <Pencil :size="20" />
+             </button>
+             <button class="action-icon delete" @click="showDeleteConfirm = true">
+               <Trash2 :size="20" />
+             </button>
+           </div>
+        </div>
+
+        <div v-if="isAuthor" class="status-badge" :class="currentRoute.status">
+          {{ currentRoute.status === 'draft' ? 'Черновик' : currentRoute.status === 'pending' ? 'На модерации' : 'Опубликован' }}
         </div>
       </div>
 
       <div class="route-info-card">
         <h1>{{ currentRoute.title }}</h1>
-        
-        <div v-if="currentRoute.images && currentRoute.images.length > 0" class="route-gallery">
-          <div v-for="(img, idx) in currentRoute.images" :key="idx" class="gallery-item">
-            <img :src="img" alt="Gallery image" />
-          </div>
-        </div>
-
         <p class="description">{{ currentRoute.description }}</p>
         
         <div class="detail-stats">
@@ -143,10 +293,44 @@ onUnmounted(() => {
             <span :class="currentRoute.difficulty">{{ currentRoute.difficulty }}</span>
           </div>
           <div class="stat">
-            <Users :size="20" />
-            <span>Команды: Да</span>
+            <Globe :size="20" />
+            <span>{{ currentRoute.isPublic ? 'Публичный' : 'Приватный' }}</span>
           </div>
         </div>
+
+        <div v-if="isAuthor && isDraft" class="publish-block">
+          <p>Ваш маршрут пока никто не видит кроме вас.</p>
+          <button class="publish-btn" @click="showPublishConfirm = true">
+            <Send :size="18" /> Опубликовать
+          </button>
+        </div>
+
+        <FpConfirmationModal 
+          v-model:visible="showDeleteConfirm"
+          title="Удаление маршрута"
+          message="Вы уверены, что хотите безвозвратно удалить этот маршрут?"
+          confirmText="Удалить"
+          variant="danger"
+          @confirm="handleDelete"
+        />
+
+        <FpConfirmationModal 
+          v-model:visible="showPublishConfirm"
+          title="Публикация"
+          message="Отправить маршрут на модерацию? После этого вы не сможете его редактировать до проверки."
+          confirmText="Отправить"
+          @confirm="handlePublish"
+        />
+      </div>
+
+      <div class="section">
+        <h2>Карта маршрута</h2>
+        <ArtMap 
+          v-if="mapPoints.length > 0" 
+          :points="mapPoints" 
+          :interactive="!isActiveMode"
+          class="inline-map"
+        />
       </div>
 
       <div class="section">
@@ -163,8 +347,11 @@ onUnmounted(() => {
               <h3>{{ cp.title }}</h3>
               <p>{{ cp.description }}</p>
               
-              <div v-if="cp.images && cp.images.length > 0" class="checkpoint-gallery">
-                <div v-for="(img, idx) in cp.images" :key="idx" class="gallery-thumb">
+              <div v-if="(cp.images && cp.images.length > 0) || cp.photoUrl" class="checkpoint-gallery">
+                <div v-if="cp.photoUrl" class="gallery-thumb main-thumb">
+                  <img :src="cp.photoUrl" alt="Main point image" />
+                </div>
+                <div v-for="(img, idx) in (cp.images || [])" :key="idx" class="gallery-thumb">
                   <img :src="img" alt="Checkpoint image" />
                 </div>
               </div>
@@ -190,7 +377,10 @@ onUnmounted(() => {
               :disabled="!isNearNext || !nextCheckpoint"
               @click="handleCheckIn"
             >
-              Отметиться ({{ nextCheckpoint?.order || '-' }})
+              <span v-if="!isNearNext" class="distance-status">
+                До точки: {{ formatDistance(distanceToNext) }}
+              </span>
+              <span v-else>Отметиться ({{ (nextCheckpoint as any)?.order + 1 || '-' }})</span>
             </button>
           </div>
         </template>
@@ -203,7 +393,123 @@ onUnmounted(() => {
 .route-detail-view {
   min-height: 100vh;
   background: var(--color-background);
-  padding-bottom: 100px;
+  padding-bottom: 120px;
+  transition: padding 0.3s ease;
+  
+  &.active-mode {
+    padding-bottom: 200px;
+  }
+}
+
+/* Active HUD Styles */
+.active-hud {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: linear-gradient(to bottom, var(--color-background) 80%, transparent);
+  padding: 12px 20px 30px;
+  pointer-events: none;
+}
+
+.hud-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--color-surface);
+  padding: 10px 16px;
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-2);
+  border: 1px solid var(--color-border);
+  pointer-events: auto;
+  margin-bottom: 12px;
+}
+
+.hud-stat, .hud-timer {
+  display: flex;
+  flex-direction: column;
+  .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    color: var(--color-text-tertiary);
+    font-weight: 800;
+  }
+  .value {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--color-primary);
+    font-family: monospace;
+  }
+}
+
+.target-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  box-shadow: var(--shadow-3);
+  border: 1px solid var(--color-primary);
+  pointer-events: auto;
+  
+  .target-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  
+  .target-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+    color: var(--color-primary);
+    border-radius: 4px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  
+  .target-distance {
+    font-size: 18px;
+    font-weight: 900;
+    color: var(--color-text-primary);
+    
+    &.near {
+      color: var(--color-success);
+      animation: pulse 1.5s infinite;
+    }
+  }
+  
+  h3 {
+    margin: 0 0 4px;
+    font-size: 18px;
+    font-weight: 800;
+  }
+  
+  p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Transitions */
+.fade-slide-enter-active, .fade-slide-leave-active {
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.fade-slide-enter-from, .fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-20px);
 }
 
 .route-hero {
@@ -211,10 +517,22 @@ onUnmounted(() => {
   position: relative;
   background: #f1f5f9;
 
-  img {
+  .hero-image-wrap {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    position: relative;
+    
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .hero-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, transparent 40%, rgba(0,0,0,0.4) 100%);
+    }
   }
 
   .hero-placeholder {
@@ -230,8 +548,51 @@ onUnmounted(() => {
     position: absolute;
     top: 12px;
     left: 12px;
+    right: 12px;
     z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
   }
+}
+
+.author-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.action-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.4);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  
+  &.delete:hover {
+    background: var(--color-error);
+  }
+}
+
+.status-badge {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 800;
+  color: white;
+  z-index: 10;
+  
+  &.draft { background: var(--color-text-tertiary); }
+  &.pending { background: var(--color-warning); }
+  &.published { background: var(--color-success); }
 }
 
 .route-info-card {
@@ -251,41 +612,48 @@ onUnmounted(() => {
     margin: 0 0 12px;
   }
 
-  .route-gallery {
-    display: flex;
-    gap: 12px;
-    overflow-x: auto;
-    padding: 4px 0 16px;
-    margin: 0 -4px;
-    scrollbar-width: none;
-
-    &::-webkit-scrollbar { display: none; }
-
-    .gallery-item {
-      flex: 0 0 120px;
-      height: 80px;
-      border-radius: var(--radius-md);
-      overflow: hidden;
-      box-shadow: var(--shadow-sm);
-      cursor: pointer;
-      transition: transform 0.2s;
-
-      &:active { transform: scale(0.95); }
-
-      img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
-    }
-  }
-
   .description {
     font-size: 15px;
     color: var(--color-text-secondary);
     line-height: 1.6;
     margin-bottom: 20px;
   }
+}
+
+.publish-block {
+  margin-top: 20px;
+  padding: 16px;
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--color-primary);
+  text-align: center;
+  
+  p {
+    font-size: 13px;
+    margin-bottom: 12px;
+    color: var(--color-text-secondary);
+  }
+  
+  .publish-btn {
+    width: 100%;
+    padding: 12px;
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+}
+
+.inline-map {
+  height: 200px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
 }
 
 .detail-stats {
@@ -371,6 +739,7 @@ onUnmounted(() => {
 }
 
 .checkpoint-body {
+  flex: 1;
   h3 {
     font-size: 16px;
     font-weight: 700;
@@ -392,8 +761,8 @@ onUnmounted(() => {
   &::-webkit-scrollbar { display: none; }
 
   .gallery-thumb {
-    flex: 0 0 60px;
-    height: 44px;
+    flex: 0 0 80px;
+    height: 60px;
     border-radius: var(--radius-sm);
     overflow: hidden;
     
@@ -401,6 +770,12 @@ onUnmounted(() => {
       width: 100%;
       height: 100%;
       object-fit: cover;
+    }
+    
+    &.main-thumb {
+       flex: 0 0 100px;
+       height: 70px;
+       border: 1.5px solid var(--color-primary);
     }
   }
 }
@@ -437,11 +812,22 @@ onUnmounted(() => {
   font-size: 18px;
   font-weight: 800;
   box-shadow: var(--shadow-3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   
   &:disabled {
     background: var(--color-text-disabled);
     box-shadow: none;
-    opacity: 0.6;
+    opacity: 0.9; // More opaque to read distance
+  }
+
+  .distance-status {
+    font-size: 12px;
+    opacity: 0.8;
+    font-weight: 500;
   }
 }
 

@@ -9,6 +9,8 @@ export interface RouteDTO {
     difficulty: 'easy' | 'medium' | 'hard'
     image_url: string | null
     images: readonly string[]
+    status: 'draft' | 'pending' | 'published'
+    is_public: boolean
 }
 
 export interface Route {
@@ -21,6 +23,8 @@ export interface Route {
     difficulty: 'easy' | 'medium' | 'hard'
     imageUrl: string | null
     images: readonly string[]
+    status: 'draft' | 'pending' | 'published'
+    isPublic: boolean
 }
 
 export interface CheckpointDTO {

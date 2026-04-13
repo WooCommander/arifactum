@@ -11,7 +11,9 @@ export const routeAdapter = {
             rating: dto.rating_avg,
             difficulty: dto.difficulty,
             imageUrl: dto.image_url,
-            images: dto.images || []
+            images: dto.images || [],
+            status: dto.status || 'draft',
+            isPublic: dto.is_public ?? true
         }
     },
 

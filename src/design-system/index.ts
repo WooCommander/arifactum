@@ -11,6 +11,8 @@ import FpMobilePicker from './components/FpMobilePicker.vue'
 import FpSkeleton from './components/FpSkeleton.vue'
 import FpSwipeable from './components/FpSwipeable.vue'
 import FpPullToRefresh from './components/FpPullToRefresh.vue'
+import FpImageUpload from './components/FpImageUpload.vue'
+
 export {
     FpBackButton,
     FpButton,
@@ -24,5 +26,6 @@ export {
     FpMobilePicker,
     FpSkeleton,
     FpSwipeable,
-    FpPullToRefresh
+    FpPullToRefresh,
+    FpImageUpload
 }

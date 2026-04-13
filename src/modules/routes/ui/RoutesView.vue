@@ -6,11 +6,13 @@ import RouteCard from './RouteCard.vue'
 import { FpSpinner, FpPullToRefresh } from '@/design-system'
 import { Plus } from 'lucide-vue-next'
 
+import { authStore } from '@/modules/auth/store/authStore'
+
 const router = useRouter()
 const { routes, isLoading, error, fetchRoutes } = useRoutesStore()
 
 onMounted(() => {
-  fetchRoutes()
+  fetchRoutes(authStore.currentUserId.value)
 })
 
 const navigateToDetail = (id: string) => {
@@ -18,7 +20,7 @@ const navigateToDetail = (id: string) => {
 }
 
 const handleRefresh = async () => {
-  await fetchRoutes()
+  await fetchRoutes(authStore.currentUserId.value)
 }
 </script>
 
@@ -41,7 +43,7 @@ const handleRefresh = async () => {
 
       <div v-else-if="error" class="error-state">
         <p>{{ error }}</p>
-        <button @click="fetchRoutes" class="retry-btn">Попробовать снова</button>
+        <button @click="() => fetchRoutes(authStore.currentUserId.value)" class="retry-btn">Попробовать снова</button>
       </div>
 
       <div v-else-if="routes.length === 0" class="empty-state">

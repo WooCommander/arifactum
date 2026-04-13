@@ -29,6 +29,12 @@ const routes = [
         meta: { requiresAuth: true }
     },
     {
+        path: '/edit-route/:id',
+        name: 'EditRoute',
+        component: () => import('@/modules/routes').then(m => m.CreateRouteView),
+        meta: { requiresAuth: true }
+    },
+    {
         path: '/teams',
         name: 'Teams',
         component: () => import('@/modules/teams').then(m => m.TeamsView),
@@ -50,6 +56,16 @@ const routes = [
         path: '/leaderboard',
         name: 'Leaderboard',
         component: () => import('@/modules/profile/views/LeaderboardView.vue')
+    },
+    {
+        path: '/changelog',
+        name: 'Changelog',
+        component: () => import('@/views/ChangelogView.vue')
+    },
+    {
+        path: '/design-system',
+        name: 'DesignSystem',
+        component: () => import('@/views/DesignSystemView.vue')
     }
 ]
 

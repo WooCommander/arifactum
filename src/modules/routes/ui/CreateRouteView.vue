@@ -1,26 +1,40 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useRoutesStore } from '../state/useRoutesStore'
 import { routeService } from '../services/routeService'
 import { authStore } from '@/modules/auth/store/authStore'
-import { FpBackButton, FpInput, FpButton, FpSpinner } from '@/design-system'
+import { FpBackButton, FpInput, FpButton, FpSpinner, FpImageUpload } from '@/design-system'
 import ArtMap from '@/shared/ui/ArtMap.vue'
 import { Save, Plus, Trash2, MapPin, Star, X } from 'lucide-vue-next'
 
 const router = useRouter()
+const route = useRoute()
 const { fetchRoutes } = useRoutesStore()
+
+const routeId = computed(() => route.params.id as string | undefined)
+const isEditMode = computed(() => !!routeId.value)
 
 const title = ref('')
 const description = ref('')
 const difficulty = ref<'easy' | 'medium' | 'hard'>('medium')
 const images = ref<string[]>([])
-const routeImageUrl = ref('')
 const coverUrl = ref<string | null>(null)
 const isSaving = ref(false)
+const isLoading = ref(false)
 
-const checkpoints = ref([
-  { title: '', description: '', lat: 0, lng: 0, order_index: 0, photo_url: null, images: [] as string[], tempImageUrl: '' }
+interface CheckpointForm {
+  title: string
+  description: string
+  lat: number
+  lng: number
+  order_index: number
+  photo_url: string | null
+  images: string[]
+}
+
+const checkpoints = ref<CheckpointForm[]>([
+  { title: '', description: '', lat: 0, lng: 0, order_index: 0, photo_url: null, images: [] }
 ])
 
 const mapPoints = computed(() => 
@@ -36,6 +50,43 @@ const mapPoints = computed(() =>
 
 const activeMarkerIndex = ref<number | null>(null)
 
+onMounted(async () => {
+  if (isEditMode.value) {
+    isLoading.value = true
+    try {
+      const id = routeId.value!
+      const [routeData, checkpointData] = await Promise.all([
+        routeService.getRouteById(id),
+        routeService.getCheckpoints(id)
+      ])
+
+      title.value = routeData.title
+      description.value = routeData.description
+      difficulty.value = routeData.difficulty
+      coverUrl.value = routeData.image_url
+      images.value = [...(routeData.images || [])]
+
+      if (checkpointData.length > 0) {
+        checkpoints.value = checkpointData.map(cp => ({
+          title: cp.title,
+          description: cp.description,
+          lat: cp.lat,
+          lng: cp.lng,
+          order_index: cp.order_index,
+          photo_url: cp.photo_url,
+          images: [...(cp.images || [])]
+        }))
+      }
+    } catch (err) {
+      console.error('Failed to load route for editing:', err)
+      alert('Ошибка при загрузке маршрута')
+      router.back()
+    } finally {
+      isLoading.value = false
+    }
+  }
+})
+
 const handleMapClick = (lat: number, lng: number) => {
   if (activeMarkerIndex.value !== null) {
     const cp = checkpoints.value[activeMarkerIndex.value]
@@ -45,7 +96,6 @@ const handleMapClick = (lat: number, lng: number) => {
     return
   }
 
-  // If we have an empty first point, use it. Otherwise add new.
   const lastCp = checkpoints.value[checkpoints.value.length - 1]
   if (checkpoints.value.length === 1 && !lastCp.title && lastCp.lat === 0) {
     lastCp.lat = Number(lat.toFixed(6))
@@ -58,8 +108,7 @@ const handleMapClick = (lat: number, lng: number) => {
       lng: Number(lng.toFixed(6)),
       order_index: checkpoints.value.length,
       photo_url: null,
-      images: [] as string[],
-      tempImageUrl: ''
+      images: [] as string[]
     })
   }
 }
@@ -72,8 +121,7 @@ const addCheckpoint = () => {
     lng: 0,
     order_index: checkpoints.value.length,
     photo_url: null,
-    images: [] as string[],
-    tempImageUrl: ''
+    images: [] as string[]
   })
 }
 
@@ -97,8 +145,8 @@ const setCover = (item: { photo_url?: string | null, image_url?: string | null }
 
 const removeCheckpoint = (index: number) => {
   checkpoints.value.splice(index, 1)
-  // Re-order
   checkpoints.value.forEach((cp, i) => cp.order_index = i)
+  if (checkpoints.value.length === 0) addCheckpoint()
 }
 
 const handleSave = async () => {
@@ -107,27 +155,40 @@ const handleSave = async () => {
 
   isSaving.value = true
   try {
-    const newRoute = await routeService.createRoute({
+    const routeData = {
       title: title.value,
       description: description.value,
       difficulty: difficulty.value,
       author_id: authStore.user.value.id,
       image_url: coverUrl.value,
-      images: images.value
-    })
+      images: images.value,
+      status: 'draft' as const,
+      is_public: false
+    }
+
+    let savedRouteId = routeId.value
+
+    if (isEditMode.value && routeId.value) {
+      await routeService.updateRoute(routeId.value, routeData)
+      await routeService.deleteCheckpointsByRoute(routeId.value)
+    } else {
+      const newRoute = await routeService.createRoute(routeData)
+      savedRouteId = newRoute.id
+    }
 
     // Save checkpoints
     await Promise.all(checkpoints.value.map(cp => 
       routeService.createCheckpoint({
         ...cp,
-        route_id: newRoute.id
+        route_id: savedRouteId!
       })
     ))
 
-    await fetchRoutes()
-    router.push('/routes')
+    await fetchRoutes(authStore.currentUserId.value)
+    router.push({ name: 'RouteDetail', params: { id: savedRouteId } })
   } catch (err) {
     console.error('Failed to save route:', err)
+    alert('Ошибка при сохранении')
   } finally {
     isSaving.value = false
   }
@@ -138,10 +199,15 @@ const handleSave = async () => {
   <div class="create-route-view">
     <header class="header">
       <FpBackButton @click="router.back()" />
-      <h1>Новый маршрут</h1>
+      <h1>{{ isEditMode ? 'Редактировать маршрут' : 'Новый маршрут' }}</h1>
     </header>
 
-    <div class="form-content">
+    <div v-if="isLoading" class="loader-overlay">
+      <FpSpinner />
+      <p>Загрузка данных...</p>
+    </div>
+
+    <div v-else class="form-content">
       <ArtMap 
         class="creation-map" 
         :points="mapPoints" 
@@ -179,12 +245,10 @@ const handleSave = async () => {
 
         <div class="gallery-section">
           <label>Галерея маршрута</label>
-          <div class="image-input-row">
-            <FpInput v-model="routeImageUrl" placeholder="URL картинки..." />
-            <FpButton size="sm" @click="addImage(images, routeImageUrl); routeImageUrl = ''">
-              Добавить
-            </FpButton>
-          </div>
+          <FpImageUpload 
+            label="Добавить фото маршрута"
+            @uploaded="addImage(images, $event)"
+          />
           
           <div v-if="images.length > 0" class="image-previews">
             <div v-for="(img, idx) in images" :key="idx" class="image-card" :class="{ isCover: coverUrl === img }">
@@ -224,12 +288,10 @@ const handleSave = async () => {
 
             <div class="checkpoint-gallery">
               <label>Картинки точки</label>
-              <div class="image-input-row">
-                <FpInput v-model="cp.tempImageUrl" placeholder="URL..." />
-                <FpButton size="sm" @click="addImage(cp, cp.tempImageUrl); cp.tempImageUrl = ''">
-                  +
-                </FpButton>
-              </div>
+              <FpImageUpload 
+                label="Загрузить фото точки"
+                @uploaded="addImage(cp, $event)"
+              />
               <div v-if="cp.images.length > 0" class="image-previews small">
                 <div v-for="(img, idx) in cp.images" :key="idx" class="image-card" :class="{ isCover: cp.photo_url === img }">
                   <img :src="img" alt="preview" />
@@ -273,7 +335,7 @@ const handleSave = async () => {
       >
         <FpSpinner v-if="isSaving" size="sm" />
         <template v-else>
-          <Save :size="20" /> Сохранить маршрут
+          <Save :size="20" /> {{ isEditMode ? 'Сохранить изменения' : 'Создать маршрут' }}
         </template>
       </FpButton>
     </div>
@@ -284,7 +346,7 @@ const handleSave = async () => {
 .create-route-view {
   min-height: 100vh;
   background: var(--color-background);
-  padding-bottom: 100px;
+  padding-bottom: 120px;
 }
 
 .header {
@@ -300,6 +362,16 @@ const handleSave = async () => {
     font-weight: 800;
     margin: 0;
   }
+}
+
+.loader-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  gap: 16px;
+  color: var(--color-text-secondary);
 }
 
 .form-content {
@@ -336,13 +408,6 @@ const handleSave = async () => {
     font-weight: 700;
     color: var(--color-text-secondary);
   }
-}
-
-.image-input-row {
-  display: flex;
-  gap: 8px;
-
-  .f-input { flex: 1; }
 }
 
 .image-previews {
@@ -404,7 +469,6 @@ const handleSave = async () => {
 
     &.star { 
       background: var(--color-primary); 
-      &.active { color: #ffd700; }
     }
     &.delete { background: var(--color-error); }
   }

@@ -1,21 +1,60 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useTheme } from '@/composables/useTheme'
 import MainLayout from '@/layouts/MainLayout.vue'
 import FpNotificationContainer from '@/design-system/components/FpNotificationContainer.vue'
 import { DeviceService } from '@/app/services/DeviceService'
+import { UpdateService, type UpdateInfo } from '@/app/services/UpdateService'
+import { Download } from 'lucide-vue-next'
 
 const { initTheme } = useTheme()
+const availableUpdate = ref<UpdateInfo | null>(null)
+
+const dismissUpdate = () => {
+  availableUpdate.value = null
+}
+
+const installUpdate = () => {
+  if (availableUpdate.value?.apkUrl) {
+    window.open(availableUpdate.value.apkUrl, '_blank')
+    availableUpdate.value = null
+  }
+}
 
 onMounted(async () => {
   initTheme()
   DeviceService.initStatusBar()
+  
+  // Check for updates after a short delay
+  setTimeout(async () => {
+    const update = await UpdateService.checkForUpdates()
+    if (update) {
+      availableUpdate.value = update
+    }
+  }, 3000)
 })
 </script>
 
 <template>
   <MainLayout />
   <FpNotificationContainer />
+
+  <!-- Update Banner -->
+  <transition name="slide-up">
+    <div v-if="availableUpdate" class="update-banner">
+      <div class="icon-wrap">
+        <Download :size="20" />
+      </div>
+      <div class="update-text">
+        <span class="update-title">Доступна версия {{ availableUpdate.version }}</span>
+        <span class="update-notes">{{ availableUpdate.notes }}</span>
+      </div>
+      <div class="update-actions">
+        <button class="btn-dismiss" @click="dismissUpdate">Позже</button>
+        <button class="btn-install" @click="installUpdate">Установить</button>
+      </div>
+    </div>
+  </transition>
 </template>
 
 <style lang="scss">
@@ -97,5 +136,17 @@ onMounted(async () => {
 .slide-up-leave-to {
   transform: translateY(20px);
   opacity: 0;
+}
+
+.icon-wrap {
+  width: 40px;
+  height: 40px;
+  background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+  color: var(--color-primary);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 </style>

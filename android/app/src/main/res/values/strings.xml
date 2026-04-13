@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Fair Price</string>
-    <string name="title_activity_main">Fair Price</string>
-    <string name="package_name">com.fairprice.app</string>
-    <string name="custom_url_scheme">com.fairprice.app</string>
+    <string name="app_name">Artifactum</string>
+    <string name="title_activity_main">Artifactum</string>
+    <string name="package_name">com.artifactum.app</string>
+    <string name="custom_url_scheme">com.artifactum.app</string>
 </resources>

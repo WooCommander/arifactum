@@ -10,11 +10,11 @@ const isLoading = ref(false)
 const error = ref<string | null>(null)
 
 export const useRoutesStore = () => {
-    const fetchRoutes = async () => {
+    const fetchRoutes = async (userId?: string) => {
         isLoading.value = true
         error.value = null
         try {
-            const dtos = await routeService.getRoutes()
+            const dtos = await routeService.getRoutes(userId)
             routes.value = dtos.map(routeAdapter.toUI)
         } catch (err: any) {
             console.error('Failed to fetch routes:', err)
@@ -47,6 +47,19 @@ export const useRoutesStore = () => {
         currentCheckpoints.value = []
     }
 
+    const deleteRoute = async (id: string) => {
+        await routeService.deleteRoute(id)
+        routes.value = routes.value.filter(r => r.id !== id)
+    }
+
+    const publishRoute = async (id: string) => {
+        await routeService.updateRouteStatus(id, 'pending')
+        if (currentRoute.value?.id === id) {
+            // @ts-ignore - simple way to update local read-only ref for UI reactivity
+            currentRoute.value = { ...currentRoute.value, status: 'pending' }
+        }
+    }
+
     return {
         routes: readonly(routes),
         currentRoute: readonly(currentRoute),
@@ -55,6 +68,8 @@ export const useRoutesStore = () => {
         error: readonly(error),
         fetchRoutes,
         fetchRouteDetails,
-        clearCurrentRoute
+        clearCurrentRoute,
+        deleteRoute,
+        publishRoute
     }
 }

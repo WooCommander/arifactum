@@ -1,20 +1,17 @@
 {
   "nav": {
     "home": "Home",
-    "search": "Search",
-    "favorites": "Favorites",
-    "profile": "Profile",
-    "catalog": "Catalog",
-    "stores": "Stores",
+    "adventure": "Adventure",
+    "routes": "Routes",
+    "teams": "Teams",
     "leaderboard": "Leaderboard",
-    "shoppingList": "List",
-    "addPrice": "Price",
-    "quickCalc": "Quick calc",
-    "menu": "Menu",
-    "tools": "Tools",
-    "dev": "Developer",
+    "management": "Management",
+    "createRoute": "Create Route",
+    "profile": "My Profile",
+    "system": "System",
     "designSystem": "Design System",
-    "changelog": "Changelog"
+    "changelog": "What's New",
+    "activity": "Activity"
   },
   "auth": {
     "guest": "Guest",
@@ -22,54 +19,45 @@
     "logout": "Logout"
   },
   "theme": {
-    "light": "Light mode",
-    "dark": "Dark mode"
+    "light": "Light Theme",
+    "dark": "Dark Theme"
   },
   "login": {
     "title": "Login",
-    "registerTitle": "Sign up",
+    "registerTitle": "Register",
     "email": "Email",
     "password": "Password",
     "submitLogin": "Login",
-    "submitRegister": "Create account",
+    "submitRegister": "Create Account",
     "noAccount": "No account?",
     "create": "Create",
-    "haveAccount": "Already have an account?",
+    "haveAccount": "Have an account?",
     "enter": "Login",
     "errors": {
-      "fillAll": "Fill all fields",
+      "fillAll": "Please fill all fields",
       "shortPassword": "Password must be at least 6 characters",
-      "loginFailed": "Login error",
-      "registerFailed": "Registration error",
+      "loginFailed": "Login failed",
+      "registerFailed": "Registration failed",
       "notConfirmed": "Email not confirmed. Check your inbox.",
       "invalidCredentials": "Invalid email or password"
     },
-    "successRegister": "Registration successful! Check your email to confirm."
+    "successRegister": "Registration successful! Check your email for confirmation."
   },
   "profile": {
-    "activityTitle": "Recent activity",
-    "viewAll": "View all",
-    "currencyTitle": "Display currency",
-    "ratesHint": "Rate to RUB",
-    "applyRates": "Apply rates",
-    "moderation": {
-      "title": "Pending moderation",
-      "empty": "No items to moderate",
-      "pending": "Pending",
-      "caption": "Items from other users are excluded from stats until approved"
-    },
+    "activityTitle": "Recent Activity",
+    "viewAll": "View All",
     "stats": {
       "reputation": "Reputation",
-      "prices": "Prices added",
+      "completedRoutes": "Routes Completed",
       "favorites": "Favorites"
     },
     "personal": {
-      "title": "Personal info",
+      "title": "Personal Details",
       "edit": "Edit",
-      "name": "First name",
-      "lastName": "Last name",
+      "name": "First Name",
+      "lastName": "Last Name",
       "gender": "Gender",
-      "birthDate": "Birth date",
+      "birthDate": "Birth Date",
       "save": "Save",
       "cancel": "Cancel",
       "placeholderName": "Enter first name",
@@ -81,17 +69,17 @@
       "other": "Other"
     },
     "labels": {
-      "name": "Name",
-      "lastName": "Last name",
+      "name": "First Name",
+      "lastName": "Last Name",
       "gender": "Gender",
-      "birthDate": "Birth date",
-      "category": "Category"
+      "birthDate": "Birth Date"
     },
     "saved": "Saved",
     "noActivity": "No activity"
   },
-  "rates": {
-    "usdInRub": "1 $ in rubles",
-    "eurInRub": "1 € in rubles"
+  "updates": {
+    "title": "New Version Available",
+    "install": "Install",
+    "later": "Later"
   }
 }

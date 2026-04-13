@@ -1,4 +1,4 @@
-package com.fairprice.app;
+package com.artifactum.app;
 
 import com.getcapacitor.BridgeActivity;
 

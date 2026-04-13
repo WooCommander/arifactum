@@ -2,11 +2,21 @@ import { supabase } from '@/api/supabase'
 import type { RouteDTO, CheckpointDTO } from '../types'
 
 export const routeService = {
-    async getRoutes(): Promise<RouteDTO[]> {
-        const { data, error } = await supabase
+    async getRoutes(userId?: string): Promise<RouteDTO[]> {
+        let query = supabase
             .from('routes')
             .select('*')
             .order('created_at', { ascending: false })
+
+        if (userId) {
+            // Show published routes OR those created by the current user
+            query = query.or(`status.eq.published,author_id.eq.${userId}`)
+        } else {
+            // Guests only see published routes
+            query = query.eq('status', 'published')
+        }
+
+        const { data, error } = await query
 
         if (error) throw error
         return data || []
@@ -54,5 +64,41 @@ export const routeService = {
 
         if (error) throw error
         return data
+    },
+
+    async deleteRoute(id: string): Promise<void> {
+        const { error } = await supabase
+            .from('routes')
+            .delete()
+            .eq('id', id)
+
+        if (error) throw error
+    },
+
+    async updateRouteStatus(id: string, status: 'draft' | 'pending' | 'published'): Promise<void> {
+        const { error } = await supabase
+            .from('routes')
+            .update({ status })
+            .eq('id', id)
+
+        if (error) throw error
+    },
+
+    async updateRoute(id: string, data: Partial<RouteDTO>): Promise<void> {
+        const { error } = await supabase
+            .from('routes')
+            .update(data)
+            .eq('id', id)
+
+        if (error) throw error
+    },
+
+    async deleteCheckpointsByRoute(routeId: string): Promise<void> {
+        const { error } = await supabase
+            .from('checkpoints')
+            .delete()
+            .eq('route_id', routeId)
+
+        if (error) throw error
     }
 }

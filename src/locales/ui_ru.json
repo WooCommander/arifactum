@@ -1,20 +1,17 @@
 {
   "nav": {
     "home": "Главная",
-    "search": "Поиск",
-    "favorites": "Избранное",
-    "profile": "Профиль",
-    "catalog": "Каталог",
-    "stores": "Магазины",
-    "leaderboard": "Рейтинг",
-    "shoppingList": "Список",
-    "addPrice": "Цена",
-    "quickCalc": "Расчет",
-    "menu": "Меню",
-    "tools": "Инструменты",
-    "dev": "Разработчику",
-    "designSystem": "Стенд",
-    "changelog": "Changelog"
+    "adventure": "Приключение",
+    "routes": "Маршруты",
+    "teams": "Команды",
+    "leaderboard": "Лидерборд",
+    "management": "Управление",
+    "createRoute": "Создать маршрут",
+    "profile": "Мой профиль",
+    "system": "Система",
+    "designSystem": "Design System",
+    "changelog": "Что нового",
+    "activity": "Активность"
   },
   "auth": {
     "guest": "Гость",
@@ -49,18 +46,9 @@
   "profile": {
     "activityTitle": "Последняя активность",
     "viewAll": "Смотреть всё",
-    "currencyTitle": "Валюта отображения",
-    "ratesHint": "Курс к рублю",
-    "applyRates": "Применить курсы",
-    "moderation": {
-      "title": "На модерации",
-      "empty": "Новых товаров для модерации нет",
-      "pending": "На модерации",
-      "caption": "Товары других пользователей не учитываются, пока не утверждены"
-    },
     "stats": {
       "reputation": "Репутация",
-      "prices": "Цен добавлено",
+      "completedRoutes": "Маршрутов пройдено",
       "favorites": "Избранное"
     },
     "personal": {
@@ -84,15 +72,15 @@
       "name": "Имя",
       "lastName": "Фамилия",
       "gender": "Пол",
-      "birthDate": "Дата рождения",
-      "category": "Категория"
+      "birthDate": "Дата рождения"
     },
     "saved": "Сохранено",
     "noActivity": "Нет активности"
   },
-  "rates": {
-    "usdInRub": "1 $ в рублях",
-    "eurInRub": "1 € в рублях"
+  "updates": {
+    "title": "Доступна новая версия",
+    "install": "Установить",
+    "later": "Позже"
   }
 }
 

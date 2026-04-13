@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import type { Route } from '../types'
-import { MapPin, Star, ChevronRight } from 'lucide-vue-next'
+import { MapPin, Star, ChevronRight, Clock, Lock } from 'lucide-vue-next'
+import { authStore } from '@/modules/auth/store/authStore'
+import { computed } from 'vue'
 
 interface Props {
   route: Route
 }
 
 const props = defineProps<Props>()
+
+const isAuthor = computed(() => props.route.authorId === authStore.currentUserId.value)
 
 const emit = defineEmits<{
   (e: 'click', id: string): void
@@ -22,6 +26,12 @@ const emit = defineEmits<{
       </div>
       <div class="route-badge" :class="props.route.difficulty">
         {{ props.route.difficulty }}
+      </div>
+      
+      <div v-if="isAuthor && props.route.status !== 'published'" class="status-overlay" :class="props.route.status">
+        <Clock v-if="props.route.status === 'pending'" :size="14" />
+        <Lock v-if="props.route.status === 'draft'" :size="14" />
+        <span>{{ props.route.status === 'draft' ? 'Черновик' : 'На проверке' }}</span>
       </div>
     </div>
 
@@ -103,6 +113,24 @@ const emit = defineEmits<{
   &.easy { background: var(--color-success); }
   &.medium { background: var(--color-warning); }
   &.hard { background: var(--color-error); }
+}
+
+.status-overlay {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  backdrop-filter: blur(4px);
+  
+  &.draft { background: rgba(100, 116, 139, 0.8); }
+  &.pending { background: rgba(245, 158, 11, 0.8); }
 }
 
 .route-content {
