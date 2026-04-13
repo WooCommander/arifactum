@@ -19,6 +19,8 @@ interface Props {
   followUser?: boolean
   teammates?: TeammateLocation[]
   showNames?: boolean
+  isClustered?: boolean
+  targetLocation?: [number, number] | null
 }
 
 interface TeammateLocation {
@@ -48,25 +50,65 @@ const map = shallowRef<L.Map | null>(null)
 const markers = ref<L.Marker[]>([])
 const userMarker = shallowRef<L.Marker | null>(null)
 const teammateMarkers = ref<Map<string, L.Marker>>(new Map())
+const clusterMarker = shallowRef<L.Marker | null>(null)
+const navLine = shallowRef<L.Polyline | null>(null)
+const navArrow = shallowRef<L.Marker | null>(null)
 
 const refreshMarkersLayer = () => {
     if (!map.value) return
 
-    // Clear existing markers
     markers.value.forEach(m => m.remove())
     markers.value = []
+    
+    if (clusterMarker.value) {
+        clusterMarker.value.remove()
+        clusterMarker.value = null
+    }
 
-    // Add new markers
+    if (props.points.length === 0) return
+
+    if (props.isClustered) {
+        // Show as single cluster
+        const avgLat = props.points.reduce((acc, p) => acc + p.lat, 0) / props.points.length
+        const avgLng = props.points.reduce((acc, p) => acc + p.lng, 0) / props.points.length
+        
+        clusterMarker.value = L.marker([avgLat, avgLng], {
+            icon: L.divIcon({
+                className: 'route-cluster-marker',
+                html: `
+                    <div class="cluster-inner">
+                        <span class="count">${props.points.length}</span>
+                        <span class="label">точек</span>
+                    </div>
+                    <div class="cluster-pulse"></div>
+                `,
+                iconSize: [64, 64],
+                iconAnchor: [32, 32]
+            })
+        }).addTo(map.value as L.Map)
+        
+        // Center view on cluster if needed
+        if (!props.center) {
+            map.value.setView([avgLat, avgLng], 14)
+        }
+        return
+    }
+
+    // Add new individual markers
     const group = L.featureGroup()
     
     props.points.forEach(p => {
         const marker = L.marker([p.lat, p.lng], {
-          icon: L.divIcon({
-            className: 'art-marker',
-            html: `<div class="marker-dot"></div>`,
-            iconSize: [24, 24],
-            iconAnchor: [12, 12]
-          })
+            icon: L.divIcon({
+                className: 'art-marker',
+                html: `
+                    <div class="marker-pin ${p.isCompleted ? 'completed' : ''}">
+                        <span class="marker-number">${p.order || '?'}</span>
+                    </div>
+                `,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32]
+            })
         })
 
         if (p.id) {
@@ -115,6 +157,65 @@ const updateUserMarker = () => {
   if (props.followUser) {
     map.value.panTo([lat, lng], { animate: true, duration: 0.5 })
   }
+  updateNavigationLine()
+}
+
+const updateNavigationLine = () => {
+  if (!map.value || !props.userLocation || !props.targetLocation) {
+    if (navLine.value) navLine.value.remove()
+    if (navArrow.value) navArrow.value.remove()
+    navLine.value = null
+    navArrow.value = null
+    return
+  }
+
+  const latlngs: L.LatLngExpression[] = [
+    props.userLocation,
+    props.targetLocation
+  ]
+
+  if (navLine.value) {
+    navLine.value.setLatLngs(latlngs)
+  } else {
+    navLine.value = L.polyline(latlngs, {
+      color: 'var(--color-primary)',
+      weight: 3,
+      dashArray: '8, 12',
+      opacity: 0.6,
+      className: 'nav-guide-line'
+    }).addTo(map.value)
+  }
+
+  // Update Arrow Head
+  const angle = Math.atan2(
+    props.targetLocation[0] - props.userLocation[0],
+    props.targetLocation[1] - props.userLocation[1]
+  ) * (180 / Math.PI)
+
+  if (navArrow.value) {
+    navArrow.value.setLatLng(props.targetLocation)
+    const icon = navArrow.value.getIcon()
+    // We update the rotation via CSS class or re-creating icon
+    navArrow.value.setIcon(createArrowIcon(angle))
+  } else {
+    navArrow.value = L.marker(props.targetLocation, {
+      icon: createArrowIcon(angle),
+      zIndexOffset: 1000
+    }).addTo(map.value)
+  }
+}
+
+const createArrowIcon = (angle: number) => {
+  return L.divIcon({
+    className: 'nav-arrow-marker',
+    html: `
+      <div class="arrow-wrap" style="transform: rotate(${90 - angle}deg)">
+        <div class="arrow-head"></div>
+      </div>
+    `,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+  })
 }
 
 const updateTeammateMarkers = () => {
@@ -131,10 +232,7 @@ const updateTeammateMarkers = () => {
 
   // Add or update markers
   props.teammates.forEach(t => {
-    // Don't show ourselves again if userLocation is already handled
-    const { data: { user } } = { data: { user: { id: null } } } // Placeholder, better if we check id from props
-    // We'll filter this in the parent for simplicity or here if needed
-
+    // We'll filter self in the parent or assume it's already filtered
     const existing = teammateMarkers.value.get(t.user_id)
     if (existing) {
       existing.setLatLng([t.lat, t.lng])
@@ -207,6 +305,14 @@ const initializeLeafletMap = () => {
 watch(() => props.points, () => {
     refreshMarkersLayer()
 }, { deep: true })
+
+watch(() => props.isClustered, () => {
+    refreshMarkersLayer()
+})
+
+watch(() => props.targetLocation, () => {
+    updateNavigationLine()
+})
 
 watch(() => props.userLocation, () => {
     updateUserMarker()
@@ -311,17 +417,97 @@ onUnmounted(() => {
   }
 }
 
+/* Route Cluster Marker */
+.route-cluster-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  .cluster-inner {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, var(--color-primary) 0%, #175ec9 100%);
+    border: 4px solid white;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    z-index: 2;
+    
+    .count {
+      font-size: 20px;
+      font-weight: 900;
+      line-height: 1;
+    }
+    
+    .label {
+      font-size: 9px;
+      text-transform: uppercase;
+      font-weight: 800;
+      opacity: 0.8;
+    }
+  }
+  
+  .cluster-pulse {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    background: var(--color-primary);
+    border-radius: 50%;
+    z-index: 1;
+    animation: cluster-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+    opacity: 0.4;
+  }
+}
+
+@keyframes cluster-ping {
+  0% { transform: scale(1); opacity: 0.4; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+/* Navigation Line & Arrow */
+.nav-guide-line {
+  stroke-dashoffset: 0;
+  animation: line-flow 2s linear infinite;
+}
+
+@keyframes line-flow {
+  from { stroke-dashoffset: 20; }
+  to { stroke-dashoffset: 0; }
+}
+
+.nav-arrow-marker {
+  .arrow-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease;
+  }
+  
+  .arrow-head {
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 12px solid var(--color-primary);
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    animation: arrow-pulse 1s ease-in-out infinite;
+  }
+}
+
+@keyframes arrow-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
 .art-marker {
   display: flex;
   align-items: center;
   justify-content: center;
 
-  .marker-dot {
-    width: 14px;
-    height: 14px;
-    background: var(--color-primary);
-    border: 3px solid white;
-    border-radius: 50%;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
     transition: transform 0.2s ease;
   }

@@ -61,7 +61,14 @@ function getChangelogNotes(ver) {
         const extractList = (field) => {
             const m = block.match(new RegExp(`${field}:\\s*\\[([\\s\\S]*?)\\]`))
             if (!m) return []
-            return [...m[1].matchAll(/['"`]([^'"`]+)['"`]/g)].map(x => x[1])
+            // Better regex to handle internal quotes: looks for sequences starting and ending with the same quote char
+            const items = []
+            const itemRe = /(['"`])([\s\S]*?)\1/g
+            let match
+            while ((match = itemRe.exec(m[1])) !== null) {
+                items.push(match[2])
+            }
+            return items
         }
 
         const features = extractList('features')
@@ -118,18 +125,23 @@ if (!existsSync(apkPath)) {
 const apkBuffer = readFileSync(apkPath)
 console.log(`\n⬆️   Uploading APK v${version} (${(apkBuffer.length / 1024 / 1024).toFixed(1)} MB)...`)
 
+// Force delete old files to bypass cache
+console.log('🗑️   Cleaning old release files...')
+await supabase.storage.from('releases').remove(['app-latest.apk', 'version.json'])
+
 const { error: apkError } = await supabase.storage
     .from('releases')
     .upload('app-latest.apk', apkBuffer, {
         contentType: 'application/vnd.android.package-archive',
         upsert: true,
+        cacheControl: 'no-store, max-age=0',
     })
 
 if (apkError) { console.error('❌  APK upload failed:', apkError.message); process.exit(1) }
 console.log('✓  APK uploaded')
 
 // ── Upload version.json ──────────────────────────────────────────────────────
-const apkUrl = `${SUPABASE_URL}/storage/v1/object/public/releases/app-latest.apk`
+const apkUrl = `${SUPABASE_URL}/storage/v1/object/public/releases/app-latest.apk?v=${version}`
 const manifest = JSON.stringify({ version, apkUrl, notes: releaseNotes }, null, 2)
 
 const { error: vErr } = await supabase.storage
@@ -137,6 +149,7 @@ const { error: vErr } = await supabase.storage
     .upload('version.json', Buffer.from(manifest), {
         contentType: 'application/json',
         upsert: true,
+        cacheControl: 'no-store, max-age=0',
     })
 
 if (vErr) { console.error('❌  version.json upload failed:', vErr.message); process.exit(1) }

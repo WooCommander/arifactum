@@ -41,7 +41,7 @@ export const locationsService = {
         'postgres_changes',
         {
           event: '*', // Listen to INSERT and UPDATE
-          schema: public,
+          schema: 'public',
           table: 'team_locations',
           filter: `team_id=eq.${teamId}`
         },

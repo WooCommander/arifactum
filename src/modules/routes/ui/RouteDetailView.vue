@@ -5,7 +5,7 @@ import { useRoutesStore } from '../state/useRoutesStore'
 import { FpSpinner, FpBackButton, FpConfirmationModal } from '@/design-system'
 import ArtMap from '@/shared/ui/ArtMap.vue'
 import { authStore } from '@/modules/auth/store/authStore'
-import { MapPin, Info, Navigation, Trash2, Send, Globe, Pencil, MapPinOff } from 'lucide-vue-next'
+import { MapPin, Info, Navigation, Trash2, Send, Globe, Pencil } from 'lucide-vue-next'
 import { Geolocation, type WatchPositionCallback } from '@capacitor/geolocation'
 import { locationsService, type TeammateLocation } from '@/modules/teams/services/locationsService'
 import { teamService } from '@/modules/teams/services/teamService'
@@ -94,11 +94,12 @@ const stopTimer = () => {
 }
 
 const mapPoints = computed(() => 
-  currentCheckpoints.value.map((cp: any) => ({
+  currentCheckpoints.value.map((cp: any, index: number) => ({
     lat: cp.latitude,
     lng: cp.longitude,
     id: cp.id,
     title: cp.title,
+    order: cp.order || (index + 1),
     isCompleted: completedCheckpointIds.value.has(cp.id)
   }))
 )
@@ -275,6 +276,12 @@ watch(isActiveMode, (active) => {
   }
 })
 
+const nextCheckpointLocation = computed<[number, number] | null>(() => {
+  if (!isActiveMode.value || !nextCheckpoint.value) return null
+  return [nextCheckpoint.value.latitude, nextCheckpoint.value.longitude]
+})
+
+// Lifecycle
 onMounted(async () => {
   const id = route.params.id as string
   if (id) fetchRouteDetails(id)
@@ -322,7 +329,8 @@ onUnmounted(() => {
                 @click="toggleLocationSharing"
                 title="Поделиться локацией"
               >
-                <component :is="isSharingLocation ? 'MapPin' : 'MapPinOff'" :size="18" />
+                <MapPin v-if="isSharingLocation" :size="18" />
+                <Navigation v-else :size="18" style="opacity: 0.6;" />
               </button>
               <button 
                 v-if="isSharingLocation"
@@ -439,6 +447,8 @@ onUnmounted(() => {
           :interactive="!isActiveMode"
           :user-location="userLocation"
           :follow-user="isActiveMode"
+          :is-clustered="!isActiveMode"
+          :target-location="nextCheckpointLocation"
           :teammates="teammateLocations"
           :show-names="showTeammateNames"
           class="inline-map"
