@@ -9,6 +9,24 @@ export interface ReleaseNote {
 
 export const changelog: ReleaseNote[] = [
     {
+        version: '2.11.0',
+        date: '2026-04-14',
+        highlights: [
+            'Deep Stability: Архитектурное очищение и воссоединение систем'
+        ],
+        features: [
+            'Social Synergy: Социальные функции (лайки, избранное) переведены на реальный бэкенд.',
+            'State Integrity: Внедрена строгая система управления состоянием (Store-driven), исключающая ошибки рассинхрона UI.',
+            'Type-Safe Core: Исправлено более 75 ошибок типизации, блокировавших продуктивную сборку.',
+            'Adaptive Reactivity: Реструктуризована работа с Refs для безупречной читаемости свойств в шаблонах.'
+        ],
+        fixes: [
+            'Quest Logic: Исправлена критическая ошибка итерации по точкам маршрута (теперь используется currentCheckpoints).',
+            'Service Sync: Добавлены недостающие аргументы в системные вызовы MuseumService.',
+            'Build-Fix: Очищены неиспользуемые импорты и конфликты имен (isLoading, error).'
+        ]
+    },
+    {
         version: '2.10.0',
         date: '2026-04-14',
         highlights: [

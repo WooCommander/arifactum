@@ -113,20 +113,36 @@ async function fetchRouteDetails() {
   try {
     await routesStore.fetchRouteDetails(routeId)
     await socialStore.fetchComments(routeId)
-    // Check initial social state
-    // ... logic for liked/favorite
+    
+    // Fetch social status for the current user
+    if (authStore.currentUserId.value) {
+      const status = await socialStore.getRouteSocialStatus(routeId, authStore.currentUserId.value)
+      isLiked.value = status.isLiked
+      isFavorite.value = status.isFavorite
+    }
   } catch (e: any) {
     console.error('Failed to load route details', e)
   }
 }
 
 async function handleToggleLike() {
-  isLiked.value = !isLiked.value
-  // TODO: API call
+  if (!authStore.currentUserId.value) return
+  try {
+    const newState = await socialStore.toggleLike(routeId, authStore.currentUserId.value)
+    isLiked.value = newState
+  } catch (e) {
+    console.error('Toggle like failed', e)
+  }
 }
 
 async function handleToggleFavorite() {
-  isFavorite.value = !isFavorite.value
+  if (!authStore.currentUserId.value) return
+  try {
+    const newState = await socialStore.toggleFavorite(routeId, authStore.currentUserId.value)
+    isFavorite.value = newState
+  } catch (e) {
+    console.error('Toggle favorite failed', e)
+  }
 }
 
 function handleShare() {
