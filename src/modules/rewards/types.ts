@@ -12,10 +12,15 @@ export interface UserRewardDTO {
     icon_url?: string
 }
 
+export type Rarity = 'common' | 'rare' | 'epic' | 'legendary'
+
 export interface Artifact {
     id: string
     name: string
     description: string
-    icon: string
-    earned_at: string
+    lore: string
+    rarity: Rarity
+    imageUrl: string
+    earned_at?: string
+    routeId?: string
 }

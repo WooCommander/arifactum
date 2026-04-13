@@ -3,7 +3,7 @@ import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRoutesStore } from '../state/useRoutesStore'
 import RouteCard from './RouteCard.vue'
-import { FpSpinner, FpPullToRefresh, FpInput } from '@/design-system'
+import { FpSpinner, FpPullToRefresh } from '@/design-system'
 import { Plus, Search, X } from 'lucide-vue-next'
 import { ref, watch } from 'vue'
 

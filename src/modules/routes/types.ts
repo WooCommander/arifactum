@@ -29,7 +29,7 @@ export interface Route {
     status: 'draft' | 'pending' | 'published'
     isPublic: boolean
     category: string
-    tags: string[]
+    tags: readonly string[]
     likesCount: number
     isLiked?: boolean
     isFavorite?: boolean

@@ -1,4 +1,4 @@
-import type { CommentDTO } from './socialService'
+import type { CommentDTO } from '../services/socialService'
 
 export interface UserComment {
   id: string

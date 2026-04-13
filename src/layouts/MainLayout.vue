@@ -141,6 +141,10 @@ const handleLogout = async () => {
 				<Users class="icon" :size="20" />
 				<span class="label">Команды</span>
 			</a>
+			<a class="nav-item" :class="{ active: route.path === '/museum' }" @click.prevent="navigate('/museum')">
+				<Trophy class="icon" :size="20" />
+				<span class="label">Музей</span>
+			</a>
 			<a class="nav-item" :class="{ active: route.path === '/profile' }" @click.prevent="navigate('/profile')">
 				<User class="icon" :size="20" />
 				<span class="label">Профиль</span>
@@ -198,6 +202,10 @@ const handleLogout = async () => {
 						<a class="drawer-link" :class="{ active: currentPath === '/leaderboard' }" @click.prevent="navigate('/leaderboard'); isMenuOpen = false">
 							<span class="link-icon"><Trophy :size="24" /></span>
 							{{ t('nav.leaderboard') }}
+						</a>
+						<a class="drawer-link" :class="{ active: currentPath === '/museum' }" @click.prevent="navigate('/museum'); isMenuOpen = false">
+							<span class="link-icon"><Sparkles :size="24" /></span>
+							Музей
 						</a>
 					</div>
 
