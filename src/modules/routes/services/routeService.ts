@@ -4,7 +4,7 @@ import { OfflineService } from '@/modules/offline/services/OfflineService'
 import { DbService } from '@/modules/offline/services/DbService'
 
 export const routeService = {
-    async getRoutes(userId?: string): Promise<RouteDTO[]> {
+    async getRoutes(userId?: string, options?: { search?: string, category?: string }): Promise<RouteDTO[]> {
         let query = supabase
             .from('routes')
             .select('*')
@@ -16,6 +16,14 @@ export const routeService = {
         } else {
             // Guests only see published routes
             query = query.eq('status', 'published')
+        }
+
+        if (options?.category && options.category !== 'Все') {
+            query = query.eq('category', options.category)
+        }
+
+        if (options?.search) {
+            query = query.ilike('title', `%${options.search}%`)
         }
 
         const { data, error } = await query

@@ -3,16 +3,33 @@ import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRoutesStore } from '../state/useRoutesStore'
 import RouteCard from './RouteCard.vue'
-import { FpSpinner, FpPullToRefresh } from '@/design-system'
-import { Plus } from 'lucide-vue-next'
+import { FpSpinner, FpPullToRefresh, FpInput } from '@/design-system'
+import { Plus, Search, X } from 'lucide-vue-next'
+import { ref, watch } from 'vue'
 
 import { authStore } from '@/modules/auth/store/authStore'
 
 const router = useRouter()
 const { routes, isLoading, error, fetchRoutes } = useRoutesStore()
 
+const searchQuery = ref('')
+const selectedCategory = ref('Все')
+const categories = ['Все', 'История', 'Мистика', 'Природа', 'Город', 'Для детей', 'Спорт']
+
 onMounted(() => {
-  fetchRoutes(authStore.currentUserId.value)
+  loadRoutes()
+})
+
+const loadRoutes = () => {
+  fetchRoutes(authStore.currentUserId.value, {
+    search: searchQuery.value,
+    category: selectedCategory.value
+  })
+}
+
+// Watch for filter changes instead of manual triggers
+watch([searchQuery, selectedCategory], () => {
+  loadRoutes()
 })
 
 const navigateToDetail = (id: string) => {
@@ -20,20 +37,51 @@ const navigateToDetail = (id: string) => {
 }
 
 const handleRefresh = async () => {
-  await fetchRoutes(authStore.currentUserId.value)
+  await loadRoutes()
 }
 </script>
 
 <template>
   <div class="routes-view">
     <header class="routes-header">
-      <div class="header-content">
-        <h1>Маршруты</h1>
-        <p>Исследуй новые места и получай бонусы</p>
+      <div class="header-top">
+        <div class="header-content">
+          <h1>Маршруты</h1>
+          <p>Исследуй новые места</p>
+        </div>
+        <button class="add-button" @click="router.push('/create-route')">
+          <Plus :size="24" />
+        </button>
       </div>
-      <button class="add-button" @click="router.push('/create-route')">
-        <Plus :size="24" />
-      </button>
+
+      <div class="search-container">
+        <div class="search-wrapper">
+          <Search class="search-icon" :size="18" />
+          <input 
+            v-model="searchQuery" 
+            type="text" 
+            placeholder="Найти приключение..." 
+            class="search-input"
+          />
+          <button v-if="searchQuery" class="clear-search" @click="searchQuery = ''">
+            <X :size="16" />
+          </button>
+        </div>
+      </div>
+
+      <div class="categories-bar">
+        <div class="categories-scroll">
+          <button 
+            v-for="cat in categories" 
+            :key="cat"
+            class="category-chip"
+            :class="{ active: selectedCategory === cat }"
+            @click="selectedCategory = cat"
+          >
+            {{ cat }}
+          </button>
+        </div>
+      </div>
     </header>
 
     <FpPullToRefresh :onRefresh="handleRefresh">
@@ -70,23 +118,116 @@ const handleRefresh = async () => {
 }
 
 .routes-header {
-  padding: 32px 20px 24px;
+  padding: 24px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--color-surface);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.header-top {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  background: linear-gradient(to bottom, var(--color-surface) 0%, var(--color-background) 100%);
+}
 
+.header-content {
   h1 {
-    font-size: 28px;
+    font-size: 24px;
     font-weight: 800;
     color: var(--color-text-primary);
     margin: 0;
   }
 
   p {
-    font-size: 14px;
+    font-size: 13px;
     color: var(--color-text-secondary);
-    margin: 4px 0 0;
+    margin: 2px 0 0;
+  }
+}
+
+.search-container {
+  width: 100%;
+}
+
+.search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 0 12px;
+  height: 44px;
+  transition: border-color 0.2s;
+
+  &:focus-within {
+    border-color: var(--color-primary);
+  }
+
+  .search-icon {
+    color: var(--color-text-tertiary);
+    margin-right: 8px;
+  }
+
+  .search-input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    font-size: 14px;
+    color: var(--color-text-primary);
+    
+    &::placeholder {
+      color: var(--color-text-tertiary);
+    }
+  }
+
+  .clear-search {
+    background: none;
+    border: none;
+    color: var(--color-text-tertiary);
+    padding: 4px;
+    cursor: pointer;
+  }
+}
+
+.categories-bar {
+  margin: 0 -20px;
+}
+
+.categories-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0 20px 4px;
+  
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.category-chip {
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &.active {
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+    border-color: var(--color-primary);
+    box-shadow: 0 4px 10px color-mix(in srgb, var(--color-primary) 20%, transparent);
   }
 }
 

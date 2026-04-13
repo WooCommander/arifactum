@@ -10,11 +10,11 @@ const isLoading = ref(false)
 const error = ref<string | null>(null)
 
 export const useRoutesStore = () => {
-    const fetchRoutes = async (userId?: string) => {
+    const fetchRoutes = async (userId?: string, options?: { search?: string, category?: string }) => {
         isLoading.value = true
         error.value = null
         try {
-            const dtos = await routeService.getRoutes(userId)
+            const dtos = await routeService.getRoutes(userId, options)
             routes.value = dtos.map(routeAdapter.toUI)
         } catch (err: any) {
             console.error('Failed to fetch routes:', err)

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Route } from '../types'
-import { MapPin, Star, ChevronRight, Clock, Lock, CloudOff } from 'lucide-vue-next'
+import { MapPin, Star, ChevronRight, Clock, Lock, CloudOff, Heart } from 'lucide-vue-next'
 import { authStore } from '@/modules/auth/store/authStore'
 import { OfflineService } from '@/modules/offline/services/OfflineService'
 import { computed } from 'vue'
@@ -26,8 +26,13 @@ const emit = defineEmits<{
       <div v-else class="image-placeholder">
         <MapPin :size="48" />
       </div>
-      <div class="route-badge" :class="props.route.difficulty">
-        {{ props.route.difficulty }}
+      <div class="route-badge-container">
+        <div class="route-badge" :class="props.route.difficulty">
+          {{ props.route.difficulty }}
+        </div>
+        <div v-if="props.route.category" class="category-badge">
+          {{ props.route.category }}
+        </div>
       </div>
       
       <div v-if="isAuthor && props.route.status !== 'published'" class="status-overlay" :class="props.route.status">
@@ -49,6 +54,10 @@ const emit = defineEmits<{
         <div class="meta-item">
           <Star :size="16" class="star-icon" />
           <span>{{ props.route.rating.toFixed(1) }}</span>
+        </div>
+        <div class="meta-item" v-if="props.route.likesCount > 0">
+          <Heart :size="14" class="heart-icon" />
+          <span>{{ props.route.likesCount }}</span>
         </div>
         <div class="meta-item" v-if="isDownloaded">
           <CloudOff :size="16" class="offline-icon" />
@@ -121,6 +130,20 @@ const emit = defineEmits<{
   &.hard { background: var(--color-error); }
 }
 
+.category-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 800;
+  color: white;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  text-transform: uppercase;
+}
+
 .status-overlay {
   position: absolute;
   top: 12px;
@@ -179,6 +202,11 @@ const emit = defineEmits<{
 .star-icon {
   color: #fbbf24;
   fill: #fbbf24;
+}
+
+.heart-icon {
+  color: var(--color-error);
+  fill: var(--color-error);
 }
 
 .spacer {

@@ -16,7 +16,10 @@ import { ArService } from '@/modules/ar/services/ArService'
 import ArOverlay from '@/modules/ar/ui/ArOverlay.vue'
 import { OfflineService } from '@/modules/offline/services/OfflineService'
 import { TileCache } from '@/modules/offline/lib/TileCache'
-import { Download, CheckCircle } from 'lucide-vue-next'
+import { useSocialStore } from '@/modules/social/state/useSocialStore'
+import { Download, CheckCircle, Heart, Bookmark, Share2, MessageSquare, Send, Trash2, Tag } from 'lucide-vue-next'
+import { Haptics } from '@capacitor/haptics'
+import { Share } from '@capacitor/share'
 
 const route = useRoute()
 const router = useRouter()
@@ -123,6 +126,80 @@ const handleRemoveOffline = async () => {
     await OfflineService.removeRoute(currentRoute.value.id)
   }
 }
+
+// Social Logic
+const socialStore = useSocialStore()
+const isLiked = ref(false)
+const isFavorite = ref(false)
+const commentText = ref('')
+const isSubmittingComment = ref(false)
+
+const syncSocialStatus = async () => {
+  if (!currentRoute.value || !authStore.currentUserId.value) return
+  const status = await socialStore.getRouteSocialStatus(currentRoute.value.id, authStore.currentUserId.value)
+  isLiked.value = status.isLiked
+  isFavorite.value = status.isFavorite
+  await socialStore.fetchComments(currentRoute.value.id)
+}
+
+const handleToggleLike = async () => {
+  if (!currentRoute.value || !authStore.currentUserId.value) return
+  isLiked.value = !isLiked.value
+  // Update local count optimistically if we had it
+  // currentRoute.value.likesCount += isLiked.value ? 1 : -1
+  await socialStore.toggleLike(currentRoute.value.id, authStore.currentUserId.value)
+  await Haptics.vibrate()
+}
+
+const handleToggleFavorite = async () => {
+  if (!currentRoute.value || !authStore.currentUserId.value) return
+  isFavorite.value = !isFavorite.value
+  await socialStore.toggleFavorite(currentRoute.value.id, authStore.currentUserId.value)
+  await Haptics.vibrate()
+}
+
+const handleShare = async () => {
+  if (!currentRoute.value) return
+  try {
+    await Share.share({
+      title: `Квест: ${currentRoute.value.title}`,
+      text: `Посмотри этот крутой маршрут в Artifactum: ${currentRoute.value.description}`,
+      url: window.location.href,
+      dialogTitle: 'Поделиться маршрутом'
+    })
+  } catch (e) {
+    console.error('Share failed', e)
+  }
+}
+
+const handleSubmitComment = async () => {
+  if (!commentText.value.trim() || !currentRoute.value || !authStore.currentUserId.value) return
+  
+  isSubmittingComment.value = true
+  try {
+    await socialStore.addComment(
+      currentRoute.value.id, 
+      authStore.currentUserId.value, 
+      commentText.value
+    )
+    commentText.value = ''
+    await Haptics.vibrate()
+  } catch (e) {
+    alert('Не удалось отправить комментарий')
+  } finally {
+    isSubmittingComment.value = false
+  }
+}
+
+onMounted(async () => {
+  if (currentRoute.value) {
+    await syncSocialStatus()
+  }
+})
+
+watch(() => currentRoute.value?.id, (newId) => {
+  if (newId) syncSocialStatus()
+})
 
 const startTimer = () => {
   startTime.value = Date.now()
@@ -449,8 +526,30 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <div class="route-info-card">
-        <h1>{{ currentRoute.title }}</h1>
+      <div class="route-info-section">
+        <div class="route-hero-meta">
+          <div class="category-tag" v-if="currentRoute.category">
+            {{ currentRoute.category }}
+          </div>
+          <h1 class="route-title">{{ currentRoute.title }}</h1>
+        </div>
+        
+        <div class="social-summary-bar">
+          <div class="social-action" :class="{ active: isLiked }" @click="handleToggleLike">
+            <Heart :size="24" :fill="isLiked ? 'var(--color-error)' : 'none'" />
+            <span>Лайк</span>
+          </div>
+          <div class="social-action" :class="{ active: isFavorite }" @click="handleToggleFavorite">
+            <Bookmark :size="24" :fill="isFavorite ? 'var(--color-primary)' : 'none'" />
+            <span>В избранное</span>
+          </div>
+          <div class="social-action" @click="handleShare">
+            <Share2 :size="24" />
+            <span>Поделиться</span>
+          </div>
+        </div>
+
+        <div class="route-stats">
         <p class="description">{{ currentRoute.description }}</p>
         
         <div class="detail-stats">
@@ -487,6 +586,73 @@ onUnmounted(() => {
             <CheckCircle :size="18" class="icon-success" />
             <span>Доступно оффлайн</span>
             <Trash2 :size="16" class="btn-remove" />
+          </div>
+        </div>
+
+        <div class="tags-list" v-if="currentRoute.tags?.length">
+          <div v-for="tag in currentRoute.tags" :key="tag" class="tag-item">
+            <Tag :size="12" />
+            <span>{{ tag }}</span>
+          </div>
+        </div>
+
+        <p class="route-description">{{ currentRoute.description }}</p>
+
+        <div class="comments-section">
+          <div class="section-title">
+            <MessageSquare :size="20" />
+            <h2>Комментарии ({{ socialStore.comments.value.length }})</h2>
+          </div>
+
+          <div class="comment-input-wrap">
+            <textarea 
+              v-model="commentText" 
+              placeholder="Поделитесь впечатлениями..." 
+              rows="2"
+              class="comment-textarea"
+            ></textarea>
+            <FpButton 
+              variant="primary" 
+              size="sm" 
+              class="send-comment-btn"
+              :disabled="!commentText.trim() || isSubmittingComment"
+              @click="handleSubmitComment"
+            >
+              <Send :size="18" />
+            </FpButton>
+          </div>
+
+          <div class="comments-list">
+            <div v-if="socialStore.isLoading.value" class="comments-loading">
+              <FpSpinner size="sm" />
+            </div>
+            <template v-else>
+              <div 
+                v-for="comment in socialStore.comments.value" 
+                :key="comment.id" 
+                class="comment-card"
+              >
+                <div class="comment-user">
+                  <div class="user-avatar" :style="comment.avatarUrl ? `background-image: url(${comment.avatarUrl})` : ''">
+                    {{ !comment.avatarUrl ? comment.userName[0] : '' }}
+                  </div>
+                  <div class="user-info">
+                    <span class="user-name">{{ comment.userName }}</span>
+                    <span class="comment-date">{{ new Date(comment.createdAt).toLocaleDateString() }}</span>
+                  </div>
+                  <button 
+                    v-if="comment.userId === authStore.currentUserId.value"
+                    class="delete-comment-btn"
+                    @click="socialStore.deleteComment(comment.id)"
+                  >
+                    <Trash2 :size="14" />
+                  </button>
+                </div>
+                <div class="comment-content">
+                  {{ comment.content }}
+                </div>
+              </div>
+            </template>
           </div>
         </div>
 
@@ -1190,6 +1356,204 @@ onUnmounted(() => {
   0% { border-color: var(--color-primary); box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 30%, transparent); }
   70% { border-color: var(--color-primary); box-shadow: 0 0 0 8px transparent; }
   100% { border-color: var(--color-primary); box-shadow: 0 0 0 0 transparent; }
+}
+
+.route-hero-meta {
+  margin-bottom: 8px;
+  
+  .category-tag {
+    display: inline-block;
+    padding: 4px 12px;
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    color: var(--color-primary);
+    border-radius: var(--radius-pill);
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+}
+
+.social-summary-bar {
+  display: flex;
+  justify-content: space-around;
+  padding: 16px 0;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 24px;
+}
+
+.social-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--color-text-secondary);
+
+  span {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  &.active {
+    color: var(--color-primary);
+    
+    svg {
+      transform: scale(1.1);
+      animation: heart-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+  }
+
+  &:active {
+    transform: scale(0.9);
+  }
+}
+
+@keyframes heart-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.4); }
+  100% { transform: scale(1.1); }
+}
+
+.tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.tag-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: var(--color-surface-hover);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.comments-section {
+  margin-top: 32px;
+  border-top: 1px solid var(--color-border);
+  padding-top: 24px;
+
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+    color: var(--color-text-primary);
+
+    h2 {
+      font-size: 18px;
+      margin: 0;
+    }
+  }
+}
+
+.comment-input-wrap {
+  display: flex;
+  gap: 12px;
+  background: var(--color-surface-hover);
+  padding: 12px;
+  border-radius: var(--radius-md);
+  margin-bottom: 24px;
+  border: 1px solid var(--color-border);
+
+  .comment-textarea {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    resize: none;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--color-text-primary);
+    
+    &::placeholder {
+      color: var(--color-text-tertiary);
+    }
+  }
+
+  .send-comment-btn {
+    align-self: flex-end;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+  }
+}
+
+.comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.comment-card {
+  padding: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.comment-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+
+  .user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 14px;
+    background-size: cover;
+  }
+
+  .user-info {
+    display: flex;
+    flex-direction: column;
+    
+    .user-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--color-text-primary);
+    }
+
+    .comment-date {
+      font-size: 11px;
+      color: var(--color-text-tertiary);
+    }
+  }
+
+  .delete-comment-btn {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+    padding: 4px;
+    
+    &:hover {
+      color: var(--color-error);
+    }
+  }
+}
+
+.comment-content {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
 }
 
 .offline-actions {

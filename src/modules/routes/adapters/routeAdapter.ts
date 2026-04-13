@@ -13,7 +13,10 @@ export const routeAdapter = {
             imageUrl: dto.image_url,
             images: dto.images || [],
             status: dto.status || 'draft',
-            isPublic: dto.is_public ?? true
+            isPublic: dto.is_public,
+            category: dto.category || 'Прочее',
+            tags: dto.tags || [],
+            likesCount: dto.likes_count || 0
         }
     },
 

@@ -11,6 +11,9 @@ export interface RouteDTO {
     images: readonly string[]
     status: 'draft' | 'pending' | 'published'
     is_public: boolean
+    category?: string
+    tags?: string[]
+    likes_count?: number
 }
 
 export interface Route {
@@ -25,6 +28,11 @@ export interface Route {
     images: readonly string[]
     status: 'draft' | 'pending' | 'published'
     isPublic: boolean
+    category: string
+    tags: string[]
+    likesCount: number
+    isLiked?: boolean
+    isFavorite?: boolean
 }
 
 export interface CheckpointDTO {
