@@ -809,31 +809,47 @@ onUnmounted(() => {
 
 .hud-route-title {
   text-align: center;
-  font-size: 1.3rem;
-  font-weight: 900;
+  font-size: 1.1rem;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   color: var(--color-white);
-  background: var(--color-primary);
-  color: var(--color-black) !important;
-  padding: 10px 24px;
-  border-radius: 0 0 22px 22px;
+  background: rgba(20, 22, 28, 0.9);
+  backdrop-filter: blur(15px);
+  padding: 10px 32px;
+  border-radius: 0 0 24px 24px;
   width: fit-content;
-  margin: -16px auto 16px;
-  box-shadow: 0 6px 20px rgba(255, 222, 0, 0.4);
+  margin: -16px auto 20px;
+  border: 1px solid rgba(255, 222, 0, 0.3);
+  border-top: none;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 20%;
+    right: 20%;
+    height: 2px;
+    background: var(--color-primary);
+    box-shadow: 0 0 10px var(--color-primary);
+  }
 }
 
 .hud-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(26, 28, 35, 0.95);
-  backdrop-filter: blur(20px);
-  padding: 16px 20px;
-  border-radius: 20px;
+  background: rgba(30, 32, 40, 0.85);
+  backdrop-filter: blur(25px);
+  padding: 12px 24px;
+  border-radius: 100px; // Круглые края для стиля «приборной панели»
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  margin-left: 10px;
+  margin-right: 10px;
 
   .hud-stat, .hud-timer {
     display: flex;
@@ -871,48 +887,27 @@ onUnmounted(() => {
 }
 
 .target-card-mini {
-  margin-top: 8px;
-  background: linear-gradient(135deg, rgba(45, 48, 60, 0.95), rgba(30, 32, 40, 0.95));
+  margin-top: 0;
+  background: rgba(35, 38, 48, 0.9);
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 22px;
-  padding: 18px 24px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-  
-  .target-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 20px;
-  }
-
-  .target-info-group {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  
-  .target-label-mini {
-    font-size: 11px;
-    font-weight: 800;
-    text-transform: uppercase;
-    color: var(--color-text-tertiary);
-    letter-spacing: 0.05em;
-  }
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: 16px 24px;
+  box-shadow: 0 15px 45px rgba(0, 0, 0, 0.5);
+  margin-left: 10px;
+  margin-right: 10px;
   
   .target-title-mini {
-    font-weight: 900;
+    font-weight: 800;
     color: var(--color-white);
-    font-size: 1.3rem;
-    line-height: 1.2;
+    font-size: 1.2rem;
   }
   
   .target-dist-mini {
     font-weight: 900;
     color: var(--color-primary);
-    font-size: 1.4rem;
+    font-size: 1.3rem;
     font-variant-numeric: tabular-nums;
-    text-shadow: 0 0 15px rgba(255, 222, 0, 0.3);
   }
 }
 
@@ -950,46 +945,49 @@ onUnmounted(() => {
   left: 16px;
   right: 16px;
   display: flex;
-  gap: 16px;
+  gap: 12px;
   z-index: 1020;
   pointer-events: auto;
 
+  .exit-action-btn, .ar-action-btn, .target-action-btn {
+    height: 60px;
+    border-radius: 18px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+    transition: all 0.2s ease;
+
+    &:active {
+      transform: scale(0.95);
+    }
+  }
+
   .exit-action-btn {
     flex: 1;
-    height: 56px;
-    font-weight: 800;
-    font-size: 16px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    color: var(--color-white) !important;
-    text-transform: uppercase;
+    background: rgba(45, 48, 60, 0.9) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff !important;
   }
 
   .ar-action-btn {
-    flex: 1;
-    height: 56px;
-    font-weight: 900;
-    font-size: 16px;
-    background: var(--color-primary);
-    color: var(--color-black) !important;
-    box-shadow: 0 8px 25px rgba(255, 222, 0, 0.4);
-    text-transform: uppercase;
+    flex: 1.2;
+    background: linear-gradient(135deg, #FFDE00, #FFC000) !important;
+    color: #000 !important;
+    border: none;
   }
 
   .target-action-btn {
-    flex: 2;
-    height: 56px;
-    font-weight: 900;
-    font-size: 18px;
-    background: var(--color-primary);
-    color: var(--color-black) !important;
-    box-shadow: 0 8px 25px rgba(255, 222, 0, 0.4);
-    text-transform: uppercase;
+    flex: 1.5;
+    background: linear-gradient(135deg, #FFDE00, #FFC000) !important;
+    color: #000 !important;
+    border: none;
     
     &:disabled {
-      background: #444;
-      color: #888 !important;
+      background: #333 !important;
+      color: #666 !important;
       box-shadow: none;
+      opacity: 0.5;
     }
   }
 }
