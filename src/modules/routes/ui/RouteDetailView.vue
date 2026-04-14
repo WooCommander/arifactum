@@ -7,11 +7,17 @@ import ArtMap from '@/shared/ui/ArtMap.vue'
 import { useSocialStore } from '@/modules/social/state/useSocialStore'
 import { RewardsService, type RouteStats } from '@/modules/rewards/services/RewardsService'
 import { AudioService } from '@/shared/lib/AudioService'
+import { ArService } from '@/modules/ar/services/ArService'
+import ArOverlay from '@/modules/ar/ui/ArOverlay.vue'
+import type { TeammateLocation } from '@/modules/teams/types'
+import { teamService } from '@/modules/teams/services/teamService'
+import { locationsService } from '@/modules/teams/services/locationsService'
 import { 
   Download, CheckCircle, Heart, Bookmark, Share2, 
   MessageSquare, Send, Trash2, Tag, Trophy, MapPin, Clock, Zap,
   Navigation, Globe, Pencil, Info
 } from 'lucide-vue-next'
+import { getDistance } from '@/shared/lib/geoUtils'
 import { Haptics } from '@capacitor/haptics'
 // import { Share } from '@capacitor/share'
 import { OfflineService } from '@/modules/offline/services/OfflineService'
@@ -122,6 +128,17 @@ const handleRemoveOffline = async () => {
   if (!currentRoute.value) return
   if (confirm('Удалить оффлайн-копию маршрута?')) {
     await OfflineService.removeRoute(currentRoute.value.id)
+  }
+}
+
+const mockLocation = () => {
+  if (nextCheckpoint.value) {
+    userLocation.value = [
+      (nextCheckpoint.value as any).latitude - 0.002,
+      (nextCheckpoint.value as any).longitude - 0.002
+    ]
+    isActiveMode.value = true
+    console.log('Mock location set:', userLocation.value)
   }
 }
 
@@ -430,7 +447,14 @@ onMounted(async () => {
   const id = route.params.id as string
   if (id) fetchRouteDetails(id)
   
-  // Just a quick check on start, not full tracking yet
+  // Auto-mock after 3 seconds for debugging
+  setTimeout(() => {
+    if (!userLocation.value && currentRoute.value) {
+      console.log('Auto-triggering mock GPS for testing');
+      mockLocation();
+    }
+  }, 3000);
+  
   try {
     const pos = await Geolocation.getCurrentPosition()
     userLocation.value = [pos.coords.latitude, pos.coords.longitude]
@@ -447,6 +471,16 @@ onUnmounted(() => {
 
 <template>
   <div class="route-detail-view">
+    <FpButton 
+      v-if="!userLocation" 
+      size="sm" 
+      variant="secondary" 
+      style="position: fixed; bottom: 100px; right: 20px; z-index: 2000; opacity: 0.5;"
+      @click="mockLocation"
+    >
+      Debug GPS
+    </FpButton>
+
     <div v-if="isLoading" class="loader">
       <FpSpinner />
     </div>

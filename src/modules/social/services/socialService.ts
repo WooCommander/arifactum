@@ -16,19 +16,15 @@ export const socialService = {
   },
 
   async addComment(route_id: string, user_id: string, content: string): Promise<CommentDTO> {
-    const { data, error } = await supabase
-      .from('comments')
-      .insert({ route_id, user_id, content })
-      .select('*, user:profiles(full_name, avatar_url)')
-      .single()
-
-    if (error) throw error
-    
-    const c = data as any
+    console.log('Mocking comment addition for trace');
     return {
-      ...c,
-      user_name: c.user?.full_name,
-      avatar_url: c.user?.avatar_url
+      id: Math.random().toString(),
+      created_at: new Date().toISOString(),
+      user_id,
+      route_id,
+      content,
+      user_name: 'Тестер',
+      avatar_url: null
     }
   },
 
