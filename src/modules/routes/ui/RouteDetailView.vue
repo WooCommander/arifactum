@@ -555,7 +555,7 @@ onUnmounted(() => {
 
         <div v-if="isAuthor" class="status-badge" :class="currentRoute.status">
           {{ currentRoute.status === 'draft' ? 'Черновик' : currentRoute.status === 'pending' ? 'На модерации' :
-          'Опубликован'
+            'Опубликован'
           }}
         </div>
       </div>

@@ -16,15 +16,32 @@ export const socialService = {
   },
 
   async addComment(route_id: string, user_id: string, content: string): Promise<CommentDTO> {
-    console.log('Mocking comment addition for trace');
+    const { data: commentData, error: commentError } = await supabase
+      .from('comments')
+      .insert({ route_id, user_id, content })
+      .select()
+      .single()
+
+    if (commentError) throw commentError
+    
+    // Пытаемся получить имя автора отдельным простым запросом, чтобы избежать ошибки джоина
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('full_name, avatar_url')
+      .eq('id', user_id)
+      .single()
+
+    const c = commentData as any
+    const p = profileData as any
+    
     return {
-      id: Math.random().toString(),
-      created_at: new Date().toISOString(),
-      user_id,
-      route_id,
-      content,
-      user_name: 'Тестер',
-      avatar_url: null
+      id: c.id,
+      created_at: c.created_at,
+      user_id: c.user_id,
+      route_id: c.route_id,
+      content: c.content,
+      user_name: p?.full_name || 'Аноним',
+      avatar_url: p?.avatar_url || null
     }
   },
 
