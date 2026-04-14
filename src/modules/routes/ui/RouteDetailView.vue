@@ -801,8 +801,8 @@ onUnmounted(() => {
 .navigation-layer {
   position: fixed;
   inset: 0;
-  top: env(safe-area-inset-top, 64px);
-  bottom: env(safe-area-inset-bottom, 61px);
+  top: 64px;
+  bottom: 84px;
   z-index: 900;
   background: transparent;
   pointer-events: none;
@@ -849,13 +849,14 @@ onUnmounted(() => {
   &.full-screen {
     position: fixed;
     inset: 0;
-    top: env(safe-area-inset-top, 64px);
-    bottom: env(safe-area-inset-bottom, 61px);
+    top: 64px;
+    bottom: 84px;
     height: auto;
     width: 100%;
     border-radius: 0;
     border: none;
     z-index: 50;
+    pointer-events: auto; // РАЗРЕШАЕМ КЛИКИ ПО КАРТЕ
   }
 }
 
@@ -863,6 +864,18 @@ onUnmounted(() => {
   position: fixed;
   inset: 0;
   z-index: 50;
+  pointer-events: auto; // РАЗРЕШАЕМ КЛИКИ НА УРОВНЕ СЕКЦИИ
+}
+
+.active-actions-bottom {
+  position: absolute;
+  bottom: 16px; // Отступ ОТ НИЗА навигационного слоя (который уже поднят на 84px)
+  left: 16px;
+  right: 16px;
+  display: flex;
+  gap: 12px;
+  z-index: 1020;
+  pointer-events: auto;
 }
 
 .checkpoints-list { display: flex; flex-direction: column; gap: 12px; }
