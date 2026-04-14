@@ -370,12 +370,13 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <!-- Comments Section -->
-            <div class="comments-section">
-              <div class="section-title">
-                <MessageSquare :size="20" />
-                <h2>Комментарии ({{ comments.length }})</h2>
-              </div>
+            <!-- Comments Section (Hidden in Active Mode) -->
+            <transition name="fade-slide">
+              <div v-if="!isActiveMode" class="comments-section">
+                <div class="section-title">
+                  <MessageSquare :size="20" />
+                  <h2>Комментарии ({{ comments.length }})</h2>
+                </div>
 
               <div class="comment-input-wrap">
                 <textarea 
@@ -408,8 +409,9 @@ onUnmounted(() => {
                   </div>
                   <div class="comment-content">{{ comment.content }}</div>
                 </div>
+                </div>
               </div>
-            </div>
+            </transition>
 
             <div v-if="isAuthor && isDraft" class="publish-block">
               <p>Ваш маршрут пока никто не видит кроме вас.</p>
@@ -645,14 +647,129 @@ onUnmounted(() => {
 }
 
 .comments-section {
-  margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--color-border);
-  .section-title { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; h2 { font-size: 18px; margin: 0; } }
+  margin-top: 40px;
+  padding: 24px;
+  background: rgba(var(--color-surface-rgb), 0.6);
+  backdrop-filter: blur(12px);
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: var(--shadow-2);
+
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    color: var(--color-text-primary);
+    
+    h2 { font-size: 18px; font-weight: 800; margin: 0; }
+    svg { color: var(--color-primary); }
+  }
 }
 
 .comment-input-wrap {
-  display: flex; gap: 12px; background: var(--color-surface-hover); padding: 12px;
-  border-radius: var(--radius-md); margin-bottom: 24px;
-  .comment-textarea { flex: 1; background: none; border: none; outline: none; resize: none; font-size: 14px; }
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-lg);
+  margin-bottom: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.3s ease;
+
+  &:focus-within {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 15px rgba(var(--color-primary-rgb), 0.2);
+  }
+
+  .comment-textarea {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    resize: none;
+    font-family: inherit;
+    font-size: 15px;
+    color: var(--color-text-primary);
+    padding: 4px 0;
+    
+    &::placeholder {
+      color: var(--color-text-tertiary);
+    }
+  }
+
+  .send-comment-btn {
+    align-self: flex-end;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    border-radius: var(--radius-pill);
+    background: var(--color-primary);
+    padding: 0;
+    
+    &:hover:not(:disabled) {
+      filter: brightness(1.1);
+      transform: scale(1.05);
+    }
+  }
+}
+
+.comment-card {
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-lg);
+  margin-bottom: 16px;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .comment-user {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 16px;
+      background-size: cover;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .user-info {
+      display: flex;
+      flex-direction: column;
+      
+      .user-name {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--color-text-primary);
+      }
+
+      .comment-date {
+        font-size: 11px;
+        color: var(--color-text-tertiary);
+        opacity: 0.7;
+      }
+    }
+  }
+
+  .comment-content {
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+  }
 }
 
 .active-hud {
