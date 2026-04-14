@@ -1689,6 +1689,17 @@ onUnmounted(() => {
   background: var(--color-background);
 }
 
+.route-detail-content {
+  padding: 0 20px;
+}
+
+.map-section {
+  margin: 0 -20px 24px;
+  height: 300px;
+  position: relative;
+  z-index: 1;
+}
+
 .victory-overlay {
   position: fixed;
   inset: 0;
