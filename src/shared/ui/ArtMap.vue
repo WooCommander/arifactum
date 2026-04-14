@@ -8,12 +8,11 @@ import { DbService } from '@/modules/offline/services/DbService'
  * Custom TileLayer that checks IndexedDB for cached tiles
  */
 const OfflineTileLayer = L.TileLayer.extend({
-  async createTile(coords: any, done: any) {
+  createTile(coords: any, done: any) {
     const tile = document.createElement('img')
     const tilePath = `${coords.z}/${coords.x}/${coords.y}`
 
-    try {
-      const blob = await DbService.get('tiles', tilePath)
+    DbService.get('tiles', tilePath).then(blob => {
       if (blob) {
         const url = URL.createObjectURL(blob)
         tile.src = url
@@ -22,20 +21,20 @@ const OfflineTileLayer = L.TileLayer.extend({
           URL.revokeObjectURL(url)
         }
       } else {
-        // Fallback to original implementation if not in cache
         const url = (this as any).getTileUrl(coords)
         tile.src = url
         tile.onload = () => done(null, tile)
       }
-    } catch (e) {
+    }).catch(() => {
       const url = (this as any).getTileUrl(coords)
       tile.src = url
       tile.onload = () => done(null, tile)
-    }
+    })
 
     tile.onerror = () => {
       const url = (this as any).getTileUrl(coords)
       tile.src = url
+      tile.onerror = null
       done(null, tile)
     }
 
