@@ -54,13 +54,15 @@ const isAuthor = computed(() => currentRoute.value?.authorId === authStore.curre
 const isDraft = computed(() => currentRoute.value?.status === 'draft')
 
 const mapPoints = computed(() => {
-  return currentCheckpoints.value.map(cp => ({
+  const points = currentCheckpoints.value.map(cp => ({
     id: cp.id,
     lat: cp.latitude,
     lng: cp.longitude,
     title: cp.title,
     order: cp.order
   }))
+  console.log('[RouteDetail] mapPoints count:', points.length)
+  return points
 })
 
 // Active Tracking State
@@ -285,39 +287,55 @@ onUnmounted(() => {
 
     <div v-else-if="currentRoute" class="route-detail-content">
       <FpPullToRefresh @refresh="fetchRouteDetails">
-        <!-- Active HUD Overlay -->
-        <transition name="fade-slide">
-          <div v-if="isActiveMode" class="active-hud">
-            <div class="hud-top">
-              <div class="hud-stat">
-                <span class="label">Точка</span>
-                <span class="value">{{ completedCheckpointIds.size + 1 }} / {{ currentCheckpoints.length }}</span>
-              </div>
-              
-              <div class="hud-controls">
-                <button class="hud-btn active">
-                  <Navigation :size="18" />
-                </button>
+        <Teleport to="body" :disabled="!isActiveMode">
+          <transition name="fade-slide">
+            <div v-if="isActiveMode" class="navigation-layer">
+              <div class="active-hud">
+                <div class="hud-top">
+                  <div class="hud-stat">
+                    <span class="label">ТОЧКА</span>
+                    <span class="value">{{ completedCheckpointIds.size + 1 }} / {{ currentCheckpoints.length }}</span>
+                  </div>
+                  
+                  <div class="hud-controls">
+                    <button class="hud-btn active" @click="isActiveMode = false">
+                      <X :size="18" />
+                    </button>
+                  </div>
+
+                  <div class="hud-timer">
+                    <span class="label">ВРЕМЯ</span>
+                    <span class="value">{{ elapsedTime }}</span>
+                  </div>
+                </div>
+
+                <div v-if="nextCheckpoint" class="target-card">
+                  <div class="target-header">
+                    <span class="target-badge">Текущая цель</span>
+                    <span class="target-distance" :class="{ near: isNearNext }">
+                       {{ formatDistance(distanceToNext) }}
+                    </span>
+                  </div>
+                  <h3>{{ nextCheckpoint.title }}</h3>
+                  <p>{{ nextCheckpoint.description }}</p>
+                </div>
               </div>
 
-              <div class="hud-timer">
-                <span class="label">Время</span>
-                <span class="value">{{ elapsedTime }}</span>
+              <div class="map-section active-map-section">
+                <ArtMap 
+                  class="route-map full-screen"
+                  :points="mapPoints" 
+                  :center="(userLocation as [number, number])"
+                  :interactive="false"
+                  :user-location="userLocation"
+                  :follow-user="true"
+                  :is-clustered="false"
+                  :target-location="nextCheckpointLocation"
+                />
               </div>
             </div>
-
-            <div v-if="nextCheckpoint" class="target-card">
-              <div class="target-header">
-                <span class="target-badge">Текущая цель</span>
-                <span class="target-distance" :class="{ near: isNearNext }">
-                   {{ formatDistance(distanceToNext) }}
-                </span>
-              </div>
-              <h3>{{ nextCheckpoint.title }}</h3>
-              <p>{{ nextCheckpoint.description }}</p>
-            </div>
-          </div>
-        </transition>
+          </transition>
+        </Teleport>
 
         <div v-if="!isActiveMode" class="route-hero">
           <div v-if="currentRoute.imageUrl" class="hero-image-wrap">
@@ -446,24 +464,20 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div class="map-section" :class="{ 'sticky-map': isActiveMode }">
-            <h2 v-if="!isActiveMode">Карта маршрута</h2>
+          <div v-if="!isActiveMode" class="map-section">
+            <h2>Карта маршрута</h2>
             <ArtMap 
-              v-if="mapPoints.length > 0" 
+              class="route-map"
               :points="mapPoints" 
-              :center="!isActiveMode ? undefined : (userLocation as [number, number])"
-              :interactive="!isActiveMode"
+              :interactive="true"
               :user-location="userLocation"
-              :follow-user="isActiveMode"
-              :is-clustered="!isActiveMode"
-              :target-location="nextCheckpointLocation"
-              class="inline-map"
+              :is-clustered="true"
             />
           </div>
 
           <div class="section">
             <h2>Точки маршрута</h2>
-            <div class="checkpoints-list">
+            <div v-if="!isActiveMode" class="checkpoints-list">
               <div 
                 v-for="cp in currentCheckpoints" 
                 :key="cp.id" 
@@ -836,8 +850,39 @@ onUnmounted(() => {
   p { font-size: 13px; color: var(--color-text-secondary); margin: 0; line-height: 1.4; }
 }
 
-.map-section { margin-top: 24px; h2 { font-size: 20px; font-weight: 800; margin-bottom: 16px; } }
-.inline-map { height: 200px; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--color-border); }
+.map-section { 
+  margin-top: 24px; 
+  h2 { font-size: 20px; font-weight: 800; margin-bottom: 16px; } 
+  
+  &.active-map-section {
+    margin: 0;
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+  }
+}
+
+.navigation-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: var(--color-background);
+}
+
+.route-map { 
+  height: 200px; 
+  border-radius: var(--radius-md); 
+  overflow: hidden; 
+  border: 1px solid var(--color-border); 
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &.full-screen {
+    height: 100vh;
+    width: 100%;
+    border-radius: 0;
+    border: none;
+  }
+}
 
 .checkpoints-list { display: flex; flex-direction: column; gap: 12px; }
 .checkpoint-item {
