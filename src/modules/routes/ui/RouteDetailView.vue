@@ -291,27 +291,29 @@ onUnmounted(() => {
           <transition name="fade-slide">
             <div v-if="isActiveMode" class="navigation-layer">
               <div class="active-hud">
+                <div class="hud-route-title">
+                  {{ currentRoute.title }}
+                </div>
+                
                 <div class="hud-top">
                   <div class="hud-stat">
-                    <span class="label">{{ currentRoute.title }}</span>
+                    <span class="label">ТОЧКА</span>
                     <span class="value">{{ completedCheckpointIds.size + 1 }} / {{ currentCheckpoints.length }}</span>
                   </div>
                   
-                  <div class="hud-controls">
-                    <button class="hud-btn active" @click="isActiveMode = false">
-                      <X :size="18" />
-                    </button>
-                  </div>
-
                   <div class="hud-timer">
                     <span class="label">ВРЕМЯ</span>
                     <span class="value">{{ elapsedTime }}</span>
                   </div>
-                  <div v-if="nextCheckpoint" class="target-card-mini">
-                    <div class="target-row">
+                </div>
+
+                <div v-if="nextCheckpoint" class="target-card-mini bottom">
+                  <div class="target-row">
+                    <div class="target-info-group">
+                      <span class="target-label-mini">Текущая цель</span>
                       <span class="target-title-mini">{{ nextCheckpoint.title }}</span>
-                      <span class="target-dist-mini">{{ formatDistance(distanceToNext) }}</span>
                     </div>
+                    <span class="target-dist-mini">{{ formatDistance(distanceToNext) }}</span>
                   </div>
                 </div>
               </div>
@@ -491,35 +493,10 @@ onUnmounted(() => {
         </div>
       </FpPullToRefresh>
 
-      <div class="bottom-action">
-        <template v-if="!isActiveMode">
-          <button class="start-btn" @click="isActiveMode = true">
-            <Navigation :size="20" /> Начать маршрут
-          </button>
-        </template>
-        <template v-else>
-          <div class="active-actions">
-            <button class="stop-btn" @click="isActiveMode = false">Выход</button>
-            <button 
-              v-if="isNearNext && !isArMode" 
-              class="btn-seek-ar" 
-              @click="startArSession"
-            >
-              <Navigation :size="20" />
-              <span>Искать</span>
-            </button>
-            <button 
-              class="check-btn" 
-              :disabled="!isNearNext || !nextCheckpoint || isArMode"
-              @click="handleCheckIn"
-            >
-              <span v-if="!isNearNext" class="distance-status">
-                До точки: {{ formatDistance(distanceToNext) }}
-              </span>
-              <span v-else>Забрать</span>
-            </button>
-          </div>
-        </template>
+      <div class="bottom-action" v-if="!isActiveMode">
+        <button class="start-btn" @click="isActiveMode = true">
+          <Navigation :size="20" /> Начать маршрут
+        </button>
       </div>
     </div>
 
@@ -778,6 +755,23 @@ onUnmounted(() => {
   & > * { pointer-events: auto; }
 }
 
+.hud-route-title {
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-primary);
+  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+  backdrop-filter: blur(12px);
+  padding: 6px 20px;
+  border-radius: 0 0 16px 16px;
+  border: 1px solid var(--color-border);
+  border-top: none;
+  width: fit-content;
+  margin: -16px auto 12px;
+}
+
 .hud-top {
   display: flex;
   justify-content: space-between;
@@ -788,82 +782,6 @@ onUnmounted(() => {
   border-radius: 16px;
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-3);
-  margin-bottom: 12px;
-
-  .hud-stat, .hud-timer {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    
-    .label {
-      font-size: 11px;
-      text-transform: uppercase;
-      color: var(--color-text-tertiary);
-      font-weight: 700;
-      letter-spacing: 0.5px;
-    }
-    
-    .value {
-      font-size: 14px;
-      font-weight: 800;
-      color: var(--color-primary);
-    }
-  }
-}
-
-.target-card {
-  background: rgba(var(--color-surface-rgb), 0.85);
-  backdrop-filter: blur(12px);
-  border-radius: var(--radius-lg);
-  padding: 16px 20px;
-  box-shadow: var(--shadow-3);
-  border: 1px solid var(--color-primary);
-  
-  .target-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-    
-    .target-badge {
-      font-size: 11px;
-      background: rgba(var(--color-primary-rgb), 0.1);
-      color: var(--color-primary);
-      padding: 4px 10px;
-      border-radius: var(--radius-sm);
-      font-weight: 700;
-    }
-    
-    .target-distance {
-      font-size: 14px;
-      font-weight: 800;
-      &.near { color: var(--color-success); animation: pulse 1s infinite; }
-    }
-  }
-  
-  h3 { font-size: 18px; font-weight: 800; margin: 0 0 4px; }
-  p { font-size: 13px; color: var(--color-text-secondary); margin: 0; line-height: 1.4; }
-}
-
-.map-section { 
-  margin-top: 24px; 
-  h2 { font-size: 20px; font-weight: 800; margin-bottom: 16px; } 
-  
-  &.active-map-section {
-    margin: 0;
-    position: fixed;
-    inset: 0;
-    z-index: 100;
-  }
-}
-
-.navigation-layer {
-  position: fixed;
-  inset: 0;
-  top: env(safe-area-inset-top, 64px);
-  bottom: env(safe-area-inset-bottom, 64px);
-  z-index: 900;
-  background: var(--color-background);
 }
 
 .active-hud {
@@ -874,10 +792,20 @@ onUnmounted(() => {
   padding: 16px;
   z-index: 1010;
   pointer-events: none;
-  
-  .hud-top, .target-card-mini {
+
+  & > * {
     pointer-events: auto;
   }
+}
+
+.navigation-layer {
+  position: fixed;
+  inset: 0;
+  top: env(safe-area-inset-top, 64px);
+  bottom: env(safe-area-inset-bottom, 61px);
+  z-index: 900;
+  background: transparent;
+  pointer-events: none;
 }
 
 .target-card-mini {
@@ -919,11 +847,22 @@ onUnmounted(() => {
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 
   &.full-screen {
-    height: 100vh;
+    position: fixed;
+    inset: 0;
+    top: env(safe-area-inset-top, 64px);
+    bottom: env(safe-area-inset-bottom, 61px);
+    height: auto;
     width: 100%;
     border-radius: 0;
     border: none;
+    z-index: 50;
   }
+}
+
+.active-map-section {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
 }
 
 .checkpoints-list { display: flex; flex-direction: column; gap: 12px; }
