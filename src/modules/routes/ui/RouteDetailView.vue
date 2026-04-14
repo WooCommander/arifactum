@@ -303,11 +303,13 @@ onUnmounted(() => {
                 
                 <div class="hud-top">
                   <div class="hud-stat">
+                    <MapPin :size="14" class="stat-icon" />
                     <span class="label">ТОЧКА</span>
                     <span class="value">{{ completedCheckpointIds.size + 1 }} / {{ currentCheckpoints.length }}</span>
                   </div>
                   
                   <div class="hud-timer">
+                    <Clock :size="14" class="stat-icon" />
                     <span class="label">ВРЕМЯ</span>
                     <span class="value">{{ elapsedTime }}</span>
                   </div>
@@ -792,42 +794,6 @@ onUnmounted(() => {
 }
 
 .active-hud {
-  position: fixed; top: 64px; left: 0; right: 0; z-index: 1010;
-  padding: 12px 16px 20px;
-  pointer-events: none; // Allow clicks through to map except for buttons
-  & > * { pointer-events: auto; }
-}
-
-.hud-route-title {
-  text-align: center;
-  font-size: 0.9rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-primary);
-  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
-  backdrop-filter: blur(12px);
-  padding: 6px 20px;
-  border-radius: 0 0 16px 16px;
-  border: 1px solid var(--color-border);
-  border-top: none;
-  width: fit-content;
-  margin: -16px auto 12px;
-}
-
-.hud-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: color-mix(in srgb, var(--color-surface) 85%, transparent);
-  backdrop-filter: blur(20px);
-  padding: 12px 16px;
-  border-radius: 16px;
-  border: 1px solid var(--color-border);
-  box-shadow: var(--shadow-3);
-}
-
-.active-hud {
   position: absolute;
   top: 0;
   left: 0;
@@ -838,6 +804,59 @@ onUnmounted(() => {
 
   & > * {
     pointer-events: auto;
+  }
+}
+
+.hud-route-title {
+  text-align: center;
+  font-size: 1.3rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-white);
+  background: var(--color-primary);
+  color: var(--color-black) !important;
+  padding: 10px 24px;
+  border-radius: 0 0 22px 22px;
+  width: fit-content;
+  margin: -16px auto 16px;
+  box-shadow: 0 6px 20px rgba(255, 222, 0, 0.4);
+}
+
+.hud-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(26, 28, 35, 0.95);
+  backdrop-filter: blur(20px);
+  padding: 16px 20px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  margin-bottom: 12px;
+
+  .hud-stat, .hud-timer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .stat-icon {
+      color: var(--color-primary);
+    }
+
+    .label {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--color-text-tertiary);
+      text-transform: uppercase;
+    }
+
+    .value {
+      font-size: 17px;
+      font-weight: 900;
+      color: var(--color-white);
+      font-variant-numeric: tabular-nums;
+    }
   }
 }
 
@@ -852,33 +871,48 @@ onUnmounted(() => {
 }
 
 .target-card-mini {
-  margin-top: 12px;
-  background: color-mix(in srgb, var(--color-surface) 90%, transparent);
+  margin-top: 8px;
+  background: linear-gradient(135deg, rgba(45, 48, 60, 0.95), rgba(30, 32, 40, 0.95));
   backdrop-filter: blur(20px);
-  border: 1px solid var(--color-border);
-  border-radius: 20px;
-  padding: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 22px;
+  padding: 18px 24px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
   
   .target-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 16px;
+    gap: 20px;
+  }
+
+  .target-info-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  
+  .target-label-mini {
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: var(--color-text-tertiary);
+    letter-spacing: 0.05em;
   }
   
   .target-title-mini {
-    font-weight: 800;
-    color: var(--color-text-primary);
-    font-size: 1.1rem;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    font-weight: 900;
+    color: var(--color-white);
+    font-size: 1.3rem;
+    line-height: 1.2;
   }
   
   .target-dist-mini {
     font-weight: 900;
     color: var(--color-primary);
-    font-size: 1.2rem;
+    font-size: 1.4rem;
     font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 15px rgba(255, 222, 0, 0.3);
   }
 }
 
@@ -912,13 +946,52 @@ onUnmounted(() => {
 
 .active-actions-bottom {
   position: absolute;
-  bottom: 16px; // Отступ ОТ НИЗА навигационного слоя (который уже поднят на 84px)
+  bottom: 24px;
   left: 16px;
   right: 16px;
   display: flex;
-  gap: 12px;
+  gap: 16px;
   z-index: 1020;
   pointer-events: auto;
+
+  .exit-action-btn {
+    flex: 1;
+    height: 56px;
+    font-weight: 800;
+    font-size: 16px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    color: var(--color-white) !important;
+    text-transform: uppercase;
+  }
+
+  .ar-action-btn {
+    flex: 1;
+    height: 56px;
+    font-weight: 900;
+    font-size: 16px;
+    background: var(--color-primary);
+    color: var(--color-black) !important;
+    box-shadow: 0 8px 25px rgba(255, 222, 0, 0.4);
+    text-transform: uppercase;
+  }
+
+  .target-action-btn {
+    flex: 2;
+    height: 56px;
+    font-weight: 900;
+    font-size: 18px;
+    background: var(--color-primary);
+    color: var(--color-black) !important;
+    box-shadow: 0 8px 25px rgba(255, 222, 0, 0.4);
+    text-transform: uppercase;
+    
+    &:disabled {
+      background: #444;
+      color: #888 !important;
+      box-shadow: none;
+    }
+  }
 }
 
 .checkpoints-list { display: flex; flex-direction: column; gap: 12px; }
