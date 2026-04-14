@@ -44,41 +44,15 @@ class AuthService {
     }
 
     async getUserStats() {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return null
-
-        // Parallel fetch for speed
-        const [products, prices, verStats] = await Promise.all([
-            supabase.from('products').select('id', { count: 'exact', head: true }).eq('created_by', user.id),
-            supabase.from('prices').select('id', { count: 'exact', head: true }).eq('created_by', user.id),
-            supabase.from('price_verifications')
-                .select('vote, prices!inner(created_by)')
-                .eq('prices.created_by', user.id)
-        ])
-
-        const verificationPoints = (verStats.data || []).reduce((acc: number, v: any) =>
-            acc + (v.vote === 'confirm' ? 1 : -1), 0)
-
-        // Level Calculation
-        const totalPoints = (products.count || 0) * 20 + (prices.count || 0) * 5 + verificationPoints
-        let level = 1
-        let title = 'Новичок'
-        let nextLevelThreshold = 100
-
-        if (totalPoints >= 2500) { level = 5; title = 'Хранитель'; nextLevelThreshold = 5000 }
-        else if (totalPoints >= 1000) { level = 4; title = 'Мастер'; nextLevelThreshold = 2500 }
-        else if (totalPoints >= 500) { level = 3; title = 'Эксперт'; nextLevelThreshold = 1000 }
-        else if (totalPoints >= 100) { level = 2; title = 'Исследователь'; nextLevelThreshold = 500 }
-
         return {
-            joinedDate: new Date(user.created_at || Date.now()),
-            reputation: totalPoints,
-            pricesSubmitted: prices.count || 0,
-            productsCreated: products.count || 0,
-            topCategory: 'Бакалея', // Placeholder
-            level,
-            levelTitle: title,
-            nextLevelThreshold
+            joinedDate: new Date(),
+            reputation: 0,
+            pricesSubmitted: 0,
+            productsCreated: 0,
+            topCategory: 'Artifactum',
+            level: 1,
+            levelTitle: 'Новичок',
+            nextLevelThreshold: 100
         }
     }
 
@@ -91,17 +65,22 @@ class AuthService {
     }> {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return { display_name: null, first_name: null, last_name: null, gender: null, birth_date: null }
-        const { data } = await supabase
-            .from('profiles')
-            .select('display_name, first_name, last_name, gender, birth_date')
-            .eq('id', user.id)
-            .single()
-        return {
-            display_name: data?.display_name ?? null,
-            first_name:   data?.first_name ?? null,
-            last_name:    data?.last_name ?? null,
-            gender:       data?.gender ?? null,
-            birth_date:   data?.birth_date ?? null,
+        
+        try {
+            const { data } = await supabase
+                .from('profiles')
+                .select('display_name')
+                .eq('id', user.id)
+                .single()
+            return {
+                display_name: data?.display_name ?? null,
+                first_name: null,
+                last_name: null,
+                gender: null,
+                birth_date: null
+            }
+        } catch (e) {
+            return { display_name: null, first_name: null, last_name: null, gender: null, birth_date: null }
         }
     }
 
@@ -136,45 +115,8 @@ class AuthService {
         })
     }
 
-    async getUserActivity(limit: number = 5) {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return []
-
-        const { data } = await supabase
-            .from('prices')
-            .select(`
-                id,
-                price,
-                created_at,
-                product_id,
-                products (name, unit)
-            `)
-            .eq('created_by', user.id)
-            .order('created_at', { ascending: false })
-            .limit(limit)
-
-        // Type the response to avoid 'any'
-        interface PriceActivity {
-            id: string
-            price: number
-            created_at: string
-            product_id: string
-            products: { name: string; unit: string } | null
-        }
-
-        const typedData = data as unknown as PriceActivity[]
-
-        return typedData?.map(item => ({
-            id: item.id,
-            productId: item.product_id,
-            action: 'Добавил цену',
-            item: item.products?.name || 'Товар',
-            price: item.price,
-            details: `${item.price.toLocaleString()} ₽`,
-            time: new Date(item.created_at).toLocaleDateString('ru-RU'),
-            fullDate: item.created_at,
-            icon: '🏷️'
-        })) || []
+    async getUserActivity(_limit: number = 5) {
+        return []
     }
 }
 

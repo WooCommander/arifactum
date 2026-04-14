@@ -11,21 +11,8 @@ export interface CommentDTO {
 }
 
 export const socialService = {
-  async getComments(route_id: string): Promise<CommentDTO[]> {
-    const { data, error } = await supabase
-      .from('comments')
-      .select('*, user:profiles(full_name, avatar_url)')
-      .eq('route_id', route_id)
-      .order('created_at', { ascending: false })
-
-    if (error) throw error
-    
-    // Flatten join result for easier adapter usage
-    return (data || []).map((c: any) => ({
-      ...c,
-      user_name: c.user?.full_name,
-      avatar_url: c.user?.avatar_url
-    }))
+  async getComments(_route_id: string): Promise<CommentDTO[]> {
+    return []
   },
 
   async addComment(route_id: string, user_id: string, content: string): Promise<CommentDTO> {

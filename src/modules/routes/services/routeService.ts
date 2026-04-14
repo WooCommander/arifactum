@@ -62,6 +62,7 @@ export const routeService = {
             .eq('route_id', routeId)
             .order('order_index', { ascending: true })
 
+        console.log(`Supabase checkpoints result for ${routeId}:`, { data, error })
         if (error) throw error
         return data || []
     },

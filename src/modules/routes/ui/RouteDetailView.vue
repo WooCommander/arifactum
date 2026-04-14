@@ -5,7 +5,10 @@ import { useRoutesStore } from '../state/useRoutesStore'
 import { FpSpinner, FpBackButton, FpConfirmationModal } from '@/design-system'
 import ArtMap from '@/shared/ui/ArtMap.vue'
 import { authStore } from '@/modules/auth/store/authStore'
-import { MapPin, Info, Navigation, Trash2, Send, Globe, Pencil } from 'lucide-vue-next'
+import { 
+  MapPin, Info, Navigation, Trash2, Send, Globe, Pencil,
+  Download, CheckCircle, Heart, Bookmark, Share2, MessageSquare, Tag 
+} from 'lucide-vue-next'
 import { Geolocation, type WatchPositionCallback } from '@capacitor/geolocation'
 import { locationsService, type TeammateLocation } from '@/modules/teams/services/locationsService'
 import { teamService } from '@/modules/teams/services/teamService'
@@ -17,9 +20,8 @@ import ArOverlay from '@/modules/ar/ui/ArOverlay.vue'
 import { OfflineService } from '@/modules/offline/services/OfflineService'
 import { TileCache } from '@/modules/offline/lib/TileCache'
 import { useSocialStore } from '@/modules/social/state/useSocialStore'
-import { Download, CheckCircle, Heart, Bookmark, Share2, MessageSquare, Send, Trash2, Tag } from 'lucide-vue-next'
 import { Haptics } from '@capacitor/haptics'
-import { Share } from '@capacitor/share'
+// import { Share } from '@capacitor/share'
 
 const route = useRoute()
 const router = useRouter()
@@ -160,6 +162,8 @@ const handleToggleFavorite = async () => {
 
 const handleShare = async () => {
   if (!currentRoute.value) return
+  alert('Шеринг в этой версии не поддерживается')
+  /*
   try {
     await Share.share({
       title: `Квест: ${currentRoute.value.title}`,
@@ -170,6 +174,7 @@ const handleShare = async () => {
   } catch (e) {
     console.error('Share failed', e)
   }
+  */
 }
 
 const handleSubmitComment = async () => {
@@ -416,12 +421,21 @@ const nextCheckpointLocation = computed<[number, number] | null>(() => {
 // Lifecycle
 onMounted(async () => {
   const id = route.params.id as string
-  if (id) fetchRouteDetails(id)
+  console.log('RouteDetailView mounted, id:', id)
+  if (id) {
+    try {
+      await fetchRouteDetails(id)
+      console.log('Route details fetched, points:', currentCheckpoints.value.length)
+    } catch (e) {
+      console.error('Fetch route details failed:', e)
+    }
+  }
   
   // Just a quick check on start, not full tracking yet
   try {
     const pos = await Geolocation.getCurrentPosition()
     userLocation.value = [pos.coords.latitude, pos.coords.longitude]
+    console.log('Initial user location:', userLocation.value)
   } catch (e) {
     console.warn('Initial geolocation fails')
   }
@@ -680,13 +694,14 @@ onUnmounted(() => {
           @confirm="handlePublish"
         />
       </div>
+    </div>
 
       <div class="map-section" :class="{ 'sticky-map': isActiveMode }">
         <h2 v-if="!isActiveMode">Карта маршрута</h2>
         <ArtMap 
           v-if="mapPoints.length > 0" 
           :points="mapPoints" 
-          :center="!isActiveMode ? undefined : (userLocation as [number, number])"
+          :center="!isActiveMode ? undefined : userLocation"
           :interactive="!isActiveMode"
           :user-location="userLocation"
           :follow-user="isActiveMode"
@@ -761,7 +776,7 @@ onUnmounted(() => {
                   Ожидание сигнала GPS...
                 </template>
               </span>
-              <span v-else>Забрать ({{ (nextCheckpoint as any)?.order || '-' }})</span>
+              <span v-else>Забрать ({{ nextCheckpoint?.order || '-' }})</span>
             </button>
           </div>
         </template>
