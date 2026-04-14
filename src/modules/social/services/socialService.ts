@@ -16,20 +16,33 @@ export const socialService = {
   },
 
   async addComment(route_id: string, user_id: string, content: string): Promise<CommentDTO> {
+    const payload = { route_id, user_id, content }
+    console.log('DEBUG: Sending comment payload:', payload)
+
     const { data, error } = await supabase
       .from('comments')
-      .insert({ route_id, user_id, content })
-      .select('*, user:profiles(full_name, avatar_url)')
+      .insert(payload)
+      .select()
       .single()
 
-    if (error) throw error
-    
-    const c = data as any
-    return {
-      ...c,
-      user_name: c.user?.full_name,
-      avatar_url: c.user?.avatar_url
+    if (error) {
+      console.error('CRITICAL: Comment save error:', error)
+      // Try fallback just in case
+      console.warn('Attempting fallback with author_id...')
+      const { data: altData, error: altError } = await supabase
+        .from('comments')
+        .insert({ route_id, author_id: user_id, content })
+        .select()
+        .single()
+      
+      if (altError) {
+        console.error('CRITICAL: Fallback also failed:', altError)
+        throw altError
+      }
+      return altData as CommentDTO
     }
+    
+    return data as CommentDTO
   },
 
   async deleteComment(id: string): Promise<void> {

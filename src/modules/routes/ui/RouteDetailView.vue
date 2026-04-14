@@ -564,7 +564,7 @@ onUnmounted(() => {
         </div>
 
         <div class="route-stats">
-        <p class="description">{{ currentRoute.description }}</p>
+        <p v-if="!isActiveMode" class="description">{{ currentRoute.description }}</p>
         
         <div class="detail-stats">
           <div class="stat">
