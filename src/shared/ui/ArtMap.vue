@@ -8,30 +8,30 @@ import { DbService } from '@/modules/offline/services/DbService'
  * Custom TileLayer that checks IndexedDB for cached tiles
  */
 const OfflineTileLayer = L.TileLayer.extend({
-  async createTile(coords: any, done: any) {
+  createTile(coords: any, done: any) {
     const tile = document.createElement('img')
     const tilePath = `${coords.z}/${coords.x}/${coords.y}`
 
-    try {
-      const blob = await DbService.get('tiles', tilePath)
-      if (blob) {
-        const url = URL.createObjectURL(blob)
-        tile.src = url
-        tile.onload = () => {
-          done(null, tile)
-          URL.revokeObjectURL(url)
+    DbService.get('tiles', tilePath)
+      .then((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob)
+          tile.src = url
+          tile.onload = () => {
+            done(null, tile)
+            URL.revokeObjectURL(url)
+          }
+        } else {
+          const url = (this as any).getTileUrl(coords)
+          tile.src = url
+          tile.onload = () => done(null, tile)
         }
-      } else {
-        // Fallback to original implementation if not in cache
+      })
+      .catch(() => {
         const url = (this as any).getTileUrl(coords)
         tile.src = url
         tile.onload = () => done(null, tile)
-      }
-    } catch (e) {
-      const url = (this as any).getTileUrl(coords)
-      tile.src = url
-      tile.onload = () => done(null, tile)
-    }
+      })
 
     tile.onerror = () => {
       const url = (this as any).getTileUrl(coords)

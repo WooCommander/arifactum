@@ -44,36 +44,15 @@ class AuthService {
     }
 
     async getUserStats() {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return null
-
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('xp, level, total_distance_meters, routes_completed_count, total_seconds_spent')
-            .eq('id', user.id)
-            .single()
-
-        const xp = profile?.xp || 0
-        const level = profile?.level || 1
-        const nextLevelXP = level * 1000
-        
-        let title = 'Новичок'
-        if (level >= 10) title = 'Артефактор'
-        else if (level >= 7) title = 'Легенда'
-        else if (level >= 5) title = 'Хранитель'
-        else if (level >= 3) title = 'Исследователь'
-
         return {
-            joinedDate: new Date(user.created_at || Date.now()),
-            xp,
-            level,
-            levelTitle: title,
-            nextLevelThreshold: nextLevelXP,
-            totalDistance: (profile?.total_distance_meters || 0) / 1000, // km
-            routesCompleted: profile?.routes_completed_count || 0,
-            avgSpeed: (profile?.total_seconds_spent || 0) > 0 
-                ? ((profile?.total_distance_meters || 0) / 1000) / ((profile?.total_seconds_spent || 0) / 3600)
-                : 0
+            joinedDate: new Date(),
+            xp: 0,
+            level: 1,
+            levelTitle: 'Новичок',
+            nextLevelThreshold: 1000,
+            totalDistance: 0,
+            routesCompleted: 0,
+            avgSpeed: 0
         }
     }
 
@@ -84,20 +63,7 @@ class AuthService {
         gender: string | null
         birth_date: string | null
     }> {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return { display_name: null, first_name: null, last_name: null, gender: null, birth_date: null }
-        const { data } = await supabase
-            .from('profiles')
-            .select('display_name, first_name, last_name, gender, birth_date')
-            .eq('id', user.id)
-            .single()
-        return {
-            display_name: data?.display_name ?? null,
-            first_name:   data?.first_name ?? null,
-            last_name:    data?.last_name ?? null,
-            gender:       data?.gender ?? null,
-            birth_date:   data?.birth_date ?? null,
-        }
+        return { display_name: 'Пользователь', first_name: null, last_name: null, gender: null, birth_date: null }
     }
 
     async saveProfile(updates: {

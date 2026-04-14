@@ -13,7 +13,11 @@ import {
   Navigation, Globe, Pencil, Info
 } from 'lucide-vue-next'
 import { Haptics } from '@capacitor/haptics'
-import { Share } from '@capacitor/share'
+// import { Share } from '@capacitor/share'
+import { OfflineService } from '@/modules/offline/services/OfflineService'
+import { TileCache } from '@/modules/offline/lib/TileCache'
+
+import { authStore } from '@/modules/auth/store/authStore'
 
 const route = useRoute()
 const router = useRouter()
@@ -124,6 +128,8 @@ const handleRemoveOffline = async () => {
 // Social Logic
 const socialStore = useSocialStore()
 const isLiked = ref(false)
+const isFavorite = ref(false)
+const commentText = ref('')
 const isSubmittingComment = ref(false)
 const showVictoryModal = ref(false)
 const routeStats = ref<RouteStats | null>(null)
@@ -153,6 +159,8 @@ const handleToggleFavorite = async () => {
 }
 
 const handleShare = async () => {
+  console.log('Share is disabled in this version')
+  /* 
   if (!currentRoute.value) return
   try {
     await Share.share({
@@ -164,6 +172,7 @@ const handleShare = async () => {
   } catch (e) {
     console.error('Share failed', e)
   }
+  */
 }
 
 const handleSubmitComment = async () => {
@@ -553,7 +562,8 @@ onUnmounted(() => {
         </div>
 
         <div class="route-stats">
-        <p class="description">{{ currentRoute.description }}</p>
+          <p v-if="!isActiveMode" class="description">{{ currentRoute.description }}</p>
+        </div>
         
         <div class="detail-stats">
           <div class="stat">
@@ -777,6 +787,47 @@ onUnmounted(() => {
       @capture="onArtifactCapture" 
       @close="stopArSession"
     />
+    <!-- Victory Modal -->
+    <Teleport to="body">
+      <div v-if="showVictoryModal" class="victory-overlay">
+        <FpCard class="victory-modal">
+          <div class="victory-header">
+            <Trophy :size="64" class="trophy-icon" />
+            <h2>Маршрут пройден!</h2>
+            <p>Вы настоящий исследователь Артефактума</p>
+          </div>
+
+          <div class="victory-stats" v-if="routeStats">
+            <div class="v-stat">
+              <MapPin :size="20" />
+              <div class="v-val">{{ routeStats.distanceMeters }} м</div>
+              <div class="v-label">Дистанция</div>
+            </div>
+            <div class="v-stat">
+              <Clock :size="20" />
+              <div class="v-val">{{ elapsedTime }}</div>
+              <div class="v-label">Время</div>
+            </div>
+            <div class="v-stat">
+              <Zap :size="20" />
+              <div class="v-val">{{ routeStats.avgSpeedKmh }} км/ч</div>
+              <div class="v-label">Скорость</div>
+            </div>
+          </div>
+
+          <div class="xp-gain" v-if="routeStats">
+            <span class="xp-val">+{{ routeStats.xpGained }} XP</span>
+            <div class="level-gained" v-if="routeStats.levelGained">
+              НОВЫЙ УРОВЕНЬ!
+            </div>
+          </div>
+
+          <FpButton variant="primary" class="final-btn" @click="router.push('/routes')">
+            К списку маршрутов
+          </FpButton>
+        </FpCard>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -1597,53 +1648,7 @@ onUnmounted(() => {
   }
 }
 
-    </FpPullToRefresh>
 
-    <!-- Victory Modal -->
-    <Teleport to="body">
-      <div v-if="showVictoryModal" class="victory-overlay">
-        <FpCard class="victory-modal">
-          <div class="victory-header">
-            <Trophy :size="64" class="trophy-icon" />
-            <h2>Маршрут пройден!</h2>
-            <p>Вы настоящий исследователь Артефактума</p>
-          </div>
-
-          <div class="victory-stats" v-if="routeStats">
-            <div class="v-stat">
-              <MapPin :size="20" />
-              <div class="v-val">{{ routeStats.distanceMeters }} м</div>
-              <div class="v-label">Дистанция</div>
-            </div>
-            <div class="v-stat">
-              <Clock :size="20" />
-              <div class="v-val">{{ elapsedTime }}</div>
-              <div class="v-label">Время</div>
-            </div>
-            <div class="v-stat">
-              <Zap :size="20" />
-              <div class="v-val">{{ routeStats.avgSpeedKmh }} км/ч</div>
-              <div class="v-label">Скорость</div>
-            </div>
-          </div>
-
-          <div class="xp-gain" v-if="routeStats">
-            <span class="xp-val">+{{ routeStats.xpGained }} XP</span>
-            <div class="level-gained" v-if="routeStats.levelGained">
-              НОВЫЙ УРОВЕНЬ!
-            </div>
-          </div>
-
-          <FpButton variant="primary" class="final-btn" @click="router.push('/routes')">
-            К списку маршрутов
-          </FpButton>
-        </FpCard>
-      </div>
-    </Teleport>
-  </div>
-</template>
-
-<style scoped lang="scss">
 .route-detail-view {
   min-height: 100vh;
   padding-bottom: 80px;
