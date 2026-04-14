@@ -93,6 +93,12 @@ const distanceToNext = computed(() => {
 
 const isNearNext = computed(() => distanceToNext.value < 50) // 50 meters
 
+const isLastPoint = computed(() => {
+  if (!nextCheckpoint.value || !currentCheckpoints.value.length) return false
+  const activeCheckpoints = [...currentCheckpoints.value].sort((a, b) => a.order - b.order)
+  return nextCheckpoint.value.id === activeCheckpoints[activeCheckpoints.length - 1].id
+})
+
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371e3
   const φ1 = lat1 * Math.PI/180
@@ -307,7 +313,7 @@ onUnmounted(() => {
                   </div>
                 </div>
 
-                <div v-if="nextCheckpoint" class="target-card-mini bottom">
+                <div v-if="nextCheckpoint" class="target-card-mini">
                   <div class="target-row">
                     <div class="target-info-group">
                       <span class="target-label-mini">Текущая цель</span>
@@ -316,6 +322,43 @@ onUnmounted(() => {
                     <span class="target-dist-mini">{{ formatDistance(distanceToNext) }}</span>
                   </div>
                 </div>
+              </div>
+
+              <div class="map-section active-map-section">
+                <ArtMap 
+                  class="route-map full-screen"
+                  :points="mapPoints" 
+                  :center="(userLocation as [number, number])"
+                  :interactive="true"
+                  :user-location="userLocation"
+                  :follow-user="true"
+                  :is-clustered="false"
+                  :target-location="nextCheckpointLocation"
+                />
+              </div>
+
+              <div class="active-actions-bottom">
+                <FpButton variant="glass" class="exit-action-btn" @click="isActiveMode = false">
+                  Выход
+                </FpButton>
+
+                <FpButton 
+                  v-if="isNearNext && !isArMode" 
+                  variant="primary" 
+                  class="ar-action-btn" 
+                  @click="startArSession"
+                >
+                  <Navigation :size="20" /> AR
+                </FpButton>
+
+                <FpButton 
+                  variant="primary" 
+                  class="target-action-btn"
+                  :disabled="!isNearNext || !nextCheckpoint || isArMode" 
+                  @click="handleCheckIn"
+                >
+                  {{ isLastPoint ? 'Финиш' : 'Забрать' }}
+                </FpButton>
               </div>
 
               <div class="map-section active-map-section">
