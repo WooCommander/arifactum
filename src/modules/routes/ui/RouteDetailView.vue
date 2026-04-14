@@ -120,6 +120,15 @@ async function fetchRouteDetails() {
       isLiked.value = status.isLiked
       isFavorite.value = status.isFavorite
     }
+
+    // GPS SIMULATION FOR TESTING (v2.12.0 Stability Patch)
+    setTimeout(() => {
+      console.log('[GPS Mock] Adjusting location to trigger navigation...')
+      if (currentCheckpoints.value.length > 0) {
+        const first = currentCheckpoints.value[0]
+        userLocation.value = [first.latitude - 0.001, first.longitude - 0.001]
+      }
+    }, 3000)
   } catch (e: any) {
     console.error('Failed to load route details', e)
   }
@@ -337,7 +346,7 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <div class="route-info-section">
+        <div v-if="!isActiveMode" class="route-info-section">
           <div class="route-hero-meta">
             <div class="category-tag" v-if="currentRoute.category">
               {{ currentRoute.category }}
@@ -673,19 +682,76 @@ onUnmounted(() => {
 
 .active-hud {
   position: fixed; top: 64px; left: 0; right: 0; z-index: 1010;
-  background: linear-gradient(to bottom, var(--color-background) 80%, transparent); padding: 12px 20px 30px;
+  padding: 12px 16px 20px;
+  pointer-events: none; // Allow clicks through to map except for buttons
+  & > * { pointer-events: auto; }
 }
 
 .hud-top {
-  display: flex; justify-content: space-between; align-items: center;
-  background: var(--color-surface); padding: 10px 16px; border-radius: var(--radius-pill);
-  box-shadow: var(--shadow-2); border: 1px solid var(--color-border); margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(var(--color-surface-rgb), 0.85);
+  backdrop-filter: blur(12px);
+  padding: 12px 20px;
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 12px;
+
+  .hud-stat, .hud-timer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    
+    .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: var(--color-text-tertiary);
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    
+    .value {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--color-primary);
+    }
+  }
 }
 
 .target-card {
-  background: var(--color-surface); border-radius: var(--radius-lg); padding: 16px;
-  box-shadow: var(--shadow-3); border: 1px solid var(--color-primary);
-  .target-distance.near { color: var(--color-success); animation: pulse 1s infinite; }
+  background: rgba(var(--color-surface-rgb), 0.85);
+  backdrop-filter: blur(12px);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  box-shadow: var(--shadow-3);
+  border: 1px solid var(--color-primary);
+  
+  .target-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    
+    .target-badge {
+      font-size: 11px;
+      background: rgba(var(--color-primary-rgb), 0.1);
+      color: var(--color-primary);
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      font-weight: 700;
+    }
+    
+    .target-distance {
+      font-size: 14px;
+      font-weight: 800;
+      &.near { color: var(--color-success); animation: pulse 1s infinite; }
+    }
+  }
+  
+  h3 { font-size: 18px; font-weight: 800; margin: 0 0 4px; }
+  p { font-size: 13px; color: var(--color-text-secondary); margin: 0; line-height: 1.4; }
 }
 
 .map-section { margin-top: 24px; h2 { font-size: 20px; font-weight: 800; margin-bottom: 16px; } }

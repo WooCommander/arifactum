@@ -10,6 +10,7 @@ import { DbService } from '@/modules/offline/services/DbService'
 const OfflineTileLayer = L.TileLayer.extend({
   createTile(coords: any, done: any) {
     const tile = document.createElement('img')
+    tile.className = 'leaflet-tile'
     const tilePath = `${coords.z}/${coords.x}/${coords.y}`
 
     DbService.get('tiles', tilePath).then(blob => {
@@ -202,12 +203,14 @@ const updateUserMarker = () => {
 
 const updateNavigationLine = () => {
   if (!map.value || !props.userLocation || !props.targetLocation) {
+    console.log('[ArtMap] Navigation Update (Skipped):', { map: !!map.value, user: props.userLocation, target: props.targetLocation })
     if (navLine.value) navLine.value.remove()
     if (navArrow.value) navArrow.value.remove()
     navLine.value = null
     navArrow.value = null
     return
   }
+  console.log('[ArtMap] Navigation Update (Drawing):', { user: props.userLocation, target: props.targetLocation })
 
   const latlngs: L.LatLngExpression[] = [
     props.userLocation,
