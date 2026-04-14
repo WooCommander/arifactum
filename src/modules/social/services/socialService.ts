@@ -25,7 +25,7 @@ export const socialService = {
     
     // Подгружаем профили отдельно
     const userIds = [...new Set(data.map((c: any) => c.user_id))]
-    const { data: profiles, error: pError } = await supabase
+    const { data: profiles, error: _pError } = await supabase
       .from('profiles')
       .select('id, display_name, avatar_url')
       .in('id', userIds)
