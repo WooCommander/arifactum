@@ -323,11 +323,13 @@ const initializeLeafletMap = () => {
     ]
 
     map.value = L.map(mapContainer.value, {
-      zoomControl: false,
-      attributionControl: false,
-      scrollWheelZoom: props.interactive,
-      dragging: props.interactive,
-      touchZoom: props.interactive
+        zoomControl: true,
+        attributionControl: false,
+        dragging: props.interactive,
+        touchZoom: props.interactive,
+        scrollWheelZoom: props.interactive,
+        doubleClickZoom: props.interactive,
+        boxZoom: false
     }).setView(initialCenter as [number, number], props.zoom)
 
     // @ts-ignore

@@ -293,7 +293,7 @@ onUnmounted(() => {
               <div class="active-hud">
                 <div class="hud-top">
                   <div class="hud-stat">
-                    <span class="label">ТОЧКА</span>
+                    <span class="label">{{ currentRoute.title }}</span>
                     <span class="value">{{ completedCheckpointIds.size + 1 }} / {{ currentCheckpoints.length }}</span>
                   </div>
                   
@@ -307,17 +307,12 @@ onUnmounted(() => {
                     <span class="label">ВРЕМЯ</span>
                     <span class="value">{{ elapsedTime }}</span>
                   </div>
-                </div>
-
-                <div v-if="nextCheckpoint" class="target-card">
-                  <div class="target-header">
-                    <span class="target-badge">Текущая цель</span>
-                    <span class="target-distance" :class="{ near: isNearNext }">
-                       {{ formatDistance(distanceToNext) }}
-                    </span>
+                  <div v-if="nextCheckpoint" class="target-card-mini">
+                    <div class="target-row">
+                      <span class="target-title-mini">{{ nextCheckpoint.title }}</span>
+                      <span class="target-dist-mini">{{ formatDistance(distanceToNext) }}</span>
+                    </div>
                   </div>
-                  <h3>{{ nextCheckpoint.title }}</h3>
-                  <p>{{ nextCheckpoint.description }}</p>
                 </div>
               </div>
 
@@ -326,7 +321,7 @@ onUnmounted(() => {
                   class="route-map full-screen"
                   :points="mapPoints" 
                   :center="(userLocation as [number, number])"
-                  :interactive="false"
+                  :interactive="true"
                   :user-location="userLocation"
                   :follow-user="true"
                   :is-clustered="false"
@@ -787,12 +782,12 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(var(--color-surface-rgb), 0.85);
-  backdrop-filter: blur(12px);
-  padding: 12px 20px;
-  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--color-surface) 85%, transparent);
+  backdrop-filter: blur(20px);
+  padding: 12px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--color-border);
   box-shadow: var(--shadow-3);
-  border: 1px solid rgba(255, 255, 255, 0.1);
   margin-bottom: 12px;
 
   .hud-stat, .hud-timer {
@@ -865,8 +860,55 @@ onUnmounted(() => {
 .navigation-layer {
   position: fixed;
   inset: 0;
-  z-index: 2000;
+  top: env(safe-area-inset-top, 64px);
+  bottom: env(safe-area-inset-bottom, 64px);
+  z-index: 900;
   background: var(--color-background);
+}
+
+.active-hud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 16px;
+  z-index: 1010;
+  pointer-events: none;
+  
+  .hud-top, .target-card-mini {
+    pointer-events: auto;
+  }
+}
+
+.target-card-mini {
+  margin-top: 12px;
+  background: color-mix(in srgb, var(--color-surface) 90%, transparent);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  padding: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  
+  .target-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+  }
+  
+  .target-title-mini {
+    font-weight: 800;
+    color: var(--color-text-primary);
+    font-size: 1.1rem;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  }
+  
+  .target-dist-mini {
+    font-weight: 900;
+    color: var(--color-primary);
+    font-size: 1.2rem;
+    font-variant-numeric: tabular-nums;
+  }
 }
 
 .route-map { 
