@@ -420,20 +420,22 @@ onUnmounted(() => {
                 </FpButton>
               </div>
 
-              <div class="comments-list">
-                <div v-for="comment in comments" :key="comment.id" class="comment-card">
-                  <div class="comment-user">
-                    <div class="user-avatar" :style="comment.avatarUrl ? `background-image: url(${comment.avatarUrl})` : ''">
-                      {{ !comment.avatarUrl ? (comment.userName?.[0] || '?') : '' }}
+              <transition name="fade-slide">
+                <div class="comments-list">
+                  <div v-for="comment in comments" :key="comment.id" class="comment-card">
+                    <div class="comment-user">
+                      <div class="user-avatar" :style="comment.avatarUrl ? `background-image: url(${comment.avatarUrl})` : ''">
+                        {{ !comment.avatarUrl ? (comment.userName?.[0] || '?') : '' }}
+                      </div>
+                      <div class="user-info">
+                        <span class="user-name">{{ comment.userName }}</span>
+                        <span class="comment-date">{{ new Date(comment.createdAt).toLocaleDateString() }}</span>
+                      </div>
                     </div>
-                    <div class="user-info">
-                      <span class="user-name">{{ comment.userName }}</span>
-                      <span class="comment-date">{{ new Date(comment.createdAt).toLocaleDateString() }}</span>
-                    </div>
+                    <div class="comment-content">{{ comment.content }}</div>
                   </div>
-                  <div class="comment-content">{{ comment.content }}</div>
                 </div>
-              </div>
+              </transition>
             </div>
 
             <div v-if="isAuthor && isDraft" class="publish-block">
@@ -670,14 +672,94 @@ onUnmounted(() => {
 }
 
 .comments-section {
-  margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--color-border);
-  .section-title { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; h2 { font-size: 18px; margin: 0; } }
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    h2 { font-size: 20px; font-weight: 800; margin: 0; }
+  }
 }
 
 .comment-input-wrap {
-  display: flex; gap: 12px; background: var(--color-surface-hover); padding: 12px;
-  border-radius: var(--radius-md); margin-bottom: 24px;
-  .comment-textarea { flex: 1; background: none; border: none; outline: none; resize: none; font-size: 14px; }
+  display: flex;
+  gap: 12px;
+  background: rgba(var(--color-surface-rgb), 0.5);
+  backdrop-filter: blur(8px);
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  margin-bottom: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: var(--shadow-inner);
+
+  .comment-textarea {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    resize: none;
+    font-size: 15px;
+    color: var(--color-text-primary);
+    &::placeholder { color: var(--color-text-tertiary); }
+  }
+}
+
+.comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.comment-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.05);
+    transform: translateY(-2px);
+  }
+
+  .comment-user {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--color-primary);
+      background-size: cover;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 800;
+      font-size: 14px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .user-info {
+      display: flex;
+      flex-direction: column;
+      .user-name { font-weight: 700; font-size: 14px; color: var(--color-text-primary); }
+      .comment-date { font-size: 11px; color: var(--color-text-tertiary); }
+    }
+  }
+
+  .comment-content {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--color-text-secondary);
+  }
 }
 
 .active-hud {

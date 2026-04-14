@@ -221,7 +221,7 @@ const updateNavigationLine = () => {
     navLine.value.setLatLngs(latlngs)
   } else {
     navLine.value = L.polyline(latlngs, {
-      color: 'var(--color-primary)',
+      color: '#4285F4',
       weight: 3,
       dashArray: '8, 12',
       opacity: 0.6,
