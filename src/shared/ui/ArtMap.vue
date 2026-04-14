@@ -323,7 +323,7 @@ const initializeLeafletMap = () => {
   ]
 
   map.value = L.map(mapContainer.value, {
-    zoomControl: true,
+    zoomControl: false,
     attributionControl: false,
     dragging: props.interactive,
     touchZoom: props.interactive,
