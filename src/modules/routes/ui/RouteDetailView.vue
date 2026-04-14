@@ -12,8 +12,8 @@ import ArOverlay from '@/modules/ar/ui/ArOverlay.vue'
 import type { TeammateLocation } from '@/modules/teams/types'
 import { teamService } from '@/modules/teams/services/teamService'
 import { locationsService } from '@/modules/teams/services/locationsService'
-import { 
-  Download, CheckCircle, Heart, Bookmark, Share2, 
+import {
+  Download, CheckCircle, Heart, Bookmark, Share2,
   MessageSquare, Send, Trash2, Tag, Trophy, MapPin, Clock, Zap,
   Navigation, Globe, Pencil, Info
 } from 'lucide-vue-next'
@@ -27,12 +27,12 @@ import { authStore } from '@/modules/auth/store/authStore'
 
 const route = useRoute()
 const router = useRouter()
-const { 
-  currentRoute, 
-  currentCheckpoints, 
-  isLoading, 
-  error, 
-  fetchRouteDetails, 
+const {
+  currentRoute,
+  currentCheckpoints,
+  isLoading,
+  error,
+  fetchRouteDetails,
   clearCurrentRoute,
   deleteRoute,
   publishRoute
@@ -107,16 +107,16 @@ const isRouteDownloaded = computed(() => OfflineService.isDownloaded(currentRout
 
 const handleDownload = async () => {
   if (!currentRoute.value || isDownloading.value) return
-  
+
   isDownloading.value = true
   try {
     // 1. Download Data & Images
     await OfflineService.downloadRoute(currentRoute.value, currentCheckpoints.value)
-    
+
     // 2. Warm up Map Cache
     const points: [number, number][] = currentCheckpoints.value.map(cp => [cp.latitude, cp.longitude])
     await TileCache.cacheArea(points, 500)
-    
+
   } catch (e: any) {
     alert(e.message || 'Ошибка при скачивании')
   } finally {
@@ -194,12 +194,12 @@ const handleShare = async () => {
 
 const handleSubmitComment = async () => {
   if (!commentText.value.trim() || !currentRoute.value || !authStore.currentUserId.value) return
-  
+
   isSubmittingComment.value = true
   try {
     await socialStore.addComment(
-      currentRoute.value.id, 
-      authStore.currentUserId.value, 
+      currentRoute.value.id,
+      authStore.currentUserId.value,
       commentText.value
     )
     commentText.value = ''
@@ -229,7 +229,7 @@ const startTimer = () => {
     const h = Math.floor(diff / 3600)
     const m = Math.floor((diff % 3600) / 60)
     const s = diff % 60
-    
+
     if (h > 0) {
       elapsedTime.value = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
     } else {
@@ -245,7 +245,7 @@ const stopTimer = () => {
   // but for a new start, startTimer will reset it via startTime.
 }
 
-const mapPoints = computed(() => 
+const mapPoints = computed(() =>
   currentCheckpoints.value.map((cp: any, index: number) => ({
     lat: cp.latitude,
     lng: cp.longitude,
@@ -284,36 +284,36 @@ const isNearNext = computed(() => {
 const handleCheckIn = async () => {
   if (nextCheckpoint.value) {
     completedCheckpointIds.value.add(nextCheckpoint.value.id)
-    
+
     if (completedCheckpointIds.value.size === currentCheckpoints.value.length) {
-       stopTimer()
-       confetti({
-         particleCount: 150,
-         spread: 70,
-         origin: { y: 0.6 },
-         colors: ['#FFD700', '#1E90FF', '#ffffff']
-       })
-       
-       if (currentRoute.value) {
-         try {
-           const duration = Math.floor((Date.now() - startTime.value!) / 1000)
-           routeStats.value = await RewardsService.finishRoute(
-             authStore.currentUserId.value!, 
-             currentRoute.value.id, 
-             duration, 
-             currentCheckpoints.value
-           )
-           showVictoryModal.value = true
-           await Haptics.heavy()
-         } catch (e) {
-           console.error('Failed to reward completion:', e)
-         }
-       }
-       
-       setTimeout(() => {
-         stopTracking()
-         isActiveMode.value = false
-       }, 2000)
+      stopTimer()
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#FFD700', '#1E90FF', '#ffffff']
+      })
+
+      if (currentRoute.value) {
+        try {
+          const duration = Math.floor((Date.now() - startTime.value!) / 1000)
+          routeStats.value = await RewardsService.finishRoute(
+            authStore.currentUserId.value!,
+            currentRoute.value.id,
+            duration,
+            currentCheckpoints.value
+          )
+          showVictoryModal.value = true
+          await Haptics.heavy()
+        } catch (e) {
+          console.error('Failed to reward completion:', e)
+        }
+      }
+
+      setTimeout(() => {
+        stopTracking()
+        isActiveMode.value = false
+      }, 2000)
     } else {
       await AudioService.playSuccess()
       await Haptics.vibrate()
@@ -334,7 +334,7 @@ const startTracking = async () => {
     // Initial position
     const pos = await Geolocation.getCurrentPosition()
     userLocation.value = [pos.coords.latitude, pos.coords.longitude]
-    
+
     // Attempt to find user's team for sharing
     try {
       const myTeams = await teamService.getMyTeams()
@@ -386,15 +386,15 @@ const startLocationSharing = async () => {
     alert('Необходимо состоять в команде и иметь активный GPS для шеринга')
     return
   }
-  
+
   isSharingLocation.value = true
-  
+
   // 1. Start periodic updates (every 7 seconds)
   locationUpdateInterval = setInterval(() => {
     if (userLocation.value && currentTeamId.value) {
       locationsService.updateMyLocation(
-        currentTeamId.value, 
-        userLocation.value[0], 
+        currentTeamId.value,
+        userLocation.value[0],
         userLocation.value[1]
       )
     }
@@ -446,7 +446,7 @@ const nextCheckpointLocation = computed<[number, number] | null>(() => {
 onMounted(async () => {
   const id = route.params.id as string
   if (id) fetchRouteDetails(id)
-  
+
   // Auto-mock after 3 seconds for debugging
   setTimeout(() => {
     if (!userLocation.value && currentRoute.value) {
@@ -454,7 +454,7 @@ onMounted(async () => {
       mockLocation();
     }
   }, 3000);
-  
+
   try {
     const pos = await Geolocation.getCurrentPosition()
     userLocation.value = [pos.coords.latitude, pos.coords.longitude]
@@ -471,13 +471,8 @@ onUnmounted(() => {
 
 <template>
   <div class="route-detail-view">
-    <FpButton 
-      v-if="!userLocation" 
-      size="sm" 
-      variant="secondary" 
-      style="position: fixed; bottom: 100px; right: 20px; z-index: 2000; opacity: 0.5;"
-      @click="mockLocation"
-    >
+    <FpButton v-if="!userLocation" size="sm" variant="secondary"
+      style="position: fixed; bottom: 100px; right: 20px; z-index: 2000; opacity: 0.5;" @click="mockLocation">
       Debug GPS
     </FpButton>
 
@@ -499,24 +494,15 @@ onUnmounted(() => {
               <span class="label">Точка</span>
               <span class="value">{{ completedCheckpointIds.size + 1 }} / {{ currentCheckpoints.length }}</span>
             </div>
-            
+
             <div class="hud-controls">
-              <button 
-                class="hud-btn" 
-                :class="{ active: isSharingLocation }"
-                @click="toggleLocationSharing"
-                title="Поделиться локацией"
-              >
+              <button class="hud-btn" :class="{ active: isSharingLocation }" @click="toggleLocationSharing"
+                title="Поделиться локацией">
                 <MapPin v-if="isSharingLocation" :size="18" />
                 <Navigation v-else :size="18" style="opacity: 0.6;" />
               </button>
-              <button 
-                v-if="isSharingLocation"
-                class="hud-btn" 
-                :class="{ active: showTeammateNames }"
-                @click="showTeammateNames = !showTeammateNames"
-                title="Имена игроков"
-              >
+              <button v-if="isSharingLocation" class="hud-btn" :class="{ active: showTeammateNames }"
+                @click="showTeammateNames = !showTeammateNames" title="Имена игроков">
                 <span class="btn-text">ID</span>
               </button>
             </div>
@@ -531,12 +517,12 @@ onUnmounted(() => {
             <div class="target-header">
               <span class="target-badge">Текущая цель</span>
               <span class="target-distance" :class="{ near: isNearNext }">
-                 <template v-if="userLocation">
-                   {{ formatDistance(distanceToNext) }}
-                 </template>
-                 <template v-else>
-                   <span class="gps-waiting">Ожидание GPS...</span>
-                 </template>
+                <template v-if="userLocation">
+                  {{ formatDistance(distanceToNext) }}
+                </template>
+                <template v-else>
+                  <span class="gps-waiting">Ожидание GPS...</span>
+                </template>
               </span>
             </div>
             <h3>{{ nextCheckpoint.title }}</h3>
@@ -553,22 +539,24 @@ onUnmounted(() => {
         <div v-else class="hero-placeholder">
           <MapPin :size="64" />
         </div>
-        
+
         <div class="hero-header">
-           <FpBackButton @click="router.back()" class="back-btn" />
-           
-           <div v-if="isAuthor" class="author-actions">
-             <button class="action-icon edit" @click="router.push(`/edit-route/${currentRoute.id}`)">
-               <Pencil :size="20" />
-             </button>
-             <button class="action-icon delete" @click="showDeleteConfirm = true">
-               <Trash2 :size="20" />
-             </button>
-           </div>
+          <FpBackButton @click="router.back()" class="back-btn" />
+
+          <div v-if="isAuthor" class="author-actions">
+            <button class="action-icon edit" @click="router.push(`/edit-route/${currentRoute.id}`)">
+              <Pencil :size="20" />
+            </button>
+            <button class="action-icon delete" @click="showDeleteConfirm = true">
+              <Trash2 :size="20" />
+            </button>
+          </div>
         </div>
 
         <div v-if="isAuthor" class="status-badge" :class="currentRoute.status">
-          {{ currentRoute.status === 'draft' ? 'Черновик' : currentRoute.status === 'pending' ? 'На модерации' : 'Опубликован' }}
+          {{ currentRoute.status === 'draft' ? 'Черновик' : currentRoute.status === 'pending' ? 'На модерации' :
+          'Опубликован'
+          }}
         </div>
       </div>
 
@@ -579,7 +567,7 @@ onUnmounted(() => {
           </div>
           <h1 class="route-title">{{ currentRoute.title }}</h1>
         </div>
-        
+
         <div class="social-summary-bar">
           <div class="social-action" :class="{ active: isLiked }" @click="handleToggleLike">
             <Heart :size="24" :fill="isLiked ? 'var(--color-error)' : 'none'" />
@@ -598,7 +586,7 @@ onUnmounted(() => {
         <div class="route-stats">
           <p v-if="!isActiveMode" class="description">{{ currentRoute.description }}</p>
         </div>
-        
+
         <div class="detail-stats">
           <div class="stat">
             <MapPin :size="20" />
@@ -616,19 +604,13 @@ onUnmounted(() => {
 
         <!-- Offline Download Button -->
         <div class="offline-actions" v-if="!isAuthor">
-          <FpButton 
-            v-if="!isRouteDownloaded" 
-            variant="outline" 
-            size="sm" 
-            class="download-btn"
-            :disabled="isDownloading"
-            @click="handleDownload"
-          >
+          <FpButton v-if="!isRouteDownloaded" variant="outline" size="sm" class="download-btn" :disabled="isDownloading"
+            @click="handleDownload">
             <FpSpinner v-if="isDownloading" size="sm" />
             <Download v-else :size="18" />
             <span>{{ isDownloading ? 'Скачивание...' : 'Скачать для оффлайн' }}</span>
           </FpButton>
-          
+
           <div v-else class="download-status" @click="handleRemoveOffline">
             <CheckCircle :size="18" class="icon-success" />
             <span>Доступно оффлайн</span>
@@ -643,7 +625,7 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <p class="route-description">{{ currentRoute.description }}</p>
+        <!-- <p class="route-description">{{ currentRoute.description }}</p> -->
 
         <div class="comments-section">
           <div class="section-title">
@@ -652,19 +634,10 @@ onUnmounted(() => {
           </div>
 
           <div class="comment-input-wrap">
-            <textarea 
-              v-model="commentText" 
-              placeholder="Поделитесь впечатлениями..." 
-              rows="2"
-              class="comment-textarea"
-            ></textarea>
-            <FpButton 
-              variant="primary" 
-              size="sm" 
-              class="send-comment-btn"
-              :disabled="!commentText.trim() || isSubmittingComment"
-              @click="handleSubmitComment"
-            >
+            <textarea v-model="commentText" placeholder="Поделитесь впечатлениями..." rows="2"
+              class="comment-textarea"></textarea>
+            <FpButton variant="primary" size="sm" class="send-comment-btn"
+              :disabled="!commentText.trim() || isSubmittingComment" @click="handleSubmitComment">
               <Send :size="18" />
             </FpButton>
           </div>
@@ -674,24 +647,18 @@ onUnmounted(() => {
               <FpSpinner size="sm" />
             </div>
             <template v-else>
-              <div 
-                v-for="comment in socialStore.comments.value" 
-                :key="comment.id" 
-                class="comment-card"
-              >
+              <div v-for="comment in socialStore.comments.value" :key="comment.id" class="comment-card">
                 <div class="comment-user">
-                  <div class="user-avatar" :style="comment.avatarUrl ? `background-image: url(${comment.avatarUrl})` : ''">
+                  <div class="user-avatar"
+                    :style="comment.avatarUrl ? `background-image: url(${comment.avatarUrl})` : ''">
                     {{ !comment.avatarUrl ? comment.userName[0] : '' }}
                   </div>
                   <div class="user-info">
                     <span class="user-name">{{ comment.userName }}</span>
                     <span class="comment-date">{{ new Date(comment.createdAt).toLocaleDateString() }}</span>
                   </div>
-                  <button 
-                    v-if="comment.userId === authStore.currentUserId.value"
-                    class="delete-comment-btn"
-                    @click="socialStore.deleteComment(comment.id)"
-                  >
+                  <button v-if="comment.userId === authStore.currentUserId.value" class="delete-comment-btn"
+                    @click="socialStore.deleteComment(comment.id)">
                     <Trash2 :size="14" />
                   </button>
                 </div>
@@ -710,55 +677,34 @@ onUnmounted(() => {
           </button>
         </div>
 
-        <FpConfirmationModal 
-          v-model:visible="showDeleteConfirm"
-          title="Удаление маршрута"
-          message="Вы уверены, что хотите безвозвратно удалить этот маршрут?"
-          confirmText="Удалить"
-          variant="danger"
-          @confirm="handleDelete"
-        />
+        <FpConfirmationModal v-model:visible="showDeleteConfirm" title="Удаление маршрута"
+          message="Вы уверены, что хотите безвозвратно удалить этот маршрут?" confirmText="Удалить" variant="danger"
+          @confirm="handleDelete" />
 
-        <FpConfirmationModal 
-          v-model:visible="showPublishConfirm"
-          title="Публикация"
+        <FpConfirmationModal v-model:visible="showPublishConfirm" title="Публикация"
           message="Отправить маршрут на модерацию? После этого вы не сможете его редактировать до проверки."
-          confirmText="Отправить"
-          @confirm="handlePublish"
-        />
+          confirmText="Отправить" @confirm="handlePublish" />
       </div>
 
       <div class="map-section" :class="{ 'sticky-map': isActiveMode }">
         <h2 v-if="!isActiveMode">Карта маршрута</h2>
-        <ArtMap 
-          v-if="mapPoints.length > 0" 
-          :points="mapPoints" 
-          :center="!isActiveMode ? undefined : (userLocation as [number, number])"
-          :interactive="!isActiveMode"
-          :user-location="userLocation"
-          :follow-user="isActiveMode"
-          :is-clustered="!isActiveMode"
-          :target-location="nextCheckpointLocation"
-          :teammates="teammateLocations"
-          :show-names="showTeammateNames"
-          class="inline-map"
-        />
+        <ArtMap v-if="mapPoints.length > 0" :points="mapPoints"
+          :center="!isActiveMode ? undefined : (userLocation as [number, number])" :interactive="!isActiveMode"
+          :user-location="userLocation" :follow-user="isActiveMode" :is-clustered="!isActiveMode"
+          :target-location="nextCheckpointLocation" :teammates="teammateLocations" :show-names="showTeammateNames"
+          class="inline-map" />
       </div>
 
       <div class="section">
         <h2>Точки маршрута</h2>
         <div class="checkpoints-list">
-          <div 
-            v-for="cp in currentCheckpoints" 
-            :key="cp.id" 
-            class="checkpoint-item"
-            :class="{ completed: completedCheckpointIds.has(cp.id), next: nextCheckpoint?.id === cp.id }"
-          >
+          <div v-for="cp in currentCheckpoints" :key="cp.id" class="checkpoint-item"
+            :class="{ completed: completedCheckpointIds.has(cp.id), next: nextCheckpoint?.id === cp.id }">
             <div class="checkpoint-number">{{ cp.order }}</div>
             <div class="checkpoint-body">
               <h3>{{ cp.title }}</h3>
               <p>{{ cp.description }}</p>
-              
+
               <div v-if="(cp.images && cp.images.length > 0) || cp.photoUrl" class="checkpoint-gallery">
                 <div v-if="cp.photoUrl" class="gallery-thumb main-thumb">
                   <img :src="cp.photoUrl" alt="Main point image" />
@@ -786,20 +732,12 @@ onUnmounted(() => {
             </button>
 
             <!-- New AR Seek Button -->
-            <button 
-              v-if="isNearNext && !isArMode" 
-              class="btn-seek-ar" 
-              @click="startArSession"
-            >
+            <button v-if="isNearNext && !isArMode" class="btn-seek-ar" @click="startArSession">
               <Navigation :size="20" />
               <span>Искать</span>
             </button>
 
-            <button 
-              class="check-btn" 
-              :disabled="!isNearNext || !nextCheckpoint || isArMode"
-              @click="handleCheckIn"
-            >
+            <button class="check-btn" :disabled="!isNearNext || !nextCheckpoint || isArMode" @click="handleCheckIn">
               <span v-if="!isNearNext" class="distance-status">
                 <template v-if="userLocation">
                   До точки: {{ formatDistance(distanceToNext) }}
@@ -816,11 +754,7 @@ onUnmounted(() => {
     </div>
 
     <!-- AR Overlay -->
-    <ArOverlay 
-      v-if="isArMode" 
-      @capture="onArtifactCapture" 
-      @close="stopArSession"
-    />
+    <ArOverlay v-if="isArMode" @capture="onArtifactCapture" @close="stopArSession" />
     <!-- Victory Modal -->
     <Teleport to="body">
       <div v-if="showVictoryModal" class="victory-overlay">
@@ -871,7 +805,7 @@ onUnmounted(() => {
   background: var(--color-background);
   padding-bottom: calc(160px + env(safe-area-inset-bottom));
   transition: padding 0.3s ease;
-  
+
   &.active-mode {
     padding-bottom: calc(240px + env(safe-area-inset-bottom));
   }
@@ -879,7 +813,7 @@ onUnmounted(() => {
 
 .map-section {
   padding: 32px 20px 0;
-  
+
   &.sticky-map {
     position: sticky;
     top: 64px; // Below top nav
@@ -888,7 +822,7 @@ onUnmounted(() => {
     margin: 0;
     height: 30vh;
     box-shadow: var(--shadow-2);
-    
+
     .inline-map {
       height: 100%;
       border-radius: 0;
@@ -918,7 +852,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  
+
   &::before {
     content: '';
     width: 6px;
@@ -930,9 +864,17 @@ onUnmounted(() => {
 }
 
 @keyframes blink {
-  0% { opacity: 1; }
-  50% { opacity: 0.3; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.3;
+  }
+
+  100% {
+    opacity: 1;
+  }
 }
 
 .hud-top {
@@ -970,27 +912,30 @@ onUnmounted(() => {
   border: none;
   cursor: pointer;
   transition: all 0.2s ease;
-  
+
   &.active {
     background: var(--color-primary);
     color: white;
   }
-  
+
   .btn-text {
     font-size: 10px;
     font-weight: 800;
   }
 }
 
-.hud-stat, .hud-timer {
+.hud-stat,
+.hud-timer {
   display: flex;
   flex-direction: column;
+
   .label {
     font-size: 10px;
     text-transform: uppercase;
     color: var(--color-text-tertiary);
     font-weight: 800;
   }
+
   .value {
     font-size: 16px;
     font-weight: 800;
@@ -1006,14 +951,14 @@ onUnmounted(() => {
   box-shadow: var(--shadow-3);
   border: 1px solid var(--color-primary);
   pointer-events: auto;
-  
+
   .target-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 8px;
   }
-  
+
   .target-badge {
     font-size: 10px;
     padding: 2px 8px;
@@ -1023,24 +968,24 @@ onUnmounted(() => {
     font-weight: 800;
     text-transform: uppercase;
   }
-  
+
   .target-distance {
     font-size: 18px;
     font-weight: 900;
     color: var(--color-text-primary);
-    
+
     &.near {
       color: var(--color-success);
       animation: pulse 1.5s infinite;
     }
   }
-  
+
   h3 {
     margin: 0 0 4px;
     font-size: 18px;
     font-weight: 800;
   }
-  
+
   p {
     margin: 0;
     font-size: 14px;
@@ -1054,16 +999,30 @@ onUnmounted(() => {
 }
 
 @keyframes pulse {
-  0% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.05); opacity: 0.8; }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 /* Transitions */
-.fade-slide-enter-active, .fade-slide-leave-active {
+.fade-slide-enter-active,
+.fade-slide-leave-active {
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.fade-slide-enter-from, .fade-slide-leave-to {
+
+.fade-slide-enter-from,
+.fade-slide-leave-to {
   opacity: 0;
   transform: translateY(-20px);
 }
@@ -1077,17 +1036,17 @@ onUnmounted(() => {
     width: 100%;
     height: 100%;
     position: relative;
-    
+
     img {
       width: 100%;
       height: 100%;
       object-fit: cover;
     }
-    
+
     .hero-overlay {
       position: absolute;
       inset: 0;
-      background: linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, transparent 40%, rgba(0,0,0,0.4) 100%);
+      background: linear-gradient(to bottom, rgba(0, 0, 0, 0.3) 0%, transparent 40%, rgba(0, 0, 0, 0.4) 100%);
     }
   }
 
@@ -1129,7 +1088,7 @@ onUnmounted(() => {
   justify-content: center;
   backdrop-filter: blur(8px);
   cursor: pointer;
-  
+
   &.delete:hover {
     background: var(--color-error);
   }
@@ -1145,10 +1104,18 @@ onUnmounted(() => {
   font-weight: 800;
   color: white;
   z-index: 10;
-  
-  &.draft { background: var(--color-text-tertiary); }
-  &.pending { background: var(--color-warning); }
-  &.published { background: var(--color-success); }
+
+  &.draft {
+    background: var(--color-text-tertiary);
+  }
+
+  &.pending {
+    background: var(--color-warning);
+  }
+
+  &.published {
+    background: var(--color-success);
+  }
 }
 
 .route-info-card {
@@ -1183,13 +1150,13 @@ onUnmounted(() => {
   border-radius: var(--radius-md);
   border: 1px dashed var(--color-primary);
   text-align: center;
-  
+
   p {
     font-size: 13px;
     margin-bottom: 12px;
     color: var(--color-text-secondary);
   }
-  
+
   .publish-btn {
     width: 100%;
     padding: 12px;
@@ -1234,9 +1201,17 @@ onUnmounted(() => {
     color: var(--color-primary);
   }
 
-  .easy { color: var(--color-success); }
-  .medium { color: var(--color-warning); }
-  .hard { color: var(--color-error); }
+  .easy {
+    color: var(--color-success);
+  }
+
+  .medium {
+    color: var(--color-warning);
+  }
+
+  .hard {
+    color: var(--color-error);
+  }
 }
 
 .section {
@@ -1270,7 +1245,10 @@ onUnmounted(() => {
     border-color: var(--color-success);
     background: color-mix(in srgb, var(--color-success) 5%, var(--color-surface));
     opacity: 0.8;
-    .checkpoint-number { background: var(--color-success); }
+
+    .checkpoint-number {
+      background: var(--color-success);
+    }
   }
 
   &.next {
@@ -1296,11 +1274,13 @@ onUnmounted(() => {
 
 .checkpoint-body {
   flex: 1;
+
   h3 {
     font-size: 16px;
     font-weight: 700;
     margin: 0 0 4px;
   }
+
   p {
     font-size: 14px;
     color: var(--color-text-secondary);
@@ -1314,24 +1294,27 @@ onUnmounted(() => {
   overflow-x: auto;
   padding: 4px 0;
   scrollbar-width: none;
-  &::-webkit-scrollbar { display: none; }
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 
   .gallery-thumb {
     flex: 0 0 80px;
     height: 60px;
     border-radius: var(--radius-sm);
     overflow: hidden;
-    
+
     img {
       width: 100%;
       height: 100%;
       object-fit: cover;
     }
-    
+
     &.main-thumb {
-       flex: 0 0 100px;
-       height: 70px;
-       border: 1.5px solid var(--color-primary);
+      flex: 0 0 100px;
+      height: 70px;
+      border: 1.5px solid var(--color-primary);
     }
   }
 }
@@ -1373,7 +1356,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   gap: 2px;
-  
+
   &:disabled {
     background: var(--color-text-disabled);
     box-shadow: none;
@@ -1441,14 +1424,25 @@ onUnmounted(() => {
 }
 
 @keyframes pulse-border {
-  0% { border-color: var(--color-primary); box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 30%, transparent); }
-  70% { border-color: var(--color-primary); box-shadow: 0 0 0 8px transparent; }
-  100% { border-color: var(--color-primary); box-shadow: 0 0 0 0 transparent; }
+  0% {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 30%, transparent);
+  }
+
+  70% {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 8px transparent;
+  }
+
+  100% {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 0 transparent;
+  }
 }
 
 .route-hero-meta {
   margin-bottom: 8px;
-  
+
   .category-tag {
     display: inline-block;
     padding: 4px 12px;
@@ -1488,7 +1482,7 @@ onUnmounted(() => {
 
   &.active {
     color: var(--color-primary);
-    
+
     svg {
       transform: scale(1.1);
       animation: heart-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -1501,9 +1495,17 @@ onUnmounted(() => {
 }
 
 @keyframes heart-pop {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.4); }
-  100% { transform: scale(1.1); }
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.4);
+  }
+
+  100% {
+    transform: scale(1.1);
+  }
 }
 
 .tags-list {
@@ -1561,7 +1563,7 @@ onUnmounted(() => {
     font-family: inherit;
     font-size: 14px;
     color: var(--color-text-primary);
-    
+
     &::placeholder {
       color: var(--color-text-tertiary);
     }
@@ -1611,7 +1613,7 @@ onUnmounted(() => {
   .user-info {
     display: flex;
     flex-direction: column;
-    
+
     .user-name {
       font-size: 14px;
       font-weight: 700;
@@ -1631,7 +1633,7 @@ onUnmounted(() => {
     color: var(--color-text-tertiary);
     cursor: pointer;
     padding: 4px;
-    
+
     &:hover {
       color: var(--color-error);
     }
@@ -1675,7 +1677,7 @@ onUnmounted(() => {
   .btn-remove {
     margin-left: auto;
     color: var(--color-text-tertiary);
-    
+
     &:hover {
       color: var(--color-error);
     }
@@ -1724,7 +1726,7 @@ onUnmounted(() => {
 
   .victory-header {
     margin-bottom: 32px;
-    
+
     .trophy-icon {
       color: var(--color-warning);
       margin-bottom: 16px;
@@ -1781,7 +1783,7 @@ onUnmounted(() => {
 
 .xp-gain {
   margin-bottom: 32px;
-  
+
   .xp-val {
     display: inline-block;
     padding: 10px 24px;
@@ -1809,22 +1811,46 @@ onUnmounted(() => {
 }
 
 @keyframes v-fade {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes v-pop {
-  from { opacity: 0; transform: scale(0.85); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 @keyframes v-pulse {
-  0% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.05); opacity: 0.8; }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
-.loader, .error-state {
+.loader,
+.error-state {
   display: flex;
   flex-direction: column;
   align-items: center;
