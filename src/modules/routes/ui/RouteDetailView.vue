@@ -318,10 +318,13 @@ onUnmounted(() => {
                 <div v-if="nextCheckpoint" class="target-card-mini">
                   <div class="target-row">
                     <div class="target-info-group">
-                      <span class="target-label-mini">Текущая цель</span>
+                      <span class="target-label-mini">СЛЕДУЮЩАЯ ЦЕЛЬ</span>
                       <span class="target-title-mini">{{ nextCheckpoint.title }}</span>
                     </div>
-                    <span class="target-dist-mini">{{ formatDistance(distanceToNext) }}</span>
+                    <div class="target-dist-badge">
+                      <Navigation :size="12" class="dist-icon" />
+                      <span class="dist-value">{{ formatDistance(distanceToNext) }}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -809,67 +812,56 @@ onUnmounted(() => {
 
 .hud-route-title {
   text-align: center;
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   color: var(--color-white);
   background: rgba(20, 22, 28, 0.9);
-  backdrop-filter: blur(15px);
-  padding: 10px 32px;
-  border-radius: 0 0 24px 24px;
+  backdrop-filter: blur(20px);
+  padding: 8px 32px;
+  border-radius: 100px; // Полная капсула
   width: fit-content;
-  margin: -16px auto 20px;
-  border: 1px solid rgba(255, 222, 0, 0.3);
-  border-top: none;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-  position: relative;
-
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: -1px;
-    left: 20%;
-    right: 20%;
-    height: 2px;
-    background: var(--color-primary);
-    box-shadow: 0 0 10px var(--color-primary);
-  }
+  margin: 0 auto 16px; // Убрали отрицательный марджин
+  border: 1px solid rgba(255, 222, 0, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 .hud-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(30, 32, 40, 0.85);
+  background: rgba(30, 32, 40, 0.8);
   backdrop-filter: blur(25px);
-  padding: 12px 24px;
-  border-radius: 100px; // Круглые края для стиля «приборной панели»
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  margin-bottom: 16px;
-  margin-left: 10px;
-  margin-right: 10px;
+  padding: 10px 20px;
+  border-radius: 100px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  margin-bottom: 12px;
+  margin-left: 12px;
+  margin-right: 12px;
 
   .hud-stat, .hud-timer {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 
     .stat-icon {
       color: var(--color-primary);
+      opacity: 0.9;
     }
 
     .label {
-      font-size: 11px;
-      font-weight: 800;
+      font-size: 9px;
+      font-weight: 700;
       color: var(--color-text-tertiary);
       text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
 
     .value {
-      font-size: 17px;
-      font-weight: 900;
+      font-size: 14px;
+      font-weight: 800;
       color: var(--color-white);
       font-variant-numeric: tabular-nums;
     }
@@ -888,26 +880,61 @@ onUnmounted(() => {
 
 .target-card-mini {
   margin-top: 0;
-  background: rgba(35, 38, 48, 0.9);
-  backdrop-filter: blur(20px);
+  background: rgba(40, 44, 55, 0.85);
+  backdrop-filter: blur(25px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 24px;
-  padding: 16px 24px;
-  box-shadow: 0 15px 45px rgba(0, 0, 0, 0.5);
-  margin-left: 10px;
-  margin-right: 10px;
+  border-radius: 20px;
+  padding: 12px 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  margin-left: 12px;
+  margin-right: 12px;
   
-  .target-title-mini {
-    font-weight: 800;
-    color: var(--color-white);
-    font-size: 1.2rem;
+  .target-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .target-info-group {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
   }
   
-  .target-dist-mini {
-    font-weight: 900;
-    color: var(--color-primary);
-    font-size: 1.3rem;
-    font-variant-numeric: tabular-nums;
+  .target-label-mini {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--color-text-tertiary);
+    letter-spacing: 0.05em;
+  }
+  
+  .target-title-mini {
+    font-weight: 700;
+    color: var(--color-white);
+    font-size: 1.05rem;
+  }
+  
+  .target-dist-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 222, 0, 0.15);
+    padding: 6px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 222, 0, 0.2);
+
+    .dist-icon {
+      color: var(--color-primary);
+    }
+
+    .dist-value {
+      font-weight: 800;
+      color: var(--color-primary);
+      font-size: 1rem;
+      font-variant-numeric: tabular-nums;
+    }
   }
 }
 
