@@ -210,24 +210,28 @@ const updateNavigationLine = () => {
     navArrow.value = null
     return
   }
-  console.log('[ArtMap] Navigation Update (Drawing):', { user: props.userLocation, target: props.targetLocation })
-
+  console.log('[ArtMap] Navigation Update (Drawing):', { 
+    user: props.userLocation, 
+    target: props.targetLocation,
+    mapExists: !!map.value 
+  })
+  
   const latlngs: L.LatLngExpression[] = [
-    props.userLocation,
-    props.targetLocation
+    props.userLocation as [number, number],
+    props.targetLocation as [number, number]
   ]
 
   if (navLine.value) {
-    navLine.value.setLatLngs(latlngs)
-  } else {
-    navLine.value = L.polyline(latlngs, {
-      color: '#4285F4',
-      weight: 3,
-      dashArray: '8, 12',
-      opacity: 0.6,
-      className: 'nav-guide-line'
-    }).addTo(map.value)
+    navLine.value.remove()
   }
+  
+  navLine.value = L.polyline(latlngs, {
+    color: '#FF0000',
+    weight: 10,
+    dashArray: '8, 12',
+    opacity: 1,
+    className: 'nav-guide-line'
+  }).addTo(map.value)
 
   // Update Arrow Head
   const angle = Math.atan2(
@@ -237,7 +241,6 @@ const updateNavigationLine = () => {
 
   if (navArrow.value) {
     navArrow.value.setLatLng(props.targetLocation)
-    // We update the rotation via CSS class or re-creating icon
     navArrow.value.setIcon(createArrowIcon(angle))
   } else {
     navArrow.value = L.marker(props.targetLocation, {
@@ -358,9 +361,15 @@ watch(() => props.targetLocation, () => {
     updateNavigationLine()
 })
 
-watch(() => props.userLocation, () => {
-    updateUserMarker()
-}, { deep: true })
+watch(() => props.followUser, async () => {
+    if (map.value) {
+        // Wait for DOM Teleport to finish
+        setTimeout(() => {
+            map.value?.invalidateSize()
+            updateUserMarker() // Force redraw everything
+        }, 100)
+    }
+})
 
 watch(() => props.teammates, () => {
     updateTeammateMarkers()
@@ -536,7 +545,7 @@ onUnmounted(() => {
     height: 0;
     border-left: 8px solid transparent;
     border-right: 8px solid transparent;
-    border-bottom: 12px solid var(--color-primary);
+    border-bottom: 12px solid #FF0000;
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
     animation: arrow-pulse 1s ease-in-out infinite;
   }
