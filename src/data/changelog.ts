@@ -9,6 +9,17 @@ export interface ReleaseNote {
 
 export const changelog: ReleaseNote[] = [
     {
+        version: '2.13.4',
+        date: '2026-04-16',
+        highlights: [
+            'Creator Quality of Life: Умное позиционирование в редакторе'
+        ],
+        features: [
+            'Initial Map Center: Теперь при создании нового маршрута карта автоматически открывается на вашем текущем местоположении.',
+            'Precision Coordinates: Исправлено округление координат при клике на карту для более точной расстановки точек.'
+        ]
+    },
+    {
         version: '2.13.3',
         date: '2026-04-16',
         highlights: [
