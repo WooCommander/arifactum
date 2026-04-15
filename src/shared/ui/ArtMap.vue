@@ -2,7 +2,7 @@
 import { ref, shallowRef, onMounted, onUnmounted, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { Navigation, LocateFixed } from 'lucide-vue-next'
+import { Navigation, LocateFixed, Compass } from 'lucide-vue-next'
 import { DbService } from '@/modules/offline/services/DbService'
 
 /**
@@ -64,6 +64,7 @@ interface Props {
   showNames?: boolean
   isClustered?: boolean
   targetLocation?: [number, number] | null
+  bearing?: number
 }
 
 interface TeammateLocation {
@@ -80,13 +81,15 @@ const props = withDefaults(defineProps<Props>(), {
   userLocation: null,
   followUser: false,
   teammates: () => [],
-  showNames: false
+  showNames: false,
+  bearing: 0
 })
 
 const emit = defineEmits<{
   (e: 'markerClick', id: string): void
   (e: 'mapClick', lat: number, lng: number): void
   (e: 'update:followUser', value: boolean): void
+  (e: 'toggleCompass'): void
 }>()
 
 const mapContainer = ref<HTMLElement | null>(null)
@@ -123,7 +126,6 @@ const refreshMarkersLayer = () => {
   if (props.points.length === 0) return
 
   if (props.isClustered) {
-    // Show as single cluster
     const avgLat = props.points.reduce((acc, p) => acc + p.lat, 0) / props.points.length
     const avgLng = props.points.reduce((acc, p) => acc + p.lng, 0) / props.points.length
 
@@ -142,14 +144,12 @@ const refreshMarkersLayer = () => {
       })
     }).addTo(map.value as L.Map)
 
-    // Center view on cluster if needed
     if (!props.center) {
       map.value.setView([avgLat, avgLng], 14)
     }
     return
   }
 
-  // Add new individual markers
   const group = L.featureGroup()
 
   props.points.forEach(p => {
@@ -169,14 +169,10 @@ const refreshMarkersLayer = () => {
     if (p.id) {
       marker.on('click', (e) => {
         L.DomEvent.stopPropagation(e)
-        console.log('[ArtMap] checkpointSelect emitting ID:', p.id)
-        
-        // Гарантированная связь через глобальный объект
         if ((window as any).artSelectCheckpoint) {
           (window as any).artSelectCheckpoint(String(p.id))
         }
-        
-        emit('checkpointSelect', String(p.id))
+        emit('markerClick', String(p.id))
       })
     }
 
@@ -185,7 +181,6 @@ const refreshMarkersLayer = () => {
     group.addLayer(marker)
   })
 
-  // Fit bounds if more than 1 point and no specific center provided and NOT in follow mode
   if (props.points.length > 1 && !props.center && !props.followUser) {
     (map.value as L.Map).fitBounds(group.getBounds(), { padding: [40, 40] })
   }
@@ -227,27 +222,19 @@ const updateUserMarker = () => {
 
 const updateNavigationLine = () => {
   if (!map.value || !props.userLocation || !props.targetLocation) {
-    console.log('[ArtMap] Navigation Update (Skipped):', { map: !!map.value, user: props.userLocation, target: props.targetLocation })
     if (navLine.value) navLine.value.remove()
     if (navArrow.value) navArrow.value.remove()
     navLine.value = null
     navArrow.value = null
     return
   }
-  console.log('[ArtMap] Navigation Update (Drawing):', {
-    user: props.userLocation,
-    target: props.targetLocation,
-    mapExists: !!map.value
-  })
 
   const latlngs: L.LatLngExpression[] = [
     props.userLocation as [number, number],
     props.targetLocation as [number, number]
   ]
 
-  if (navLine.value) {
-    navLine.value.remove()
-  }
+  if (navLine.value) navLine.value.remove()
 
   navLine.value = L.polyline(latlngs, {
     color: '#FF0000',
@@ -257,7 +244,6 @@ const updateNavigationLine = () => {
     className: 'nav-guide-line'
   }).addTo(map.value)
 
-  // Update Arrow Head
   const angle = Math.atan2(
     props.targetLocation[0] - props.userLocation[0],
     props.targetLocation[1] - props.userLocation[1]
@@ -289,8 +275,6 @@ const createArrowIcon = (angle: number) => {
 
 const updateTeammateMarkers = () => {
   if (!map.value) return
-
-  // Remove markers for users no longer in the list
   const currentIds = new Set(props.teammates.map(t => t.user_id))
   for (const [id, marker] of teammateMarkers.value.entries()) {
     if (!currentIds.has(id)) {
@@ -298,25 +282,20 @@ const updateTeammateMarkers = () => {
       teammateMarkers.value.delete(id)
     }
   }
-
-  // Add or update markers
   props.teammates.forEach(t => {
-    // We'll filter self in the parent or assume it's already filtered
     const existing = teammateMarkers.value.get(t.user_id)
     if (existing) {
       existing.setLatLng([t.lat, t.lng])
-      // Update name visibility if needed (re-render icon)
       if (props.showNames !== (existing as any)._wasShowingNames) {
         existing.setIcon(createTeammateIcon(t))
-          ; (existing as any)._wasShowingNames = props.showNames
+        ;(existing as any)._wasShowingNames = props.showNames
       }
     } else {
       const marker = L.marker([t.lat, t.lng], {
         icon: createTeammateIcon(t),
         zIndexOffset: 500
       }).addTo(map.value as L.Map)
-
-        ; (marker as any)._wasShowingNames = props.showNames
+      ;(marker as any)._wasShowingNames = props.showNames
       teammateMarkers.value.set(t.user_id, marker)
     }
   })
@@ -340,12 +319,10 @@ const createTeammateIcon = (t: TeammateLocation) => {
 
 const initializeLeafletMap = () => {
   if (!mapContainer.value) return
-
   const initialCenter = props.center || props.userLocation || [
     props.points[0]?.lat || 55.751244,
     props.points[0]?.lng || 37.618423
   ]
-
   map.value = L.map(mapContainer.value, {
     zoomControl: false,
     attributionControl: false,
@@ -370,9 +347,9 @@ const initializeLeafletMap = () => {
   updateUserMarker()
   updateTeammateMarkers()
 
-    ; (map.value as L.Map).on('click', (e: L.LeafletMouseEvent) => {
-      emit('mapClick', e.latlng.lat, e.latlng.lng)
-    })
+  ;(map.value as L.Map).on('click', (e: L.LeafletMouseEvent) => {
+    emit('mapClick', e.latlng.lat, e.latlng.lng)
+  })
 
   map.value.on('dragstart', () => {
     emit('update:followUser', false)
@@ -393,24 +370,14 @@ watch(() => props.targetLocation, () => {
 
 watch(() => props.followUser, async () => {
   if (map.value) {
-    // Wait for DOM Teleport to finish
     setTimeout(() => {
       map.value?.invalidateSize()
-      updateUserMarker() // Force redraw everything
+      updateUserMarker()
     }, 100)
   }
 })
 
-watch(() => props.teammates, () => {
-  updateTeammateMarkers()
-}, { deep: true })
-
-watch(() => props.showNames, () => {
-  updateTeammateMarkers()
-})
-
 onMounted(() => {
-  // Little delay to ensure container size is correct in some layouts
   setTimeout(initializeLeafletMap, 100)
 })
 
@@ -423,12 +390,14 @@ onUnmounted(() => {
 
 <template>
   <div class="art-map-wrapper">
-    <div ref="mapContainer" class="art-map-container"></div>
+    <div ref="mapContainer" class="art-map-container" :style="{ '--map-rotation': `${props.bearing || 0}deg` }"></div>
 
-    <!-- Пользовательские контролы -->
     <div v-if="interactive && userLocation" class="map-custom-controls">
       <button :class="{ active: followUser }" title="Следование за мной" @click="toggleFollow">
         <Navigation :size="20" />
+      </button>
+      <button :class="{ active: bearing !== 0 }" title="Режим компаса" @click="emit('toggleCompass')">
+         <Compass :size="20" />
       </button>
       <button title="Отцентрировать на мне" @click="recenter">
         <LocateFixed :size="20" />
@@ -442,7 +411,6 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-
   .user-dot {
     width: 14px;
     height: 14px;
@@ -451,174 +419,7 @@ onUnmounted(() => {
     border-radius: 50%;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
     z-index: 2;
-  }
-
-  .user-pulse {
-    position: absolute;
-    width: 30px;
-    height: 30px;
-    background: rgba(66, 133, 244, 0.3);
-    border-radius: 50%;
-    z-index: 1;
-    animation: user-pulse 2s infinite;
-  }
-}
-
-@keyframes user-pulse {
-  0% {
-    transform: scale(0.5);
-    opacity: 1;
-  }
-
-  100% {
-    transform: scale(2.5);
-    opacity: 0;
-  }
-}
-
-/* Teammate Markers */
-.teammate-marker {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  .teammate-wrap {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
-  }
-
-  .teammate-dot {
-    width: 32px;
-    height: 32px;
-    background: var(--color-primary);
-    color: white;
-    border: 3px solid white;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    font-size: 14px;
-    background-size: cover;
-    background-position: center;
-  }
-
-  .teammate-label {
-    background: rgba(0, 0, 0, 0.7);
-    color: white;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 10px;
-    white-space: nowrap;
-    backdrop-filter: blur(4px);
-  }
-}
-
-/* Route Cluster Marker */
-.route-cluster-marker {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  .cluster-inner {
-    width: 60px;
-    height: 60px;
-    background: linear-gradient(135deg, var(--color-primary) 0%, #175ec9 100%);
-    border: 4px solid white;
-    border-radius: 50%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
-    z-index: 2;
-
-    .count {
-      font-size: 20px;
-      font-weight: 900;
-      line-height: 1;
-    }
-
-    .label {
-      font-size: 9px;
-      text-transform: uppercase;
-      font-weight: 800;
-      opacity: 0.8;
-    }
-  }
-
-  .cluster-pulse {
-    position: absolute;
-    width: 60px;
-    height: 60px;
-    background: var(--color-primary);
-    border-radius: 50%;
-    z-index: 1;
-    animation: cluster-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
-    opacity: 0.4;
-  }
-}
-
-@keyframes cluster-ping {
-  0% {
-    transform: scale(1);
-    opacity: 0.4;
-  }
-
-  100% {
-    transform: scale(2);
-    opacity: 0;
-  }
-}
-
-/* Navigation Line & Arrow */
-.nav-guide-line {
-  stroke-dashoffset: 0;
-  animation: line-flow 2s linear infinite;
-}
-
-@keyframes line-flow {
-  from {
-    stroke-dashoffset: 20;
-  }
-
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-.nav-arrow-marker {
-  .arrow-wrap {
-    display: flex;
-    align-items: center;
-    justify-content: center;
     transition: transform 0.3s ease;
-  }
-
-  .arrow-head {
-    width: 0;
-    height: 0;
-    border-left: 8px solid transparent;
-    border-right: 8px solid transparent;
-    border-bottom: 12px solid #FF0000;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
-    animation: arrow-pulse 1s ease-in-out infinite;
-  }
-}
-
-@keyframes arrow-pulse {
-
-  0%,
-  100% {
-    transform: scale(1);
-  }
-
-  50% {
-    transform: scale(1.2);
   }
 }
 
@@ -626,7 +427,6 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-
   .marker-pin {
     width: 32px;
     height: 32px;
@@ -639,8 +439,7 @@ onUnmounted(() => {
     justify-content: center;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
     transition: all 0.3s ease;
-    position: relative;
-
+    
     .marker-number {
       transform: rotate(45deg);
       color: var(--color-text-primary);
@@ -650,60 +449,16 @@ onUnmounted(() => {
 
     &.completed {
       background: var(--color-success) !important;
-      border-color: rgba(255, 255, 255, 0.4) !important;
       opacity: 0.6;
-
-      .marker-number {
-        color: var(--color-white) !important;
-      }
     }
 
     &.active {
       background: var(--color-primary) !important;
       border-color: var(--color-white) !important;
       box-shadow: 0 0 20px var(--color-primary);
-      z-index: 100 !important;
       transform: rotate(-45deg) scale(1.2);
-
-      .marker-number {
-        color: var(--color-white) !important;
-      }
-
-      &::after {
-        content: '';
-        position: absolute;
-        inset: -4px;
-        border: 2px solid var(--color-primary);
-        border-radius: inherit;
-        animation: marker-pulse 2s cubic-bezier(0, 0, 0.2, 1) infinite;
-      }
     }
   }
-
-  &:hover .marker-pin {
-    transform: rotate(-45deg) scale(1.1);
-
-    &.active {
-      transform: rotate(-45deg) scale(1.3);
-    }
-  }
-}
-
-@keyframes marker-pulse {
-  0% {
-    transform: scale(1);
-    opacity: 0.8;
-  }
-
-  100% {
-    transform: scale(1.8);
-    opacity: 0;
-  }
-}
-
-// Leaflet overrides
-.leaflet-container {
-  background: var(--color-background) !important;
 }
 
 .leaflet-control-zoom {
@@ -711,10 +466,6 @@ onUnmounted(() => {
   box-shadow: var(--shadow-2) !important;
   margin-bottom: 110px !important;
   margin-right: 12px !important;
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 8px !important;
-
   a {
     width: 44px !important;
     height: 44px !important;
@@ -726,23 +477,17 @@ onUnmounted(() => {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    font-size: 20px !important;
-
-    &:hover {
-      background: var(--color-surface-hover) !important;
-    }
   }
 }
 
 .map-custom-controls {
   position: absolute;
-  bottom: 215px; // Над кнопками зума
+  bottom: 215px;
   right: 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
   z-index: 1000;
-
   button {
     width: 44px;
     height: 44px;
@@ -754,17 +499,9 @@ onUnmounted(() => {
     align-items: center;
     justify-content: center;
     box-shadow: var(--shadow-2);
-    transition: all 0.2s ease;
-
     &.active {
       background: var(--color-primary);
       color: #000;
-      border-color: var(--color-primary);
-      box-shadow: 0 0 15px var(--color-primary);
-    }
-
-    &:active {
-      transform: scale(0.9);
     }
   }
 }
@@ -776,11 +513,36 @@ onUnmounted(() => {
   height: 100%;
   position: relative;
   overflow: hidden;
-  border-radius: inherit;
 }
 
 .art-map-container {
   width: 100%;
   height: 100%;
+  z-index: 1;
+  background: #111;
+  // Вращаем контейнер
+  transform: rotate(calc(-1 * var(--map-rotation, 0deg)));
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+// Компенсация вращения для маркеров - ВНИМАНИЕ: вращаем только внутренние элементы!
+:deep(.marker-pin),
+:deep(.user-dot),
+:deep(.teammate-wrap) {
+  transform: rotate(var(--map-rotation, 0deg)) !important;
+}
+
+// Специальный случай для активного маркера (у него уже есть rotate(-45deg))
+:deep(.marker-pin.active) {
+  transform: rotate(calc(-45deg + var(--map-rotation, 0deg))) scale(1.2) !important;
+}
+
+// Для обычного маркера (у него тоже rotate(-45deg))
+:deep(.marker-pin:not(.active)) {
+  transform: rotate(calc(-45deg + var(--map-rotation, 0deg))) !important;
+}
+
+:deep(.leaflet-control-container) {
+  transform: rotate(var(--map-rotation, 0deg)) !important;
 }
 </style>

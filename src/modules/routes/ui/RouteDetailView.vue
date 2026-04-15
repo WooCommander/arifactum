@@ -9,7 +9,7 @@ import { useSocialStore } from '@/modules/social/state/useSocialStore'
 import { MuseumService } from '@/modules/profile/services/MuseumService'
 import { authStore } from '@/modules/auth/store/authStore'
 import ArOverlay from '@/modules/ar/ui/ArOverlay.vue'
-import { LocationService } from '@/shared/lib/LocationService'
+import { LocationService, type LocationCoords } from '@/shared/lib/LocationService'
 import { Haptics, ImpactStyle } from '@capacitor/haptics'
 import {
   Heart,
@@ -77,13 +77,44 @@ const mapPoints = computed(() => {
 })
 
 // Active Tracking State
-const userLocation = ref<[number, number] | null>(null)
+const userLocation = ref<LocationCoords | null>(null)
 const completedCheckpointIds = ref(new Set<string>())
 const elapsedTime = ref('00:00')
 let timerInterval: any = null
 let locationWatchId: string | null = null
 const selectedCheckpoint = ref<any | null>(null)
 const isFollowMode = ref(true)
+const isCompassMode = ref(false)
+
+// Gesture state for panel
+const touchStartY = ref(0)
+const touchCurrentY = ref(0)
+const isSwiping = ref(false)
+
+const panelTranslateY = computed(() => {
+  if (!isSwiping.value) return 0
+  const diff = touchCurrentY.value - touchStartY.value
+  return diff > 0 ? diff : 0
+})
+
+function handleTouchStart(e: TouchEvent) {
+  touchStartY.value = e.touches[0].clientY
+  touchCurrentY.value = e.touches[0].clientY
+  isSwiping.value = true
+}
+
+function handleTouchMove(e: TouchEvent) {
+  touchCurrentY.value = e.touches[0].clientY
+}
+
+function handleTouchEnd() {
+  if (panelTranslateY.value > 100) {
+    selectedCheckpoint.value = null
+  }
+  isSwiping.value = false
+  touchStartY.value = 0
+  touchCurrentY.value = 0
+}
 
 async function handleMarkerClick(id: string) {
   const targetId = String(id)
@@ -112,7 +143,7 @@ const nextCheckpointLocation = computed<[number, number] | null>(() => {
 const distanceToNext = computed(() => {
   if (!userLocation.value || !nextCheckpointLocation.value) return Infinity
   return calculateDistance(
-    userLocation.value[0], userLocation.value[1],
+    userLocation.value.latitude, userLocation.value.longitude,
     nextCheckpointLocation.value[0], nextCheckpointLocation.value[1]
   )
 })
@@ -284,10 +315,13 @@ onMounted(async () => {
       : undefined
 
     locationWatchId = await LocationService.watchPosition((coords) => {
-      if (isActiveMode.value) {
-        userLocation.value = coords
+      userLocation.value = coords
+      
+      // Check for completion
+      if (nextCheckpoint.value && distanceToNext.value < 20) {
+        completeCheckpoint(nextCheckpoint.value.id)
       }
-    }, fallbackCoords)
+    })
   } catch (e) {
     console.error('Failed to start location tracking:', e)
   }
@@ -361,10 +395,15 @@ onUnmounted(() => {
 
               <!-- Карта в активном режиме -->
               <div class="map-section active-map-section">
-                <ArtMap class="route-map full-screen" :points="mapPoints" :center="(userLocation as [number, number])"
-                  :interactive="true" :user-location="userLocation" v-model:follow-user="isFollowMode"
-                  :is-clustered="false" :target-location="nextCheckpointLocation" @checkpoint-select="handleMarkerClick"
-                  @map-click="selectedCheckpoint = null" />
+                <ArtMap class="route-map full-screen" :points="mapPoints" 
+                  :center="userLocation ? [userLocation.latitude, userLocation.longitude] : undefined"
+                  :interactive="true" :user-location="userLocation ? [userLocation.latitude, userLocation.longitude] : null" 
+                  v-model:follow-user="isFollowMode" :is-clustered="false"
+                  :bearing="isCompassMode ? (userLocation?.heading || 0) : 0"
+                  :target-location="nextCheckpointLocation" 
+                  @checkpoint-select="handleMarkerClick" 
+                  @map-click="selectedCheckpoint = null"
+                  @toggle-compass="isCompassMode = !isCompassMode" />
               </div>
 
               <div class="active-actions-bottom">
@@ -381,12 +420,6 @@ onUnmounted(() => {
                   :disabled="!isNearNext || !nextCheckpoint || isArMode" @click="handleCheckIn">
                   {{ isLastPoint ? 'Финиш' : 'Забрать' }}
                 </FpButton>
-              </div>
-
-              <div class="map-section active-map-section">
-                <ArtMap class="route-map full-screen" :points="mapPoints" :center="(userLocation as [number, number])"
-                  :interactive="true" :user-location="userLocation" :follow-user="true" :is-clustered="false"
-                  :target-location="nextCheckpointLocation" />
               </div>
             </div>
           </transition>
@@ -514,7 +547,8 @@ onUnmounted(() => {
 
           <div v-if="!isActiveMode" class="map-section">
             <h2>Карта маршрута</h2>
-            <ArtMap class="route-map" :points="mapPoints" :interactive="true" :user-location="userLocation"
+            <ArtMap class="route-map" :points="mapPoints" :interactive="true" 
+              :user-location="userLocation ? [userLocation.latitude, userLocation.longitude] : null"
               :is-clustered="true" @checkpoint-select="handleMarkerClick" @map-click="selectedCheckpoint = null" />
           </div>
 
@@ -548,7 +582,14 @@ onUnmounted(() => {
 
     <!-- Глобальная плашка информации о точке -->
     <transition name="slide-up">
-      <div v-if="selectedCheckpoint" class="checkpoint-detail-panel">
+      <div v-if="selectedCheckpoint" class="checkpoint-detail-panel floating-panel" 
+        :style="{ transform: `translateY(${panelTranslateY}px)` }"
+        @touchstart="handleTouchStart"
+        @touchmove="handleTouchMove"
+        @touchend="handleTouchEnd">
+        
+        <div class="panel-handle"></div>
+
         <div class="panel-header">
           <div class="point-badge">Точка #{{ selectedCheckpoint.order }}</div>
           <button class="close-panel" @click="selectedCheckpoint = null">
@@ -1040,21 +1081,36 @@ onUnmounted(() => {
 }
 
 .checkpoint-detail-panel {
-  position: absolute;
-  bottom: 0px;
-  left: 0;
-  right: 0;
-  background: var(--color-surface);
+  position: fixed;
+  bottom: calc(30px + env(safe-area-inset-bottom));
+  left: 16px;
+  right: 16px;
+  width: auto;
+  background: var(--color-surface-glass);
   backdrop-filter: blur(30px);
-  border-top: 1px solid var(--color-border);
-  border-radius: 24px 24px 0 0;
-  padding: 24px 24px calc(24px + env(safe-area-inset-bottom));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
   z-index: 1050;
-  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
   pointer-events: auto;
-  max-height: 75vh;
+  max-height: 70vh;
   display: flex;
   flex-direction: column;
+  transition: transform 0.1s ease-out;
+
+  &.floating-panel {
+    // Стиль парящей панели
+  }
+
+  .panel-handle {
+    width: 40px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    margin: -8px auto 16px;
+    flex-shrink: 0;
+  }
 
   .panel-header {
     display: flex;
