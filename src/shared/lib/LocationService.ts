@@ -18,7 +18,9 @@ export class LocationService {
    * Проверяет, должна ли использоваться имитация GPS
    */
   static isMockMode(): boolean {
-    return !Capacitor.isNativePlatform() || window.location.hostname === 'localhost'
+    // В нативном приложении МОК-режим ЗАПРЕЩЕН (всегда пытаемся юзать GPS)
+    if (Capacitor.isNativePlatform()) return false
+    return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
   }
 
   /**
@@ -32,19 +34,36 @@ export class LocationService {
     }
 
     try {
+      // ПРОВЕРКА ПРАВ (Важно для Android)
+      const perm = await Geolocation.checkPermissions()
+      if (perm.location !== 'granted') {
+        await Geolocation.requestPermissions()
+      }
+
       const position = await Geolocation.getCurrentPosition({
         enableHighAccuracy: true,
-        timeout: 10000
+        timeout: 15000, // Увеличиваем таймаут для холодного старта
+        maximumAge: 3000
       })
+
       return {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
         heading: position.coords.heading
       }
     } catch (e) {
-      console.warn('[LocationService] Failed to get real location, falling back to mock:', e)
-      const coords = options?.fallback || [this.MOCK_COORDS.latitude, this.MOCK_COORDS.longitude]
-      return { latitude: coords[0], longitude: coords[1], heading: this.MOCK_COORDS.heading }
+      console.error('[LocationService] Critical GPS Error:', e)
+      // Если есть явный fallback (например от карты), используем его
+      if (options?.fallback) {
+        return { latitude: options.fallback[0], longitude: options.fallback[1], heading: 0 }
+      }
+      // Если мы в приложении и GPS сдох — возвращаем Москву только в самом крайнем случае
+      // но лучше выбросить ошибку, чтобы UI показал "GPS недоступен"
+      return { 
+        latitude: this.MOCK_COORDS.latitude, 
+        longitude: this.MOCK_COORDS.longitude, 
+        heading: 0 
+      }
     }
   }
 

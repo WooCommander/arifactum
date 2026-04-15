@@ -9,6 +9,18 @@ export interface ReleaseNote {
 
 export const changelog: ReleaseNote[] = [
     {
+        version: '2.13.3',
+        date: '2026-04-16',
+        highlights: [
+            'Global GPS Fix: Корректное определение местоположения по всему миру'
+        ],
+        features: [
+            'Native GPS Priority: Полностью отключена автоматическая подмена координат Москвой в нативном приложении.',
+            'Permission Requesting: Добавлен явный запрос разрешений на использование геолокации при запуске на Android/iOS.',
+            'Increased GPS Timeout: Время ожидания спутников увеличено до 15 секунд для более точного определения координат при холодном старте.'
+        ]
+    },
+    {
         version: '2.13.2',
         date: '2026-04-16',
         highlights: [
