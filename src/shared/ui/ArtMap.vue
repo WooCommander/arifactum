@@ -154,7 +154,10 @@ const refreshMarkersLayer = () => {
     })
 
     if (p.id) {
-      marker.on('click', () => emit('markerClick', p.id!))
+      marker.on('click', (e) => {
+        L.DomEvent.stopPropagation(e)
+        emit('markerClick', p.id!)
+      })
     }
 
     marker.addTo(map.value as L.Map)

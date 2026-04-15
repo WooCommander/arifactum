@@ -9,6 +9,7 @@ import { MuseumService } from '@/modules/profile/services/MuseumService'
 import { authStore } from '@/modules/auth/store/authStore'
 import ArOverlay from '@/modules/ar/ui/ArOverlay.vue'
 import { LocationService } from '@/shared/lib/LocationService'
+import { Haptics, ImpactStyle } from '@capacitor/haptics'
 import {
   Heart,
   Bookmark,
@@ -75,10 +76,17 @@ let timerInterval: any = null
 let locationWatchId: string | null = null
 const selectedCheckpoint = ref<Checkpoint | null>(null)
 
-function handleMarkerClick(id: string) {
+async function handleMarkerClick(id: string) {
+  console.log('[RouteDetail] handleMarkerClick:', id)
   const cp = currentCheckpoints.value.find(p => p.id === id)
   if (cp) {
+    console.log('[RouteDetail] Checkpoint found, opening panel:', cp.title)
     selectedCheckpoint.value = cp
+    try {
+      await Haptics.impact({ style: ImpactStyle.Medium })
+    } catch (e) {
+      // Ignore if haptics not available
+    }
   }
 }
 
@@ -331,7 +339,7 @@ onUnmounted(() => {
                     </div>
                     
                     <div class="target-actions-wrap">
-                      <button class="info-btn" @click="selectedCheckpoint = nextCheckpoint">
+                      <button class="info-btn" @click="handleMarkerClick(nextCheckpoint.id)">
                         <Info :size="18" />
                       </button>
                       <div class="target-dist-badge">
@@ -341,29 +349,13 @@ onUnmounted(() => {
                     </div>
                   </div>
                 </div>
-
-                <!-- Плашка информации о точке (Selected Checkpoint) -->
-                <transition name="slide-up">
-                  <div v-if="selectedCheckpoint" class="checkpoint-detail-panel">
-                    <div class="panel-header">
-                      <div class="point-badge">Точка #{{ selectedCheckpoint.order }}</div>
-                      <button class="close-panel" @click="selectedCheckpoint = null">
-                        <X :size="20" />
-                      </button>
-                    </div>
-                    <h3 class="panel-title">{{ selectedCheckpoint.title }}</h3>
-                    <p class="panel-desc">{{ selectedCheckpoint.description || 'Описание отсутствует' }}</p>
-                    <div class="panel-footer">
-                      <FpButton variant="primary" size="sm" @click="selectedCheckpoint = null">Понятно</FpButton>
-                    </div>
-                  </div>
-                </transition>
               </div>
 
-              <div class="map-section active-map-section" @click="selectedCheckpoint = null">
+              <!-- Карта в активном режиме -->
+              <div class="map-section active-map-section">
                 <ArtMap class="route-map full-screen" :points="mapPoints" :center="(userLocation as [number, number])"
                   :interactive="true" :user-location="userLocation" :follow-user="true" :is-clustered="false"
-                  :target-location="nextCheckpointLocation" @marker-click="handleMarkerClick" />
+                  :target-location="nextCheckpointLocation" @marker-click="handleMarkerClick" @map-click="selectedCheckpoint = null" />
               </div>
 
               <div class="active-actions-bottom">
@@ -514,14 +506,15 @@ onUnmounted(() => {
           <div v-if="!isActiveMode" class="map-section">
             <h2>Карта маршрута</h2>
             <ArtMap class="route-map" :points="mapPoints" :interactive="true" :user-location="userLocation"
-              :is-clustered="true" />
+              :is-clustered="true" @marker-click="handleMarkerClick" @map-click="selectedCheckpoint = null" />
           </div>
 
           <div class="section">
-            <h2>Точки маршрута</h2>
+            <h2 v-if="!isActiveMode">Маршрутные точки</h2>
             <div v-if="!isActiveMode" class="checkpoints-list">
               <div v-for="cp in currentCheckpoints" :key="cp.id" class="checkpoint-item"
-                :class="{ completed: completedCheckpointIds.has(cp.id), next: nextCheckpoint?.id === cp.id }">
+                :class="{ completed: completedCheckpointIds.has(cp.id), next: nextCheckpoint?.id === cp.id }"
+                @click="navigator.vibrate(50); handleMarkerClick(cp.id)">
                 <div class="checkpoint-number">{{ cp.order }}</div>
                 <div class="checkpoint-body">
                   <h3>{{ cp.title }}</h3>
@@ -543,6 +536,36 @@ onUnmounted(() => {
 
     <!-- Modals & Overlays -->
     <ArOverlay v-if="isArMode" @capture="onArtifactCapture" @close="stopArSession" />
+
+    <!-- Глобальная плашка информации о точке -->
+    <transition name="slide-up">
+      <div v-if="selectedCheckpoint" class="checkpoint-detail-panel">
+        <div class="panel-header">
+          <div class="point-badge">Точка #{{ selectedCheckpoint.order }}</div>
+          <button class="close-panel" @click="selectedCheckpoint = null">
+            <X :size="20" />
+          </button>
+        </div>
+
+        <div class="panel-content-scroll">
+          <div v-if="selectedCheckpoint.images?.length" class="checkpoint-media">
+            <div class="media-row">
+              <img v-for="(img, idx) in selectedCheckpoint.images" :key="idx" :src="img" class="checkpoint-img" />
+            </div>
+          </div>
+          <div v-else-if="selectedCheckpoint.photoUrl" class="checkpoint-media">
+            <img :src="selectedCheckpoint.photoUrl" class="checkpoint-img single" />
+          </div>
+
+          <h3 class="panel-title">{{ selectedCheckpoint.title }}</h3>
+          <p class="panel-desc">{{ selectedCheckpoint.description || 'Описание отсутствует' }}</p>
+        </div>
+
+        <div class="panel-footer">
+          <FpButton variant="primary" size="sm" @click="selectedCheckpoint = null">Понятно</FpButton>
+        </div>
+      </div>
+    </transition>
 
     <Teleport to="body">
       <div v-if="showVictoryModal" class="victory-overlay">
@@ -1020,12 +1043,66 @@ onUnmounted(() => {
   z-index: 1050;
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.4);
   pointer-events: auto;
+  max-height: 75vh;
+  display: flex;
+  flex-direction: column;
 
   .panel-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 16px;
+    margin-bottom: 20px;
+    flex-shrink: 0;
+  }
+
+  .panel-content-scroll {
+    overflow-y: auto;
+    flex: 1;
+    margin-bottom: 20px;
+    padding-right: 4px;
+
+    &::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+    }
+  }
+
+  .checkpoint-media {
+    margin-bottom: 20px;
+
+    .media-row {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+
+      &::-webkit-scrollbar {
+        height: 4px;
+      }
+
+      &::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+      }
+    }
+
+    .checkpoint-img {
+      width: 240px;
+      height: 160px;
+      object-fit: cover;
+      border-radius: 16px;
+      flex-shrink: 0;
+      background: rgba(255, 255, 255, 0.05);
+
+      &.single {
+        width: 100%;
+        height: 200px;
+      }
+    }
   }
 
   .point-badge {
