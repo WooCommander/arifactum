@@ -818,7 +818,7 @@ onUnmounted(() => {
 
 .hud-top-panel {
   margin: 0 12px 12px;
-  background: rgba(15, 18, 25, 0.7);
+  background: rgba(15, 18, 25, 0.85); // Сделали фон чуть плотнее
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 20px;
@@ -832,11 +832,12 @@ onUnmounted(() => {
     text-align: center;
 
     .hud-route-name {
-      font-size: 0.8rem;
-      font-weight: 500;
-      color: var(--color-text-tertiary);
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.7);
       text-transform: uppercase;
       letter-spacing: 0.15em;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
     }
   }
 
@@ -874,7 +875,7 @@ onUnmounted(() => {
 
 .target-card-mini {
   margin: 0 12px;
-  background: rgba(40, 44, 55, 0.7);
+  background: rgba(40, 44, 55, 0.85); // Сделали фон чуть плотнее
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 20px;
@@ -895,11 +896,11 @@ onUnmounted(() => {
   }
 
   .target-label-mini {
-    font-size: 8px;
-    font-weight: 600;
+    font-size: 9px;
+    font-weight: 700;
     text-transform: uppercase;
-    color: var(--color-text-tertiary);
-    letter-spacing: 0.1em;
+    color: rgba(255, 255, 255, 0.5);
+    letter-spacing: 0.12em;
   }
 
   .target-title-mini {
