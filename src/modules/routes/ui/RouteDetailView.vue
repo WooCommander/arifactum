@@ -405,7 +405,7 @@ onUnmounted(() => {
                   v-model:follow-user="isFollowMode" :is-clustered="false"
                   :bearing="isCompassMode ? (userLocation?.heading || 0) : 0"
                   :target-location="nextCheckpointLocation" 
-                  @checkpoint-select="handleMarkerClick" 
+                  @marker-click="handleMarkerClick" 
                   @map-click="selectedCheckpoint = null"
                   @toggle-compass="isCompassMode = !isCompassMode" />
               </div>
