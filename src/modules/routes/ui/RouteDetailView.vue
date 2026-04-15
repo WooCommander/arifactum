@@ -60,9 +60,10 @@ const mapPoints = computed(() => {
     lat: cp.latitude,
     lng: cp.longitude,
     title: cp.title,
-    order: cp.order
+    order: cp.order,
+    isCompleted: completedCheckpointIds.value.has(cp.id),
+    isActive: nextCheckpoint.value?.id === cp.id
   }))
-  console.log('[RouteDetail] mapPoints count:', points.length)
   return points
 })
 
@@ -72,6 +73,14 @@ const completedCheckpointIds = ref(new Set<string>())
 const elapsedTime = ref('00:00')
 let timerInterval: any = null
 let locationWatchId: string | null = null
+const selectedCheckpoint = ref<Checkpoint | null>(null)
+
+function handleMarkerClick(id: string) {
+  const cp = currentCheckpoints.value.find(p => p.id === id)
+  if (cp) {
+    selectedCheckpoint.value = cp
+  }
+}
 
 const nextCheckpoint = computed(() => {
   return [...currentCheckpoints.value]
@@ -300,12 +309,12 @@ onUnmounted(() => {
 
                   <div class="hud-stats-bar">
                     <div class="hud-stat-item">
-                      <MapPin :size="12" class="stat-icon" />
+                      <span class="label">ТОЧКА</span>
                       <span class="value">{{ completedCheckpointIds.size + 1 }} / {{ currentCheckpoints.length }}</span>
                     </div>
                     <div class="hud-divider"></div>
                     <div class="hud-stat-item">
-                      <Clock :size="12" class="stat-icon" />
+                      <span class="label">ВРЕМЯ</span>
                       <span class="value">{{ elapsedTime }}</span>
                     </div>
                   </div>
@@ -314,21 +323,47 @@ onUnmounted(() => {
                 <div v-if="nextCheckpoint" class="target-card-mini">
                   <div class="target-row">
                     <div class="target-info-group">
-                      <span class="target-label-mini">СЛЕДУЮЩАЯ ЦЕЛЬ</span>
+                      <div class="target-meta">
+                        <span class="target-label-mini">СЛЕДУЮЩАЯ ЦЕЛЬ</span>
+                        <span class="target-order">#{{ nextCheckpoint.order }}</span>
+                      </div>
                       <span class="target-title-mini">{{ nextCheckpoint.title }}</span>
                     </div>
-                    <div class="target-dist-badge">
-                      <Navigation :size="12" class="dist-icon" />
-                      <span class="dist-value">{{ formatDistance(distanceToNext) }}</span>
+                    
+                    <div class="target-actions-wrap">
+                      <button class="info-btn" @click="selectedCheckpoint = nextCheckpoint">
+                        <Info :size="18" />
+                      </button>
+                      <div class="target-dist-badge">
+                        <Navigation :size="12" class="dist-icon" />
+                        <span class="dist-value">{{ formatDistance(distanceToNext) }}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
+
+                <!-- Плашка информации о точке (Selected Checkpoint) -->
+                <transition name="slide-up">
+                  <div v-if="selectedCheckpoint" class="checkpoint-detail-panel">
+                    <div class="panel-header">
+                      <div class="point-badge">Точка #{{ selectedCheckpoint.order }}</div>
+                      <button class="close-panel" @click="selectedCheckpoint = null">
+                        <X :size="20" />
+                      </button>
+                    </div>
+                    <h3 class="panel-title">{{ selectedCheckpoint.title }}</h3>
+                    <p class="panel-desc">{{ selectedCheckpoint.description || 'Описание отсутствует' }}</p>
+                    <div class="panel-footer">
+                      <FpButton variant="primary" size="sm" @click="selectedCheckpoint = null">Понятно</FpButton>
+                    </div>
+                  </div>
+                </transition>
               </div>
 
-              <div class="map-section active-map-section">
+              <div class="map-section active-map-section" @click="selectedCheckpoint = null">
                 <ArtMap class="route-map full-screen" :points="mapPoints" :center="(userLocation as [number, number])"
                   :interactive="true" :user-location="userLocation" :follow-user="true" :is-clustered="false"
-                  :target-location="nextCheckpointLocation" />
+                  :target-location="nextCheckpointLocation" @marker-click="handleMarkerClick" />
               </div>
 
               <div class="active-actions-bottom">
@@ -929,6 +964,132 @@ onUnmounted(() => {
       font-variant-numeric: tabular-nums;
     }
   }
+
+  .target-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 2px;
+  }
+
+  .target-order {
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--color-primary);
+    background: rgba(var(--color-primary-rgb), 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(var(--color-primary-rgb), 0.2);
+  }
+
+  .target-actions-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .info-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+
+    &:active {
+      transform: scale(0.9);
+      background: rgba(255, 255, 255, 0.1);
+    }
+  }
+}
+
+.checkpoint-detail-panel {
+  position: absolute;
+  bottom: 0px;
+  left: 0;
+  right: 0;
+  background: var(--color-surface);
+  backdrop-filter: blur(30px);
+  border-top: 1px solid var(--color-border);
+  border-radius: 24px 24px 0 0;
+  padding: 24px 24px calc(24px + env(safe-area-inset-bottom));
+  z-index: 1050;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.4);
+  pointer-events: auto;
+
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .point-badge {
+    background: var(--color-primary);
+    color: #000;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 4px 12px;
+    border-radius: 100px;
+    text-transform: uppercase;
+  }
+
+  .close-panel {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: var(--color-text-tertiary);
+    background: rgba(255, 255, 255, 0.05);
+
+    &:active {
+      transform: scale(0.9);
+      background: rgba(255, 255, 255, 0.1);
+    }
+  }
+
+  .panel-title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--color-text-primary);
+    margin: 0 0 12px;
+  }
+
+  .panel-desc {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--color-text-secondary);
+    margin: 0 0 24px;
+    max-height: 180px;
+    overflow-y: auto;
+  }
+
+  .panel-footer {
+    display: flex;
+    justify-content: center;
+
+    button {
+      width: 100%;
+      height: 48px;
+    }
+  }
+}
+
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.slide-up-enter-from,
+.slide-up-leave-to {
+  transform: translateY(100%);
+  opacity: 0;
 }
 
 .route-map {

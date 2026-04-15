@@ -48,6 +48,7 @@ interface Point {
   title?: string
   id?: string
   isCompleted?: boolean
+  isActive?: boolean
   order?: number
 }
 
@@ -143,7 +144,7 @@ const refreshMarkersLayer = () => {
       icon: L.divIcon({
         className: 'art-marker',
         html: `
-                    <div class="marker-pin ${p.isCompleted ? 'completed' : ''}">
+                    <div class="marker-pin ${p.isCompleted ? 'completed' : ''} ${p.isActive ? 'active' : ''}">
                         <span class="marker-number">${p.order || '?'}</span>
                     </div>
                 `,
@@ -592,30 +593,65 @@ onUnmounted(() => {
   .marker-pin {
     width: 32px;
     height: 32px;
-    background: var(--color-primary);
-    border: 2px solid white;
+    background: var(--color-surface);
+    border: 2px solid var(--color-border);
     border-radius: 50% 50% 50% 0;
     transform: rotate(-45deg);
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-    transition: transform 0.2s ease;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+    position: relative;
+
+    .marker-number {
+      transform: rotate(45deg);
+      color: var(--color-text-primary);
+      font-size: 14px;
+      font-weight: 900;
+    }
 
     &.completed {
-      background: var(--color-success);
+      background: var(--color-success) !important;
+      border-color: rgba(255, 255, 255, 0.4) !important;
+      opacity: 0.6;
+      .marker-number { color: var(--color-white) !important; }
     }
-  }
 
-  .marker-number {
-    transform: rotate(45deg);
-    color: white;
-    font-size: 14px;
-    font-weight: 900;
+    &.active {
+      background: var(--color-primary) !important;
+      border-color: var(--color-white) !important;
+      box-shadow: 0 0 20px var(--color-primary);
+      z-index: 100 !important;
+      transform: rotate(-45deg) scale(1.2);
+      
+      .marker-number { color: var(--color-white) !important; }
+
+      &::after {
+        content: '';
+        position: absolute;
+        inset: -4px;
+        border: 2px solid var(--color-primary);
+        border-radius: inherit;
+        animation: marker-pulse 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+      }
+    }
   }
 
   &:hover .marker-pin {
     transform: rotate(-45deg) scale(1.1);
+    &.active { transform: rotate(-45deg) scale(1.3); }
+  }
+}
+
+@keyframes marker-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
   }
 }
 
