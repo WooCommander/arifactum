@@ -1122,18 +1122,22 @@ onUnmounted(() => {
   }
 
   .close-panel {
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%;
+    border-radius: 12px;
     color: var(--color-text-tertiary);
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
     &:active {
-      transform: scale(0.9);
-      background: rgba(255, 255, 255, 0.1);
+      transform: scale(0.9) rotate(90deg);
+      background: rgba(255, 255, 255, 0.15);
+      color: var(--color-white);
+      border-color: rgba(255, 255, 255, 0.3);
     }
   }
 
