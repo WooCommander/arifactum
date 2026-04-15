@@ -24,6 +24,7 @@ const images = ref<string[]>([])
 const coverUrl = ref<string | null>(null)
 const isSaving = ref(false)
 const isLoading = ref(false)
+const userLocation = ref<[number, number] | null>(null)
 
 interface CheckpointForm {
   title: string
@@ -86,6 +87,14 @@ onMounted(async () => {
     } finally {
       isLoading.value = false
     }
+  }
+
+  // Получаем текущую геопозицию автора для центрирования карты
+  try {
+    const pos = await LocationService.getCurrentPosition()
+    userLocation.value = [pos.latitude, pos.longitude]
+  } catch (err) {
+    console.warn('Could not get initial creator location:', err)
   }
 })
 
@@ -233,6 +242,8 @@ const handleSave = async () => {
       <ArtMap 
         class="creation-map" 
         :points="mapPoints" 
+        :center="userLocation"
+        :user-location="userLocation"
         @map-click="handleMapClick"
       />
       <div class="map-hint">
