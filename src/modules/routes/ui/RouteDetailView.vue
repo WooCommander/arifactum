@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, computed } from 'vue'
+import type { Route, Checkpoint } from '../types'
 import { useRoute, useRouter } from 'vue-router'
 import { useRoutesStore } from '../state/useRoutesStore'
 import { FpSpinner, FpBackButton, FpConfirmationModal, FpPullToRefresh, FpButton, FpCard } from '@/design-system'
@@ -25,7 +26,9 @@ import {
   MessageSquare,
   Send,
   Trophy,
-  Tag
+  Tag,
+  X,
+  Navigation as NavigationIcon
 } from 'lucide-vue-next'
 
 const route = useRoute()
@@ -549,7 +552,7 @@ onUnmounted(() => {
         <div class="panel-header">
           <div class="point-badge">Точка #{{ selectedCheckpoint.order }}</div>
           <button class="close-panel" @click="selectedCheckpoint = null">
-            <X :size="20" />
+            <X :size="20" color="white" />
           </button>
         </div>
 
@@ -1122,22 +1125,21 @@ onUnmounted(() => {
   }
 
   .close-panel {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 12px;
+    border-radius: 50%;
     color: var(--color-text-tertiary);
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    transition: all 0.2s ease;
 
     &:active {
-      transform: scale(0.9) rotate(90deg);
-      background: rgba(255, 255, 255, 0.15);
+      transform: scale(0.9);
+      background: rgba(255, 255, 255, 0.2);
       color: var(--color-white);
-      border-color: rgba(255, 255, 255, 0.3);
     }
   }
 
