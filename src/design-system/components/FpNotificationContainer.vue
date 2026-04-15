@@ -79,7 +79,7 @@ const iconMap: Record<string, string> = {
         color: #fff;
         border: 2px solid rgba(255, 255, 255, 0.2);
         animation: fp-bounce-in 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-        
+
         .fp-notif__icon {
             background: rgba(255, 255, 255, 0.3);
             font-size: 14px;
@@ -126,9 +126,22 @@ const iconMap: Record<string, string> = {
 }
 
 @keyframes fp-bounce-in {
-    0% { transform: scale(0.3); opacity: 0; }
-    50% { transform: scale(1.05); }
-    70% { transform: scale(0.9); }
-    100% { transform: scale(1); opacity: 1; }
+    0% {
+        transform: scale(0.3);
+        opacity: 0;
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+
+    70% {
+        transform: scale(0.9);
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 </style>

@@ -8,15 +8,16 @@ import { useSocialStore } from '@/modules/social/state/useSocialStore'
 import { MuseumService } from '@/modules/profile/services/MuseumService'
 import { authStore } from '@/modules/auth/store/authStore'
 import ArOverlay from '@/modules/ar/ui/ArOverlay.vue'
-import { 
-  Heart, 
-  Bookmark, 
-  Share2, 
-  MapPin, 
-  Clock, 
-  Zap, 
-  Info, 
-  Globe, 
+import { LocationService } from '@/shared/lib/LocationService'
+import {
+  Heart,
+  Bookmark,
+  Share2,
+  MapPin,
+  Clock,
+  Zap,
+  Info,
+  Globe,
   Navigation,
   Pencil,
   Trash2,
@@ -70,7 +71,7 @@ const userLocation = ref<[number, number] | null>(null)
 const completedCheckpointIds = ref(new Set<string>())
 const elapsedTime = ref('00:00')
 let timerInterval: any = null
-let locationInterval: any = null
+let locationWatchId: string | null = null
 
 const nextCheckpoint = computed(() => {
   return [...currentCheckpoints.value]
@@ -101,14 +102,14 @@ const isLastPoint = computed(() => {
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371e3
-  const φ1 = lat1 * Math.PI/180
-  const φ2 = lat2 * Math.PI/180
-  const Δφ = (lat2-lat1) * Math.PI/180
-  const Δλ = (lon2-lon1) * Math.PI/180
-  const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-          Math.cos(φ1) * Math.cos(φ2) *
-          Math.sin(Δλ/2) * Math.sin(Δλ/2)
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+  const φ1 = lat1 * Math.PI / 180
+  const φ2 = lat2 * Math.PI / 180
+  const Δφ = (lat2 - lat1) * Math.PI / 180
+  const Δλ = (lon2 - lon1) * Math.PI / 180
+  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) *
+    Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
   return R * c
 }
 
@@ -121,22 +122,13 @@ async function fetchRouteDetails() {
   try {
     await routesStore.fetchRouteDetails(routeId)
     await socialStore.fetchComments(routeId)
-    
+
     // Fetch social status for the current user
     if (authStore.currentUserId.value) {
       const status = await socialStore.getRouteSocialStatus(routeId, authStore.currentUserId.value)
       isLiked.value = status.isLiked
       isFavorite.value = status.isFavorite
     }
-
-    // GPS SIMULATION FOR TESTING (v2.12.0 Stability Patch)
-    setTimeout(() => {
-      console.log('[GPS Mock] Adjusting location to trigger navigation...')
-      if (currentCheckpoints.value.length > 0) {
-        const first = currentCheckpoints.value[0]
-        userLocation.value = [first.latitude - 0.001, first.longitude - 0.001]
-      }
-    }, 3000)
   } catch (e: any) {
     console.error('Failed to load route details', e)
   }
@@ -209,9 +201,9 @@ async function onArtifactCapture() {
 
 async function handleCheckIn() {
   if (!nextCheckpoint.value) return
-  
+
   completedCheckpointIds.value.add(nextCheckpoint.value.id)
-  
+
   // If last point, finish route
   if (completedCheckpointIds.value.size === currentCheckpoints.value.length) {
     finishRoute()
@@ -221,7 +213,7 @@ async function handleCheckIn() {
 async function finishRoute() {
   isActiveMode.value = false
   clearInterval(timerInterval)
-  
+
   // Unlock Artifact logic
   try {
     if (authStore.currentUserId.value) {
@@ -241,15 +233,15 @@ async function finishRoute() {
     xpGained: 250,
     levelGained: Math.random() > 0.7
   }
-  
+
   showVictoryModal.value = true
 }
 
 // Lifecycle
-onMounted(() => {
-  fetchRouteDetails()
-  
-  // Timer mock
+onMounted(async () => {
+  await fetchRouteDetails()
+
+  // Timer
   let seconds = 0
   timerInterval = setInterval(() => {
     if (isActiveMode.value) {
@@ -260,23 +252,27 @@ onMounted(() => {
     }
   }, 1000)
 
-  // Location mock
-  locationInterval = setInterval(() => {
-    if (isActiveMode.value && !userLocation.value) {
-      // Set initial mock location near first point
-      if (currentCheckpoints.value[0]) {
-        userLocation.value = [
-          currentCheckpoints.value[0].latitude + 0.0001,
-          currentCheckpoints.value[0].longitude + 0.0001
-        ]
+  // Location Tracking
+  try {
+    const fallbackCoords: [number, number] | undefined = currentCheckpoints.value[0]
+      ? [currentCheckpoints.value[0].latitude, currentCheckpoints.value[0].longitude]
+      : undefined
+
+    locationWatchId = await LocationService.watchPosition((coords) => {
+      if (isActiveMode.value) {
+        userLocation.value = coords
       }
-    }
-  }, 3000)
+    }, fallbackCoords)
+  } catch (e) {
+    console.error('Failed to start location tracking:', e)
+  }
 })
 
 onUnmounted(() => {
   clearInterval(timerInterval)
-  clearInterval(locationInterval)
+  if (locationWatchId) {
+    LocationService.clearWatch(locationWatchId)
+  }
 })
 </script>
 
@@ -297,21 +293,21 @@ onUnmounted(() => {
           <transition name="fade-slide">
             <div v-if="isActiveMode" class="navigation-layer">
               <div class="active-hud">
-                <div class="hud-route-title">
-                  {{ currentRoute.title }}
-                </div>
-                
-                <div class="hud-top">
-                  <div class="hud-stat">
-                    <MapPin :size="14" class="stat-icon" />
-                    <span class="label">ТОЧКА</span>
-                    <span class="value">{{ completedCheckpointIds.size + 1 }} / {{ currentCheckpoints.length }}</span>
+                <div class="hud-top-panel">
+                  <div class="hud-route-header">
+                    <span class="hud-route-name">{{ currentRoute.title }}</span>
                   </div>
-                  
-                  <div class="hud-timer">
-                    <Clock :size="14" class="stat-icon" />
-                    <span class="label">ВРЕМЯ</span>
-                    <span class="value">{{ elapsedTime }}</span>
+
+                  <div class="hud-stats-bar">
+                    <div class="hud-stat-item">
+                      <MapPin :size="12" class="stat-icon" />
+                      <span class="value">{{ completedCheckpointIds.size + 1 }} / {{ currentCheckpoints.length }}</span>
+                    </div>
+                    <div class="hud-divider"></div>
+                    <div class="hud-stat-item">
+                      <Clock :size="12" class="stat-icon" />
+                      <span class="value">{{ elapsedTime }}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -330,16 +326,9 @@ onUnmounted(() => {
               </div>
 
               <div class="map-section active-map-section">
-                <ArtMap 
-                  class="route-map full-screen"
-                  :points="mapPoints" 
-                  :center="(userLocation as [number, number])"
-                  :interactive="true"
-                  :user-location="userLocation"
-                  :follow-user="true"
-                  :is-clustered="false"
-                  :target-location="nextCheckpointLocation"
-                />
+                <ArtMap class="route-map full-screen" :points="mapPoints" :center="(userLocation as [number, number])"
+                  :interactive="true" :user-location="userLocation" :follow-user="true" :is-clustered="false"
+                  :target-location="nextCheckpointLocation" />
               </div>
 
               <div class="active-actions-bottom">
@@ -347,36 +336,21 @@ onUnmounted(() => {
                   Выход
                 </FpButton>
 
-                <FpButton 
-                  v-if="isNearNext && !isArMode" 
-                  variant="primary" 
-                  class="ar-action-btn" 
-                  @click="startArSession"
-                >
+                <FpButton v-if="isNearNext && !isArMode" variant="primary" class="ar-action-btn"
+                  @click="startArSession">
                   <Navigation :size="20" /> AR
                 </FpButton>
 
-                <FpButton 
-                  variant="primary" 
-                  class="target-action-btn"
-                  :disabled="!isNearNext || !nextCheckpoint || isArMode" 
-                  @click="handleCheckIn"
-                >
+                <FpButton variant="primary" class="target-action-btn"
+                  :disabled="!isNearNext || !nextCheckpoint || isArMode" @click="handleCheckIn">
                   {{ isLastPoint ? 'Финиш' : 'Забрать' }}
                 </FpButton>
               </div>
 
               <div class="map-section active-map-section">
-                <ArtMap 
-                  class="route-map full-screen"
-                  :points="mapPoints" 
-                  :center="(userLocation as [number, number])"
-                  :interactive="true"
-                  :user-location="userLocation"
-                  :follow-user="true"
-                  :is-clustered="false"
-                  :target-location="nextCheckpointLocation"
-                />
+                <ArtMap class="route-map full-screen" :points="mapPoints" :center="(userLocation as [number, number])"
+                  :interactive="true" :user-location="userLocation" :follow-user="true" :is-clustered="false"
+                  :target-location="nextCheckpointLocation" />
               </div>
             </div>
           </transition>
@@ -390,22 +364,23 @@ onUnmounted(() => {
           <div v-else class="hero-placeholder">
             <MapPin :size="64" />
           </div>
-          
+
           <div class="hero-header">
-             <FpBackButton @click="router.back()" class="back-btn" />
-             
-             <div v-if="isAuthor" class="author-actions">
-               <button class="action-icon edit" @click="router.push(`/edit-route/${currentRoute.id}`)">
-                 <Pencil :size="20" />
-               </button>
-               <button class="action-icon delete" @click="showDeleteConfirm = true">
-                 <Trash2 :size="20" />
-               </button>
-             </div>
+            <FpBackButton @click="router.back()" class="back-btn" />
+
+            <div v-if="isAuthor" class="author-actions">
+              <button class="action-icon edit" @click="router.push(`/edit-route/${currentRoute.id}`)">
+                <Pencil :size="20" />
+              </button>
+              <button class="action-icon delete" @click="showDeleteConfirm = true">
+                <Trash2 :size="20" />
+              </button>
+            </div>
           </div>
 
           <div v-if="isAuthor" class="status-badge" :class="currentRoute.status">
-            {{ currentRoute.status === 'draft' ? 'Черновик' : currentRoute.status === 'pending' ? 'На модерации' : 'Опубликован' }}
+            {{ currentRoute.status === 'draft' ? 'Черновик' : currentRoute.status === 'pending' ? 'На модерации' :
+              'Опубликован' }}
           </div>
         </div>
 
@@ -416,7 +391,7 @@ onUnmounted(() => {
             </div>
             <h1 class="route-title">{{ currentRoute.title }}</h1>
           </div>
-          
+
           <div class="social-summary-bar">
             <div class="social-action" :class="{ active: isLiked }" @click="handleToggleLike">
               <Heart :size="24" :fill="isLiked ? 'var(--color-error)' : 'none'" />
@@ -434,7 +409,7 @@ onUnmounted(() => {
 
           <div class="route-stats">
             <p class="description">{{ currentRoute.description }}</p>
-            
+
             <div class="detail-stats">
               <div class="stat">
                 <MapPin :size="20" />
@@ -466,19 +441,10 @@ onUnmounted(() => {
               </div>
 
               <div class="comment-input-wrap">
-                <textarea 
-                  v-model="commentText" 
-                  placeholder="Поделитесь впечатлениями..." 
-                  rows="2"
-                  class="comment-textarea"
-                ></textarea>
-                <FpButton 
-                  variant="primary" 
-                  size="sm" 
-                  class="send-comment-btn"
-                  :disabled="!commentText.trim() || isSubmittingComment"
-                  @click="handleSubmitComment"
-                >
+                <textarea v-model="commentText" placeholder="Поделитесь впечатлениями..." rows="2"
+                  class="comment-textarea"></textarea>
+                <FpButton variant="primary" size="sm" class="send-comment-btn"
+                  :disabled="!commentText.trim() || isSubmittingComment" @click="handleSubmitComment">
                   <Send :size="18" />
                 </FpButton>
               </div>
@@ -487,7 +453,8 @@ onUnmounted(() => {
                 <div class="comments-list">
                   <div v-for="comment in comments" :key="comment.id" class="comment-card">
                     <div class="comment-user">
-                      <div class="user-avatar" :style="comment.avatarUrl ? `background-image: url(${comment.avatarUrl})` : ''">
+                      <div class="user-avatar"
+                        :style="comment.avatarUrl ? `background-image: url(${comment.avatarUrl})` : ''">
                         {{ !comment.avatarUrl ? (comment.userName?.[0] || '?') : '' }}
                       </div>
                       <div class="user-info">
@@ -511,24 +478,15 @@ onUnmounted(() => {
 
           <div v-if="!isActiveMode" class="map-section">
             <h2>Карта маршрута</h2>
-            <ArtMap 
-              class="route-map"
-              :points="mapPoints" 
-              :interactive="true"
-              :user-location="userLocation"
-              :is-clustered="true"
-            />
+            <ArtMap class="route-map" :points="mapPoints" :interactive="true" :user-location="userLocation"
+              :is-clustered="true" />
           </div>
 
           <div class="section">
             <h2>Точки маршрута</h2>
             <div v-if="!isActiveMode" class="checkpoints-list">
-              <div 
-                v-for="cp in currentCheckpoints" 
-                :key="cp.id" 
-                class="checkpoint-item"
-                :class="{ completed: completedCheckpointIds.has(cp.id), next: nextCheckpoint?.id === cp.id }"
-              >
+              <div v-for="cp in currentCheckpoints" :key="cp.id" class="checkpoint-item"
+                :class="{ completed: completedCheckpointIds.has(cp.id), next: nextCheckpoint?.id === cp.id }">
                 <div class="checkpoint-number">{{ cp.order }}</div>
                 <div class="checkpoint-body">
                   <h3>{{ cp.title }}</h3>
@@ -549,11 +507,7 @@ onUnmounted(() => {
     </div>
 
     <!-- Modals & Overlays -->
-    <ArOverlay 
-      v-if="isArMode" 
-      @capture="onArtifactCapture" 
-      @close="stopArSession"
-    />
+    <ArOverlay v-if="isArMode" @capture="onArtifactCapture" @close="stopArSession" />
 
     <Teleport to="body">
       <div v-if="showVictoryModal" class="victory-overlay">
@@ -609,22 +563,13 @@ onUnmounted(() => {
       </div>
     </Teleport>
 
-    <FpConfirmationModal 
-      v-model:visible="showDeleteConfirm"
-      title="Удаление маршрута"
-      message="Вы уверены, что хотите безвозвратно удалить этот маршрут?"
-      confirmText="Удалить"
-      variant="danger"
-      @confirm="handleDelete"
-    />
+    <FpConfirmationModal v-model:visible="showDeleteConfirm" title="Удаление маршрута"
+      message="Вы уверены, что хотите безвозвратно удалить этот маршрут?" confirmText="Удалить" variant="danger"
+      @confirm="handleDelete" />
 
-    <FpConfirmationModal 
-      v-model:visible="showPublishConfirm"
-      title="Публикация"
+    <FpConfirmationModal v-model:visible="showPublishConfirm" title="Публикация"
       message="Отправить маршрут на модерацию? После этого вы не сможете его редактировать до проверки."
-      confirmText="Отправить"
-      @confirm="handlePublish"
-    />
+      confirmText="Отправить" @confirm="handlePublish" />
   </div>
 </template>
 
@@ -633,7 +578,7 @@ onUnmounted(() => {
   min-height: 100vh;
   background: var(--color-background);
   padding-bottom: calc(160px + env(safe-area-inset-bottom));
-  
+
   &.active-mode {
     padding-bottom: calc(240px + env(safe-area-inset-bottom));
   }
@@ -652,23 +597,38 @@ onUnmounted(() => {
     width: 100%;
     height: 100%;
     position: relative;
-    img { width: 100%; height: 100%; object-fit: cover; }
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
     .hero-overlay {
       position: absolute;
       inset: 0;
-      background: linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, transparent 40%, rgba(0,0,0,0.4) 100%);
+      background: linear-gradient(to bottom, rgba(0, 0, 0, 0.3) 0%, transparent 40%, rgba(0, 0, 0, 0.4) 100%);
     }
   }
 
   .hero-placeholder {
-    width: 100%; height: 100%;
-    display: flex; align-items: center; justify-content: center;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: var(--color-text-tertiary);
   }
 
   .hero-header {
-    position: absolute; top: 12px; left: 12px; right: 12px; z-index: 10;
-    display: flex; justify-content: space-between; align-items: center;
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
   }
 }
 
@@ -677,32 +637,61 @@ onUnmounted(() => {
 }
 
 .route-title {
-  font-size: 24px; font-weight: 800; color: var(--color-text-primary); margin: 0 0 16px;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--color-text-primary);
+  margin: 0 0 16px;
 }
 
 .social-summary-bar {
-  display: flex; justify-content: space-around; padding: 16px 0;
+  display: flex;
+  justify-content: space-around;
+  padding: 16px 0;
   border-top: 1px solid var(--color-border);
   border-bottom: 1px solid var(--color-border);
   margin-bottom: 24px;
 }
 
 .social-action {
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
-  color: var(--color-text-secondary); cursor: pointer;
-  span { font-size: 11px; font-weight: 700; text-transform: uppercase; }
-  &.active { color: var(--color-primary); }
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+
+  span {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  &.active {
+    color: var(--color-primary);
+  }
 }
 
 .detail-stats {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
-  margin: 16px 0; padding: 16px 0; border-top: 1px solid var(--color-border);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 16px 0;
+  padding: 16px 0;
+  border-top: 1px solid var(--color-border);
 }
 
 .stat {
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
-  font-size: 12px; font-weight: 700; color: var(--color-text-secondary);
-  svg { color: var(--color-primary); }
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+
+  svg {
+    color: var(--color-primary);
+  }
 }
 
 .comments-section {
@@ -715,7 +704,12 @@ onUnmounted(() => {
     align-items: center;
     gap: 12px;
     margin-bottom: 24px;
-    h2 { font-size: 20px; font-weight: 800; margin: 0; }
+
+    h2 {
+      font-size: 20px;
+      font-weight: 800;
+      margin: 0;
+    }
   }
 }
 
@@ -738,7 +732,10 @@ onUnmounted(() => {
     resize: none;
     font-size: 15px;
     color: var(--color-text-primary);
-    &::placeholder { color: var(--color-text-tertiary); }
+
+    &::placeholder {
+      color: var(--color-text-tertiary);
+    }
   }
 }
 
@@ -784,8 +781,17 @@ onUnmounted(() => {
     .user-info {
       display: flex;
       flex-direction: column;
-      .user-name { font-weight: 700; font-size: 14px; color: var(--color-text-primary); }
-      .comment-date { font-size: 11px; color: var(--color-text-tertiary); }
+
+      .user-name {
+        font-weight: 700;
+        font-size: 14px;
+        color: var(--color-text-primary);
+      }
+
+      .comment-date {
+        font-size: 11px;
+        color: var(--color-text-tertiary);
+      }
     }
   }
 
@@ -798,97 +804,83 @@ onUnmounted(() => {
 
 .active-hud {
   position: absolute;
-  top: 0;
+  top: 50px;
   left: 0;
   right: 0;
-  padding: 16px;
+  padding: calc(24px + env(safe-area-inset-top)) 16px 16px;
   z-index: 1010;
   pointer-events: none;
 
-  & > * {
+  &>* {
     pointer-events: auto;
   }
 }
 
-.hud-route-title {
-  text-align: center;
-  font-size: 1rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--color-white);
-  background: rgba(20, 22, 28, 0.9);
+.hud-top-panel {
+  margin: 0 12px 12px;
+  background: rgba(15, 18, 25, 0.7);
   backdrop-filter: blur(20px);
-  padding: 8px 32px;
-  border-radius: 100px; // Полная капсула
-  width: fit-content;
-  margin: 0 auto 16px; // Убрали отрицательный марджин
-  border: 1px solid rgba(255, 222, 0, 0.2);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-}
-
-.hud-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: rgba(30, 32, 40, 0.8);
-  backdrop-filter: blur(25px);
-  padding: 10px 20px;
-  border-radius: 100px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  margin-bottom: 12px;
-  margin-left: 12px;
-  margin-right: 12px;
-
-  .hud-stat, .hud-timer {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-
-    .stat-icon {
-      color: var(--color-primary);
-      opacity: 0.9;
-    }
-
-    .label {
-      font-size: 9px;
-      font-weight: 700;
-      color: var(--color-text-tertiary);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .value {
-      font-size: 14px;
-      font-weight: 800;
-      color: var(--color-white);
-      font-variant-numeric: tabular-nums;
-    }
-  }
-}
-
-.navigation-layer {
-  position: fixed;
-  inset: 0;
-  top: 64px;
-  bottom: 84px;
-  z-index: 900;
-  background: transparent;
-  pointer-events: none;
-}
-
-.target-card-mini {
-  margin-top: 0;
-  background: rgba(40, 44, 55, 0.85);
-  backdrop-filter: blur(25px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 20px;
   padding: 12px 20px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-  margin-left: 12px;
-  margin-right: 12px;
-  
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  .hud-route-header {
+    text-align: center;
+
+    .hud-route-name {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--color-text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+    }
+  }
+
+  .hud-stats-bar {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+
+    .hud-stat-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+
+      .stat-icon {
+        color: var(--color-primary);
+        opacity: 0.8;
+      }
+
+      .value {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: var(--color-white);
+        font-variant-numeric: tabular-nums;
+      }
+    }
+
+    .hud-divider {
+      width: 1px;
+      height: 16px;
+      background: rgba(255, 255, 255, 0.1);
+    }
+  }
+}
+
+.target-card-mini {
+  margin: 0 12px;
+  background: rgba(40, 44, 55, 0.7);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 12px 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+
   .target-row {
     display: flex;
     justify-content: space-between;
@@ -899,30 +891,30 @@ onUnmounted(() => {
   .target-info-group {
     display: flex;
     flex-direction: column;
-    gap: 1px;
+    gap: 2px;
   }
-  
+
   .target-label-mini {
-    font-size: 9px;
-    font-weight: 700;
+    font-size: 8px;
+    font-weight: 600;
     text-transform: uppercase;
     color: var(--color-text-tertiary);
-    letter-spacing: 0.05em;
+    letter-spacing: 0.1em;
   }
-  
+
   .target-title-mini {
     font-weight: 700;
     color: var(--color-white);
-    font-size: 1.05rem;
+    font-size: 1.1rem;
   }
-  
+
   .target-dist-badge {
     display: flex;
     align-items: center;
     gap: 6px;
-    background: rgba(255, 222, 0, 0.15);
-    padding: 6px 12px;
-    border-radius: 12px;
+    background: rgba(255, 222, 0, 0.12);
+    padding: 6px 14px;
+    border-radius: 14px;
     border: 1px solid rgba(255, 222, 0, 0.2);
 
     .dist-icon {
@@ -930,19 +922,19 @@ onUnmounted(() => {
     }
 
     .dist-value {
-      font-weight: 800;
+      font-weight: 900;
       color: var(--color-primary);
-      font-size: 1rem;
+      font-size: 1.1rem;
       font-variant-numeric: tabular-nums;
     }
   }
 }
 
-.route-map { 
-  height: 200px; 
-  border-radius: var(--radius-md); 
-  overflow: hidden; 
-  border: 1px solid var(--color-border); 
+.route-map {
+  height: 200px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 
   &.full-screen {
@@ -968,7 +960,7 @@ onUnmounted(() => {
 
 .active-actions-bottom {
   position: absolute;
-  bottom: 24px;
+  bottom: calc(90px + env(safe-area-inset-bottom));
   left: 16px;
   right: 16px;
   display: flex;
@@ -976,7 +968,9 @@ onUnmounted(() => {
   z-index: 1020;
   pointer-events: auto;
 
-  .exit-action-btn, .ar-action-btn, .target-action-btn {
+  .exit-action-btn,
+  .ar-action-btn,
+  .target-action-btn {
     height: 60px;
     border-radius: 18px;
     font-weight: 900;
@@ -1009,7 +1003,7 @@ onUnmounted(() => {
     background: linear-gradient(135deg, #FFDE00, #FFC000) !important;
     color: #000 !important;
     border: none;
-    
+
     &:disabled {
       background: #333 !important;
       color: #666 !important;
@@ -1019,38 +1013,173 @@ onUnmounted(() => {
   }
 }
 
-.checkpoints-list { display: flex; flex-direction: column; gap: 12px; }
+.checkpoints-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .checkpoint-item {
-  display: flex; gap: 12px; padding: 16px; background: var(--color-surface);
-  border-radius: var(--radius-md); border: 1px solid var(--color-border);
-  &.completed { border-color: var(--color-success); background: rgba(var(--color-success-rgb), 0.05); }
-  &.next { border-color: var(--color-primary); border-width: 2px; }
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+
+  &.completed {
+    border-color: var(--color-success);
+    background: rgba(var(--color-success-rgb), 0.05);
+  }
+
+  &.next {
+    border-color: var(--color-primary);
+    border-width: 2px;
+  }
 }
 
 .checkpoint-number {
-  width: 28px; height: 28px; border-radius: 50%; background: var(--color-primary);
-  color: white; display: flex; align-items: center; justify-content: center; font-weight: 800; flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  flex-shrink: 0;
 }
 
-.bottom-action { position: fixed; bottom: 80px; left: 20px; right: 20px; z-index: 1000; }
-.start-btn { width: 100%; padding: 16px; border-radius: var(--radius-md); background: var(--color-primary); color: white; font-weight: 800; border: none; }
-.active-actions { display: flex; gap: 12px; width: 100%; }
-.stop-btn { flex: 0.3; padding: 16px; border-radius: var(--radius-md); background: var(--color-surface); font-weight: 700; border: 1px solid var(--color-border); }
-.check-btn { flex: 1; padding: 16px; border-radius: var(--radius-md); background: var(--color-primary); color: white; font-weight: 800; border: none; }
-.btn-seek-ar { flex: 1; padding: 16px; border: 2px solid var(--color-primary); border-radius: var(--radius-md); background: rgba(var(--color-primary-rgb), 0.1); color: var(--color-primary); font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.bottom-action {
+  position: fixed;
+  bottom: 80px;
+  left: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+
+.start-btn {
+  width: 100%;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: white;
+  font-weight: 800;
+  border: none;
+}
+
+.active-actions {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.stop-btn {
+  flex: 0.3;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-weight: 700;
+  border: 1px solid var(--color-border);
+}
+
+.check-btn {
+  flex: 1;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: white;
+  font-weight: 800;
+  border: none;
+}
+
+.btn-seek-ar {
+  flex: 1;
+  padding: 16px;
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  background: rgba(var(--color-primary-rgb), 0.1);
+  color: var(--color-primary);
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
 
 .victory-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);
-  display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 24px;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 24px;
 }
+
 .victory-modal {
-  width: 100%; max-width: 360px; padding: 32px 24px; text-align: center; border: 2px solid var(--color-primary);
-  .victory-header h2 { font-size: 24px; font-weight: 900; margin: 16px 0 8px; }
+  width: 100%;
+  max-width: 360px;
+  padding: 32px 24px;
+  text-align: center;
+  border: 2px solid var(--color-primary);
+
+  .victory-header h2 {
+    font-size: 24px;
+    font-weight: 900;
+    margin: 16px 0 8px;
+  }
 }
-.victory-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 24px 0; }
-.artifact-reward { margin: 24px 0; .reward-card { display: flex; align-items: center; gap: 16px; padding: 16px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); img { width: 56px; height: 56px; } } }
 
-.loader, .error-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+.victory-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 24px 0;
+}
 
-@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+.artifact-reward {
+  margin: 24px 0;
+
+  .reward-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+
+    img {
+      width: 56px;
+      height: 56px;
+    }
+  }
+}
+
+.loader,
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
 </style>

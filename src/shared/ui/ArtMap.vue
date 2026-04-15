@@ -627,6 +627,8 @@ onUnmounted(() => {
 .leaflet-control-zoom {
   border: none !important;
   box-shadow: var(--shadow-2) !important;
+  margin-bottom: 100px !important; // Поднимаем выше кнопок действий
+  margin-right: 12px !important;
 
   a {
     border-radius: var(--radius-sm) !important;

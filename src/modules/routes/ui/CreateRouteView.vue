@@ -7,8 +7,8 @@ import { authStore } from '@/modules/auth/store/authStore'
 import { FpBackButton, FpInput, FpButton, FpSpinner, FpImageUpload } from '@/design-system'
 import ArtMap from '@/shared/ui/ArtMap.vue'
 import { Save, Plus, Trash2, MapPin, Star, X, MapPinOff } from 'lucide-vue-next'
-import { Geolocation } from '@capacitor/geolocation'
 import { Haptics } from '@capacitor/haptics'
+import { LocationService } from '@/shared/lib/LocationService'
 
 const router = useRouter()
 const route = useRoute()
@@ -156,14 +156,11 @@ const isLocating = ref<number | null>(null)
 const captureCurrentLocation = async (index: number) => {
   isLocating.value = index
   try {
-    const position = await Geolocation.getCurrentPosition({
-      enableHighAccuracy: true,
-      timeout: 10000
-    })
+    const coords = await LocationService.getCurrentPosition()
     
     const cp = checkpoints.value[index]
-    cp.lat = Number(position.coords.latitude.toFixed(6))
-    cp.lng = Number(position.coords.longitude.toFixed(6))
+    cp.lat = Number(coords[0].toFixed(6))
+    cp.lng = Number(coords[1].toFixed(6))
     
     await Haptics.vibrate()
   } catch (e) {
