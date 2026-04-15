@@ -40,6 +40,11 @@ const showVictoryModal = ref(false)
 const unlockedArtifact = ref<any>(null)
 const routeStats = ref<any>(null)
 
+// Регистрируем глобальный обработчик для гарантированной связи
+;(window as any).artSelectCheckpoint = (id: string) => {
+  handleMarkerClick(id)
+}
+
 // AR State
 const isArMode = ref(false)
 
@@ -74,13 +79,13 @@ const completedCheckpointIds = ref(new Set<string>())
 const elapsedTime = ref('00:00')
 let timerInterval: any = null
 let locationWatchId: string | null = null
-const selectedCheckpoint = ref<Checkpoint | null>(null)
+const selectedCheckpoint = ref<any | null>(null)
+const isFollowMode = ref(true)
 
 async function handleMarkerClick(id: string) {
-  console.log('[RouteDetail] handleMarkerClick:', id)
-  const cp = currentCheckpoints.value.find(p => p.id === id)
+  const targetId = String(id)
+  const cp = currentCheckpoints.value.find(p => String(p.id) === targetId)
   if (cp) {
-    console.log('[RouteDetail] Checkpoint found, opening panel:', cp.title)
     selectedCheckpoint.value = cp
     try {
       await Haptics.impact({ style: ImpactStyle.Medium })
@@ -337,7 +342,7 @@ onUnmounted(() => {
                       </div>
                       <span class="target-title-mini">{{ nextCheckpoint.title }}</span>
                     </div>
-                    
+
                     <div class="target-actions-wrap">
                       <button class="info-btn" @click="handleMarkerClick(nextCheckpoint.id)">
                         <Info :size="18" />
@@ -354,8 +359,9 @@ onUnmounted(() => {
               <!-- Карта в активном режиме -->
               <div class="map-section active-map-section">
                 <ArtMap class="route-map full-screen" :points="mapPoints" :center="(userLocation as [number, number])"
-                  :interactive="true" :user-location="userLocation" :follow-user="true" :is-clustered="false"
-                  :target-location="nextCheckpointLocation" @marker-click="handleMarkerClick" @map-click="selectedCheckpoint = null" />
+                  :interactive="true" :user-location="userLocation" v-model:follow-user="isFollowMode"
+                  :is-clustered="false" :target-location="nextCheckpointLocation" @checkpoint-select="handleMarkerClick"
+                  @map-click="selectedCheckpoint = null" />
               </div>
 
               <div class="active-actions-bottom">
@@ -506,7 +512,7 @@ onUnmounted(() => {
           <div v-if="!isActiveMode" class="map-section">
             <h2>Карта маршрута</h2>
             <ArtMap class="route-map" :points="mapPoints" :interactive="true" :user-location="userLocation"
-              :is-clustered="true" @marker-click="handleMarkerClick" @map-click="selectedCheckpoint = null" />
+              :is-clustered="true" @checkpoint-select="handleMarkerClick" @map-click="selectedCheckpoint = null" />
           </div>
 
           <div class="section">

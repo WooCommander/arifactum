@@ -2,6 +2,7 @@
 import { ref, shallowRef, onMounted, onUnmounted, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { Navigation, LocateFixed } from 'lucide-vue-next'
 import { DbService } from '@/modules/offline/services/DbService'
 
 /**
@@ -85,6 +86,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   (e: 'markerClick', id: string): void
   (e: 'mapClick', lat: number, lng: number): void
+  (e: 'update:followUser', value: boolean): void
 }>()
 
 const mapContainer = ref<HTMLElement | null>(null)
@@ -95,6 +97,17 @@ const teammateMarkers = ref<Map<string, L.Marker>>(new Map())
 const clusterMarker = shallowRef<L.Marker | null>(null)
 const navLine = shallowRef<L.Polyline | null>(null)
 const navArrow = shallowRef<L.Marker | null>(null)
+
+const toggleFollow = () => {
+  emit('update:followUser', !props.followUser)
+}
+
+const recenter = () => {
+  if (props.userLocation && map.value) {
+    map.value.panTo(props.userLocation, { animate: true, duration: 0.5 })
+    emit('update:followUser', true)
+  }
+}
 
 const refreshMarkersLayer = () => {
   if (!map.value) return
@@ -156,7 +169,14 @@ const refreshMarkersLayer = () => {
     if (p.id) {
       marker.on('click', (e) => {
         L.DomEvent.stopPropagation(e)
-        emit('markerClick', p.id!)
+        console.log('[ArtMap] checkpointSelect emitting ID:', p.id)
+        
+        // Гарантированная связь через глобальный объект
+        if ((window as any).artSelectCheckpoint) {
+          (window as any).artSelectCheckpoint(String(p.id))
+        }
+        
+        emit('checkpointSelect', String(p.id))
       })
     }
 
@@ -353,6 +373,10 @@ const initializeLeafletMap = () => {
     ; (map.value as L.Map).on('click', (e: L.LeafletMouseEvent) => {
       emit('mapClick', e.latlng.lat, e.latlng.lng)
     })
+
+  map.value.on('dragstart', () => {
+    emit('update:followUser', false)
+  })
 }
 
 watch(() => props.points, () => {
@@ -400,6 +424,16 @@ onUnmounted(() => {
 <template>
   <div class="art-map-wrapper">
     <div ref="mapContainer" class="art-map-container"></div>
+
+    <!-- Пользовательские контролы -->
+    <div v-if="interactive && userLocation" class="map-custom-controls">
+      <button :class="{ active: followUser }" title="Следование за мной" @click="toggleFollow">
+        <Navigation :size="20" />
+      </button>
+      <button title="Отцентрировать на мне" @click="recenter">
+        <LocateFixed :size="20" />
+      </button>
+    </div>
   </div>
 </template>
 
@@ -618,7 +652,10 @@ onUnmounted(() => {
       background: var(--color-success) !important;
       border-color: rgba(255, 255, 255, 0.4) !important;
       opacity: 0.6;
-      .marker-number { color: var(--color-white) !important; }
+
+      .marker-number {
+        color: var(--color-white) !important;
+      }
     }
 
     &.active {
@@ -627,8 +664,10 @@ onUnmounted(() => {
       box-shadow: 0 0 20px var(--color-primary);
       z-index: 100 !important;
       transform: rotate(-45deg) scale(1.2);
-      
-      .marker-number { color: var(--color-white) !important; }
+
+      .marker-number {
+        color: var(--color-white) !important;
+      }
 
       &::after {
         content: '';
@@ -643,7 +682,10 @@ onUnmounted(() => {
 
   &:hover .marker-pin {
     transform: rotate(-45deg) scale(1.1);
-    &.active { transform: rotate(-45deg) scale(1.3); }
+
+    &.active {
+      transform: rotate(-45deg) scale(1.3);
+    }
   }
 }
 
@@ -652,6 +694,7 @@ onUnmounted(() => {
     transform: scale(1);
     opacity: 0.8;
   }
+
   100% {
     transform: scale(1.8);
     opacity: 0;
@@ -666,17 +709,62 @@ onUnmounted(() => {
 .leaflet-control-zoom {
   border: none !important;
   box-shadow: var(--shadow-2) !important;
-  margin-bottom: 100px !important; // Поднимаем выше кнопок действий
+  margin-bottom: 110px !important;
   margin-right: 12px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
 
   a {
-    border-radius: var(--radius-sm) !important;
+    width: 44px !important;
+    height: 44px !important;
+    line-height: 44px !important;
+    border-radius: 12px !important;
     background: var(--color-surface) !important;
     color: var(--color-text-primary) !important;
     border: 1px solid var(--color-border) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 20px !important;
 
     &:hover {
       background: var(--color-surface-hover) !important;
+    }
+  }
+}
+
+.map-custom-controls {
+  position: absolute;
+  bottom: 215px; // Над кнопками зума
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 1000;
+
+  button {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-2);
+    transition: all 0.2s ease;
+
+    &.active {
+      background: var(--color-primary);
+      color: #000;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 15px var(--color-primary);
+    }
+
+    &:active {
+      transform: scale(0.9);
     }
   }
 }
