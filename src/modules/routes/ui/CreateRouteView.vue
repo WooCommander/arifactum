@@ -24,7 +24,7 @@ const images = ref<string[]>([])
 const coverUrl = ref<string | null>(null)
 const isSaving = ref(false)
 const isLoading = ref(false)
-const userLocation = ref<[number, number] | null>(null)
+const userLocation = ref<[number, number] | undefined>(undefined)
 
 interface CheckpointForm {
   title: string
