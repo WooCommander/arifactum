@@ -9,6 +9,43 @@ export interface ReleaseNote {
 
 export const changelog: ReleaseNote[] = [
     {
+        version: '2.13.2',
+        date: '2026-04-16',
+        highlights: [
+            'HUD Recovery & Interface Stability: Полное восстановление панелей управления'
+        ],
+        features: [
+            'Fixed HUD Visibility: Исправлена ошибка наложения слоев, из-за которой панель навигации пропадала в режиме маршрута.',
+            'Z-Index Optimization: Все элементы управления теперь гарантированно находятся над картой (z-index 2100+).',
+            'Template Refinement: Проведена глубокая чистка структуры шаблонов для стабильной работы на Android.'
+        ]
+    },
+    {
+        version: '2.13.1',
+        date: '2026-04-16',
+        highlights: [
+            'Interaction Polish & Layering: Улучшенная отзывчивость карты'
+        ],
+        features: [
+            'Event Conflict Fix: Исправлен баг, при котором клик по маркеру мгновенно закрывал окно описания.',
+            'Floating Panels Teleport: Окна описания чекпоинтов теперь вынесены в корень DOM для безупречной видимости.',
+            'Stop Propagation: Жесткая блокировка «проброса» кликов от иконок к подложке карты.'
+        ]
+    },
+    {
+        version: '2.13.0',
+        date: '2026-04-16',
+        highlights: [
+            'Compass-Powered Navigation: Живая карта, вращающаяся по курсу'
+        ],
+        features: [
+            'Auto-Rotation: Карта теперь автоматически разворачивается в сторону вашего движения (GPS Heading).',
+            'Smart Compass Control: Добавлена кнопка управления режимом ориентации карты.',
+            'Marker Compensation: Иконки на карте больше не вращаются вместе с ней, всегда сохраняя вертикальную ориентацию.',
+            'Vibration Feedback: Переход на Capacitor Haptics для четкой тактильной отдачи при действиях.'
+        ]
+    },
+    {
         version: '2.12.1',
         date: '2026-04-15',
         highlights: [
