@@ -168,7 +168,13 @@ const refreshMarkersLayer = () => {
 
     if (p.id) {
       marker.on('click', (e) => {
-        L.DomEvent.stopPropagation(e)
+        // Жестко останавливаем событие, чтобы оно не дошло до карты
+        if (e.originalEvent) {
+          e.originalEvent.stopPropagation();
+          e.originalEvent.preventDefault();
+        }
+        L.DomEvent.stopPropagation(e);
+        
         if ((window as any).artSelectCheckpoint) {
           (window as any).artSelectCheckpoint(String(p.id))
         }
