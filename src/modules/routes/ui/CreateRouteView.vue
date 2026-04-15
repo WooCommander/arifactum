@@ -159,8 +159,8 @@ const captureCurrentLocation = async (index: number) => {
     const coords = await LocationService.getCurrentPosition()
     
     const cp = checkpoints.value[index]
-    cp.lat = Number(coords[0].toFixed(6))
-    cp.lng = Number(coords[1].toFixed(6))
+    cp.lat = Number(coords.latitude.toFixed(6))
+    cp.lng = Number(coords.longitude.toFixed(6))
     
     await Haptics.vibrate()
   } catch (e) {

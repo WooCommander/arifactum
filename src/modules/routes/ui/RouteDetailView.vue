@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, computed } from 'vue'
-import type { Route, Checkpoint } from '../types'
 import { useRoute, useRouter } from 'vue-router'
 import { useRoutesStore } from '../state/useRoutesStore'
 import { FpSpinner, FpBackButton, FpConfirmationModal, FpPullToRefresh, FpButton, FpCard } from '@/design-system'
@@ -27,8 +26,7 @@ import {
   Send,
   Trophy,
   Tag,
-  X,
-  Navigation as NavigationIcon
+  X
 } from 'lucide-vue-next'
 
 const route = useRoute()
@@ -310,16 +308,12 @@ onMounted(async () => {
 
   // Location Tracking
   try {
-    const fallbackCoords: [number, number] | undefined = currentCheckpoints.value[0]
-      ? [currentCheckpoints.value[0].latitude, currentCheckpoints.value[0].longitude]
-      : undefined
-
     locationWatchId = await LocationService.watchPosition((coords) => {
       userLocation.value = coords
       
       // Check for completion
       if (nextCheckpoint.value && distanceToNext.value < 20) {
-        completeCheckpoint(nextCheckpoint.value.id)
+        handleCheckIn()
       }
     })
   } catch (e) {
@@ -557,7 +551,7 @@ onUnmounted(() => {
             <div v-if="!isActiveMode" class="checkpoints-list">
               <div v-for="cp in currentCheckpoints" :key="cp.id" class="checkpoint-item"
                 :class="{ completed: completedCheckpointIds.has(cp.id), next: nextCheckpoint?.id === cp.id }"
-                @click="navigator.vibrate(50); handleMarkerClick(cp.id)">
+                @click="Haptics.impact({ style: ImpactStyle.Light }); handleMarkerClick(cp.id)">
                 <div class="checkpoint-number">{{ cp.order }}</div>
                 <div class="checkpoint-body">
                   <h3>{{ cp.title }}</h3>

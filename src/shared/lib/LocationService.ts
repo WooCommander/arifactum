@@ -74,8 +74,7 @@ export class LocationService {
       const watchId = await Geolocation.watchPosition(
         {
           enableHighAccuracy: true,
-          timeout: 10000,
-          distanceFilter: 1 // Обновляем чаще для плавного поворота
+          timeout: 10000
         },
         (position) => {
           if (position) {
