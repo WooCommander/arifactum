@@ -520,8 +520,8 @@ onUnmounted(() => {
   height: 100%;
   z-index: 1;
   background: #111;
-  // Вращаем контейнер
-  transform: rotate(calc(-1 * var(--map-rotation, 0deg)));
+  // Временно отключаем вращение контейнера для дебага кликов
+  // transform: rotate(calc(-1 * var(--map-rotation, 0deg)));
   transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 

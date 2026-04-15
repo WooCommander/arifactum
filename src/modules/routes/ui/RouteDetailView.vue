@@ -114,16 +114,16 @@ function handleTouchEnd() {
   touchCurrentY.value = 0
 }
 
-async function handleMarkerClick(id: string) {
-  const targetId = String(id)
-  const cp = currentCheckpoints.value.find(p => String(p.id) === targetId)
+async function handleMarkerClick(id: any) {
+  const targetId = String(id).trim()
+  const cp = currentCheckpoints.value.find(p => String(p.id).trim() === targetId)
+  
   if (cp) {
     selectedCheckpoint.value = cp
-    try {
-      await Haptics.impact({ style: ImpactStyle.Medium })
-    } catch (e) {
-      // Ignore if haptics not available
-    }
+    // Вибрация отдельно, не блокируя UI
+    Haptics.impact({ style: ImpactStyle.Light }).catch(() => {})
+  } else {
+    console.warn('Checkpoint not found by ID:', targetId)
   }
 }
 
@@ -585,41 +585,43 @@ onUnmounted(() => {
     <ArOverlay v-if="isArMode" @capture="onArtifactCapture" @close="stopArSession" />
 
     <!-- Глобальная плашка информации о точке -->
-    <transition name="slide-up">
-      <div v-if="selectedCheckpoint" class="checkpoint-detail-panel floating-panel" 
-        :style="{ transform: `translateY(${panelTranslateY}px)` }"
-        @touchstart="handleTouchStart"
-        @touchmove="handleTouchMove"
-        @touchend="handleTouchEnd">
-        
-        <div class="panel-handle"></div>
+    <Teleport to="body">
+      <transition name="slide-up">
+        <div v-if="selectedCheckpoint" class="checkpoint-detail-panel floating-panel" 
+          :style="{ transform: `translateY(${panelTranslateY}px)` }"
+          @touchstart="handleTouchStart"
+          @touchmove="handleTouchMove"
+          @touchend="handleTouchEnd">
+          
+          <div class="panel-handle"></div>
 
-        <div class="panel-header">
-          <div class="point-badge">Точка #{{ selectedCheckpoint.order }}</div>
-          <button class="close-panel" @click="selectedCheckpoint = null">
-            <X :size="20" color="white" />
-          </button>
-        </div>
+          <div class="panel-header">
+            <div class="point-badge">Точка #{{ selectedCheckpoint.order }}</div>
+            <button class="close-panel" @click="selectedCheckpoint = null">
+              <X :size="20" color="white" />
+            </button>
+          </div>
 
-        <div class="panel-content-scroll">
-          <div v-if="selectedCheckpoint.images?.length" class="checkpoint-media">
-            <div class="media-row">
-              <img v-for="(img, idx) in selectedCheckpoint.images" :key="idx" :src="img" class="checkpoint-img" />
+          <div class="panel-content-scroll">
+            <div v-if="selectedCheckpoint.images?.length" class="checkpoint-media">
+              <div class="media-row">
+                <img v-for="(img, idx) in selectedCheckpoint.images" :key="idx" :src="img" class="checkpoint-img" />
+              </div>
             </div>
-          </div>
-          <div v-else-if="selectedCheckpoint.photoUrl" class="checkpoint-media">
-            <img :src="selectedCheckpoint.photoUrl" class="checkpoint-img single" />
+            <div v-else-if="selectedCheckpoint.photoUrl" class="checkpoint-media">
+              <img :src="selectedCheckpoint.photoUrl" class="checkpoint-img single" />
+            </div>
+
+            <h3 class="panel-title">{{ selectedCheckpoint.title }}</h3>
+            <p class="panel-desc">{{ selectedCheckpoint.description || 'Описание отсутствует' }}</p>
           </div>
 
-          <h3 class="panel-title">{{ selectedCheckpoint.title }}</h3>
-          <p class="panel-desc">{{ selectedCheckpoint.description || 'Описание отсутствует' }}</p>
+          <div class="panel-footer">
+            <FpButton variant="primary" size="sm" @click="selectedCheckpoint = null">Понятно</FpButton>
+          </div>
         </div>
-
-        <div class="panel-footer">
-          <FpButton variant="primary" size="sm" @click="selectedCheckpoint = null">Понятно</FpButton>
-        </div>
-      </div>
-    </transition>
+      </transition>
+    </Teleport>
 
     <Teleport to="body">
       <div v-if="showVictoryModal" class="victory-overlay">
@@ -1095,7 +1097,7 @@ onUnmounted(() => {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 24px;
   padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
-  z-index: 1050;
+  z-index: 3000;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
   pointer-events: auto;
   max-height: 70vh;
