@@ -352,82 +352,6 @@ onUnmounted(() => {
 
     <div v-else-if="currentRoute" class="route-detail-content">
       <FpPullToRefresh @refresh="fetchRouteDetails">
-        <Teleport to="body" :disabled="!isActiveMode">
-          <transition name="fade-slide">
-            <div v-if="isActiveMode" class="navigation-layer">
-              <div class="active-hud">
-                <div class="hud-top-panel">
-                  <div class="hud-route-header">
-                    <span class="hud-route-name">{{ currentRoute.title }}</span>
-                  </div>
-
-                  <div class="hud-stats-bar">
-                    <div class="hud-stat-item">
-                      <span class="label">ТОЧКА</span>
-                      <span class="value">{{ completedCheckpointIds.size + 1 }} / {{ currentCheckpoints.length }}</span>
-                    </div>
-                    <div class="hud-divider"></div>
-                    <div class="hud-stat-item">
-                      <span class="label">ВРЕМЯ</span>
-                      <span class="value">{{ elapsedTime }}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div v-if="nextCheckpoint" class="target-card-mini">
-                  <div class="target-row">
-                    <div class="target-info-group">
-                      <div class="target-meta">
-                        <span class="target-label-mini">СЛЕДУЮЩАЯ ЦЕЛЬ</span>
-                        <span class="target-order">#{{ nextCheckpoint.order }}</span>
-                      </div>
-                      <span class="target-title-mini">{{ nextCheckpoint.title }}</span>
-                    </div>
-
-                    <div class="target-actions-wrap">
-                      <button class="info-btn" @click="handleMarkerClick(nextCheckpoint.id)">
-                        <Info :size="18" />
-                      </button>
-                      <div class="target-dist-badge">
-                        <Navigation :size="12" class="dist-icon" />
-                        <span class="dist-value">{{ formatDistance(distanceToNext) }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Карта в активном режиме -->
-              <div class="map-section active-map-section">
-                <ArtMap class="route-map full-screen" :points="mapPoints" 
-                  :center="userLocation ? [userLocation.latitude, userLocation.longitude] : undefined"
-                  :interactive="true" :user-location="userLocation ? [userLocation.latitude, userLocation.longitude] : null" 
-                  v-model:follow-user="isFollowMode" :is-clustered="false"
-                  :bearing="isCompassMode ? (userLocation?.heading || 0) : 0"
-                  :target-location="nextCheckpointLocation" 
-                  @marker-click="handleMarkerClick" 
-                  @map-click="selectedCheckpoint = null"
-                  @toggle-compass="isCompassMode = !isCompassMode" />
-              </div>
-
-              <div class="active-actions-bottom">
-                <FpButton variant="glass" class="exit-action-btn" @click="isActiveMode = false">
-                  Выход
-                </FpButton>
-
-                <FpButton v-if="isNearNext && !isArMode" variant="primary" class="ar-action-btn"
-                  @click="startArSession">
-                  <Navigation :size="20" /> AR
-                </FpButton>
-
-                <FpButton variant="primary" class="target-action-btn"
-                  :disabled="!isNearNext || !nextCheckpoint || isArMode" @click="handleCheckIn">
-                  {{ isLastPoint ? 'Финиш' : 'Забрать' }}
-                </FpButton>
-              </div>
-            </div>
-          </transition>
-        </Teleport>
 
         <div v-if="!isActiveMode" class="route-hero">
           <div v-if="currentRoute.imageUrl" class="hero-image-wrap">
@@ -583,6 +507,84 @@ onUnmounted(() => {
 
     <!-- Modals & Overlays -->
     <ArOverlay v-if="isArMode" @capture="onArtifactCapture" @close="stopArSession" />
+
+    <!-- Навигационный слой (Teleport для мобильной оптимизации) -->
+    <Teleport to="body">
+      <transition name="fade-slide">
+        <div v-if="isActiveMode" class="navigation-layer">
+          <div class="active-hud">
+            <div class="hud-top-panel">
+              <div class="hud-route-header">
+                <span class="hud-route-name">{{ currentRoute?.title }}</span>
+              </div>
+
+              <div class="hud-stats-bar">
+                <div class="hud-stat-item">
+                  <span class="label">ТОЧКА</span>
+                  <span class="value">{{ completedCheckpointIds.size + 1 }} / {{ currentCheckpoints.length }}</span>
+                </div>
+                <div class="hud-divider"></div>
+                <div class="hud-stat-item">
+                  <span class="label">ВРЕМЯ</span>
+                  <span class="value">{{ elapsedTime }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="nextCheckpoint" class="target-card-mini">
+              <div class="target-row">
+                <div class="target-info-group">
+                  <div class="target-meta">
+                    <span class="target-label-mini">СЛЕДУЮЩАЯ ЦЕЛЬ</span>
+                    <span class="target-order">#{{ nextCheckpoint.order }}</span>
+                  </div>
+                  <span class="target-title-mini">{{ nextCheckpoint.title }}</span>
+                </div>
+
+                <div class="target-actions-wrap">
+                  <button class="info-btn" @click="handleMarkerClick(nextCheckpoint.id)">
+                    <Info :size="18" />
+                  </button>
+                  <div class="target-dist-badge">
+                    <Navigation :size="12" class="dist-icon" />
+                    <span class="dist-value">{{ formatDistance(distanceToNext) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Карта в активном режиме -->
+          <div class="map-section active-map-section">
+            <ArtMap class="route-map full-screen" :points="mapPoints" 
+              :center="userLocation ? [userLocation.latitude, userLocation.longitude] : undefined"
+              :interactive="true" :user-location="userLocation ? [userLocation.latitude, userLocation.longitude] : null" 
+              v-model:follow-user="isFollowMode" :is-clustered="false"
+              :bearing="isCompassMode ? (userLocation?.heading || 0) : 0"
+              :target-location="nextCheckpointLocation" 
+              @marker-click="handleMarkerClick" 
+              @map-click="selectedCheckpoint = null"
+              @toggle-compass="isCompassMode = !isCompassMode" />
+          </div>
+
+          <div class="active-actions-bottom">
+            <FpButton variant="glass" class="exit-action-btn" @click="isActiveMode = false">
+              Выход
+            </FpButton>
+
+            <FpButton v-if="isNearNext && !isArMode" variant="primary" class="ar-action-btn"
+              @click="startArSession">
+              <Navigation :size="20" /> AR
+            </FpButton>
+
+            <FpButton variant="primary" class="target-action-btn"
+              :disabled="!isNearNext || !nextCheckpoint || isArMode" @click="handleCheckIn">
+              {{ isLastPoint ? 'Финиш' : 'Забрать' }}
+            </FpButton>
+          </div>
+        </div>
+      </transition>
+    </Teleport>
 
     <!-- Глобальная плашка информации о точке -->
     <Teleport to="body">
@@ -1273,12 +1275,12 @@ onUnmounted(() => {
 
 .active-actions-bottom {
   position: absolute;
-  bottom: calc(90px + env(safe-area-inset-bottom));
+  bottom: calc(30px + env(safe-area-inset-bottom));
   left: 16px;
   right: 16px;
   display: flex;
   gap: 12px;
-  z-index: 1020;
+  z-index: 2100; // ПОВЫШАЕМ
   pointer-events: auto;
 
   .exit-action-btn,
@@ -1497,7 +1499,7 @@ onUnmounted(() => {
   top: 0;
   left: 0;
   right: 0;
-  z-index: 1010;
+  z-index: 2100; // ПОВЫШАЕМ
   pointer-events: none; // Чтобы можно было кликнуть на карту сквозь пустые места
   
   & > * {
