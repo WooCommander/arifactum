@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, computed } from 'vue'
+import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRoutesStore } from '../state/useRoutesStore'
 import { FpSpinner, FpBackButton, FpConfirmationModal, FpPullToRefresh, FpButton, FpCard } from '@/design-system'
@@ -133,6 +133,20 @@ const nextCheckpoint = computed(() => {
     .find(cp => !completedCheckpointIds.value.has(cp.id))
 })
 
+const isLastPoint = computed(() => {
+  if (!nextCheckpoint.value || !currentCheckpoints.value.length) return false
+  const activeCheckpoints = [...currentCheckpoints.value].sort((a, b) => a.order - b.order)
+  return nextCheckpoint.value.id === activeCheckpoints[activeCheckpoints.length - 1].id
+})
+
+watch(isActiveMode, (active) => {
+  if (active) {
+    document.body.style.overflow = 'hidden'
+  } else {
+    document.body.style.overflow = ''
+  }
+})
+
 const nextCheckpointLocation = computed<[number, number] | null>(() => {
   if (!nextCheckpoint.value) return null
   return [nextCheckpoint.value.latitude, nextCheckpoint.value.longitude]
@@ -148,11 +162,7 @@ const distanceToNext = computed(() => {
 
 const isNearNext = computed(() => distanceToNext.value < 50) // 50 meters
 
-const isLastPoint = computed(() => {
-  if (!nextCheckpoint.value || !currentCheckpoints.value.length) return false
-  const activeCheckpoints = [...currentCheckpoints.value].sort((a, b) => a.order - b.order)
-  return nextCheckpoint.value.id === activeCheckpoints[activeCheckpoints.length - 1].id
-})
+
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371e3
@@ -1468,6 +1478,34 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   height: 100vh;
+}
+
+.navigation-layer {
+  position: fixed;
+  inset: 0;
+  background: var(--color-background);
+  z-index: 2000;
+  overflow: hidden; // КРИТИЧНО: запрещаем общий скролл
+  display: flex;
+  flex-direction: column;
+}
+
+.active-hud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1010;
+  pointer-events: none; // Чтобы можно было кликнуть на карту сквозь пустые места
+  
+  & > * {
+    pointer-events: auto; // Но на сами плашки нажимать можно
+  }
+}
+
+.hud-top-panel {
+  padding: calc(20px + env(safe-area-inset-top)) 20px 20px;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, transparent 100%);
 }
 
 @keyframes pulse {
