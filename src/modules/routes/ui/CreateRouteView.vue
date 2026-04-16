@@ -24,6 +24,8 @@ const images = ref<string[]>([])
 const coverUrl = ref<string | null>(null)
 const isSaving = ref(false)
 const isLoading = ref(false)
+const category = ref('Город')
+const categories = ['История', 'Мистика', 'Природа', 'Город', 'Для детей', 'Спорт']
 const userLocation = ref<[number, number] | undefined>(undefined)
 
 interface CheckpointForm {
@@ -194,7 +196,8 @@ const handleSave = async () => {
       image_url: coverUrl.value,
       images: images.value,
       status: 'draft' as const,
-      is_public: false
+      category: category.value,
+      is_public: true
     }
 
     let savedRouteId = routeId.value
@@ -217,9 +220,10 @@ const handleSave = async () => {
 
     await fetchRoutes(authStore.currentUserId.value)
     router.push({ name: 'RouteDetail', params: { id: savedRouteId } })
-  } catch (err) {
+  } catch (err: any) {
     console.error('Failed to save route:', err)
-    alert('Ошибка при сохранении')
+    const errorMsg = err.message || 'Ошибка при сохранении'
+    alert(`Ошибка: ${errorMsg}`)
   } finally {
     isSaving.value = false
   }
@@ -272,6 +276,20 @@ const handleSave = async () => {
               @click="difficulty = d"
             >
               {{ d === 'easy' ? 'Легко' : d === 'medium' ? 'Средне' : 'Сложно' }}
+            </button>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label>Категория</label>
+          <div class="category-picker">
+            <button 
+              v-for="cat in categories" 
+              :key="cat"
+              :class="{ active: category === cat }"
+              @click="category = cat"
+            >
+              {{ cat }}
             </button>
           </div>
         </div>
@@ -587,6 +605,30 @@ const handleSave = async () => {
       &.easy { background: var(--color-success); }
       &.medium { background: var(--color-warning); }
       &.hard { background: var(--color-error); }
+    }
+  }
+}
+
+.category-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  button {
+    padding: 8px 14px;
+    border-radius: var(--radius-pill);
+    border: 1.5px solid var(--color-border);
+    background: var(--color-background);
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &.active {
+      background: var(--color-primary);
+      color: var(--color-on-primary);
+      border-color: var(--color-primary);
+      box-shadow: 0 4px 10px color-mix(in srgb, var(--color-primary) 20%, transparent);
     }
   }
 }

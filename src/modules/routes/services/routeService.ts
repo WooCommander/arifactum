@@ -67,13 +67,19 @@ export const routeService = {
     },
 
     async createRoute(route: Omit<RouteDTO, 'id' | 'created_at' | 'updated_at' | 'checkpoints_count' | 'rating_avg'>): Promise<RouteDTO> {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) throw new Error('Пользователь не авторизован (сессия не найдена)')
+
         const { data, error } = await supabase
             .from('routes')
-            .insert(route)
+            .insert({ ...route, author_id: user.id })
             .select()
             .single()
 
-        if (error) throw error
+        if (error) {
+            console.error('Supabase createRoute error:', error)
+            throw error
+        }
         return data
     },
 
@@ -84,7 +90,10 @@ export const routeService = {
             .select()
             .single()
 
-        if (error) throw error
+        if (error) {
+            console.error('Supabase createCheckpoint error:', error)
+            throw error
+        }
         return data
     },
 

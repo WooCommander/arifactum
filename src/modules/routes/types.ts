@@ -1,6 +1,7 @@
 export interface RouteDTO {
     id: string
     created_at: string
+    updated_at?: string
     title: string
     description: string
     author_id: string
