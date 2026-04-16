@@ -374,6 +374,12 @@ watch(() => props.targetLocation, () => {
   updateNavigationLine()
 })
 
+watch(() => props.center, (newCenter) => {
+  if (newCenter && map.value) {
+    map.value.setView(newCenter as L.LatLngExpression, props.zoom)
+  }
+})
+
 watch(() => props.followUser, async () => {
   if (map.value) {
     setTimeout(() => {
