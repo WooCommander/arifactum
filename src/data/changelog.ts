@@ -9,6 +9,19 @@ export interface ReleaseNote {
 
 export const changelog: ReleaseNote[] = [
     {
+        version: '2.13.5',
+        date: '2026-04-16',
+        highlights: [
+            'Creator Flow Stability: Стабильное создание маршрутов и точек'
+        ],
+        features: [
+            'Route Creation Fix: Исправлена критическая ошибка RLS, блокировавшая создание новых маршрутов.',
+            'Category Selection: В редактор добавлен выбор категории маршрута для корректной фильтрации.',
+            'Instant Map Centering: Карта в редакторе теперь мгновенно фокусируется на вашем положении при старте.',
+            'Enhanced Error Feedback: Теперь при ошибках сохранения выводится детальное описание проблемы от сервера.'
+        ]
+    },
+    {
         version: '2.13.4',
         date: '2026-04-16',
         highlights: [
