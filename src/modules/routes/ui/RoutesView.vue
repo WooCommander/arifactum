@@ -155,40 +155,41 @@ const handleWheel = (e: WheelEvent) => {
 }
 
 .routes-header {
-  padding: 24px 20px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  background: var(--color-surface);
   position: sticky;
   top: 0;
   z-index: 100;
+  padding: 16px 20px 8px;
+  background: color-mix(in srgb, var(--color-background) 95%, transparent);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .header-top {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
+  margin-bottom: 12px;
 }
 
 .header-content {
   h1 {
-    font-size: 24px;
+    font-size: 20px;
     font-weight: 800;
     color: var(--color-text-primary);
-    margin: 0;
   }
 
   p {
-    font-size: 13px;
-    color: var(--color-text-secondary);
+    font-size: 12px;
+    color: var(--color-text-tertiary);
     margin: 2px 0 0;
   }
 }
 
 .search-container {
-  width: 100%;
+  margin-bottom: 12px;
 }
 
 .search-wrapper {
