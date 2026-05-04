@@ -360,6 +360,10 @@ const initializeLeafletMap = () => {
   map.value.on('dragstart', () => {
     emit('update:followUser', false)
   })
+
+  map.value.on('zoomstart', () => {
+    emit('update:followUser', false)
+  })
 }
 
 watch(() => props.points, () => {
@@ -376,7 +380,8 @@ watch(() => props.targetLocation, () => {
 
 watch(() => props.center, (newCenter) => {
   if (newCenter && map.value) {
-    map.value.setView(newCenter as L.LatLngExpression, props.zoom)
+    // Используем panTo вместо setView, чтобы не сбрасывать зум, выбранный пользователем
+    map.value.panTo(newCenter as L.LatLngExpression, { animate: true })
   }
 })
 

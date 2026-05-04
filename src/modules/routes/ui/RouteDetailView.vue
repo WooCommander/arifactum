@@ -83,6 +83,7 @@ let locationWatchId: string | null = null
 const selectedCheckpoint = ref<any | null>(null)
 const isFollowMode = ref(true)
 const isCompassMode = ref(false)
+const initialActiveCenter = ref<[number, number] | undefined>(undefined)
 
 // Gesture state for panel
 const touchStartY = ref(0)
@@ -142,6 +143,13 @@ const isLastPoint = computed(() => {
 watch(isActiveMode, (active) => {
   if (active) {
     document.body.style.overflow = 'hidden'
+    // Запоминаем начальную точку для карты, чтобы не использовать живой GPS в пропе :center
+    if (userLocation.value) {
+      initialActiveCenter.value = [userLocation.value.latitude, userLocation.value.longitude]
+    } else if (currentCheckpoints.value.length > 0) {
+      initialActiveCenter.value = [currentCheckpoints.value[0].latitude, currentCheckpoints.value[0].longitude]
+    }
+    isFollowMode.value = true
   } else {
     document.body.style.overflow = ''
   }
@@ -554,10 +562,9 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <!-- Карта в активном режиме -->
           <div class="map-section active-map-section">
             <ArtMap class="route-map full-screen" :points="mapPoints" 
-              :center="userLocation ? [userLocation.latitude, userLocation.longitude] : undefined"
+              :center="initialActiveCenter"
               :interactive="true" :user-location="userLocation ? [userLocation.latitude, userLocation.longitude] : null" 
               v-model:follow-user="isFollowMode" :is-clustered="false"
               :bearing="isCompassMode ? (userLocation?.heading || 0) : 0"
