@@ -55,6 +55,13 @@ const navigateToDetail = (id: string) => {
 const handleRefresh = async () => {
   await loadRoutes()
 }
+
+const handleWheel = (e: WheelEvent) => {
+  if (e.deltaY === 0) return
+  const container = e.currentTarget as HTMLElement
+  container.scrollLeft += e.deltaY
+  e.preventDefault()
+}
 </script>
 
 <template>
@@ -86,7 +93,7 @@ const handleRefresh = async () => {
       </div>
 
       <div class="tags-cloud" v-if="popularTags.length > 0">
-        <div class="tags-scroll">
+        <div class="tags-scroll" @wheel.passive="handleWheel" @wheel.prevent="handleWheel">
           <button 
             v-for="tag in popularTags" 
             :key="tag"
@@ -100,7 +107,7 @@ const handleRefresh = async () => {
       </div>
 
         <div class="categories-bar">
-        <div class="categories-scroll">
+        <div class="categories-scroll" @wheel.passive="handleWheel" @wheel.prevent="handleWheel">
           <button 
             v-for="cat in ['Все', ...categoryNames]" 
             :key="cat"
@@ -236,7 +243,12 @@ const handleRefresh = async () => {
   overflow-x: auto;
   padding: 4px 0 16px;
   -webkit-overflow-scrolling: touch;
-  &::-webkit-scrollbar { display: none; }
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+  
+  &::-webkit-scrollbar {
+    display: none; /* Chrome/Safari/Opera */
+  }
 }
 
 .category-chip {
@@ -271,9 +283,11 @@ const handleRefresh = async () => {
   padding: 4px 0 12px;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
   
   &::-webkit-scrollbar {
-    display: none;
+    display: none; /* Chrome/Safari/Opera */
   }
 }
 
