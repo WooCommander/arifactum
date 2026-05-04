@@ -23,7 +23,8 @@ export const routeService = {
         }
 
         if (options?.search) {
-            query = query.ilike('title', `%${options.search}%`)
+            // Search in title OR in tags array
+            query = query.or(`title.ilike.%${options.search}%,tags.cs.{"${options.search}"}`)
         }
 
         const { data, error } = await query

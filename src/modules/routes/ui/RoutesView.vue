@@ -5,18 +5,34 @@ import { useRoutesStore } from '../state/useRoutesStore'
 import RouteCard from './RouteCard.vue'
 import { FpSpinner, FpPullToRefresh } from '@/design-system'
 import { Plus, Search, X } from 'lucide-vue-next'
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 
 import { authStore } from '@/modules/auth/store/authStore'
+import { useCategoryStore } from '../state/useCategoryStore'
 
 const router = useRouter()
 const { routes, isLoading, error, fetchRoutes } = useRoutesStore()
 
 const searchQuery = ref('')
 const selectedCategory = ref('Все')
-const categories = ['Все', 'История', 'Мистика', 'Природа', 'Город', 'Для детей', 'Спорт']
+const { categoryNames, init: initCategories } = useCategoryStore()
+
+const popularTags = computed(() => {
+  // Собираем все теги из загруженных маршрутов
+  const allTags = routes.value.flatMap(r => r.tags || [])
+  const counts = allTags.reduce((acc, tag) => {
+    acc[tag] = (acc[tag] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
+  
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 12)
+    .map(([tag]) => tag)
+})
 
 onMounted(() => {
+  initCategories()
   loadRoutes()
 })
 
@@ -69,10 +85,24 @@ const handleRefresh = async () => {
         </div>
       </div>
 
-      <div class="categories-bar">
+      <div class="tags-cloud" v-if="popularTags.length > 0">
+        <div class="tags-scroll">
+          <button 
+            v-for="tag in popularTags" 
+            :key="tag"
+            class="tag-pill"
+            :class="{ active: searchQuery === tag }"
+            @click="searchQuery = searchQuery === tag ? '' : tag"
+          >
+            #{{ tag }}
+          </button>
+        </div>
+      </div>
+
+        <div class="categories-bar">
         <div class="categories-scroll">
           <button 
-            v-for="cat in categories" 
+            v-for="cat in ['Все', ...categoryNames]" 
             :key="cat"
             class="category-chip"
             :class="{ active: selectedCategory === cat }"
@@ -197,18 +227,16 @@ const handleRefresh = async () => {
 }
 
 .categories-bar {
-  margin: 0 -20px;
+  margin: 4px 0 0;
 }
 
 .categories-scroll {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   overflow-x: auto;
-  padding: 0 20px 4px;
-  
-  &::-webkit-scrollbar {
-    display: none;
-  }
+  padding: 4px 0 16px;
+  -webkit-overflow-scrolling: touch;
+  &::-webkit-scrollbar { display: none; }
 }
 
 .category-chip {
@@ -228,6 +256,43 @@ const handleRefresh = async () => {
     color: var(--color-on-primary);
     border-color: var(--color-primary);
     box-shadow: 0 4px 10px color-mix(in srgb, var(--color-primary) 20%, transparent);
+  }
+}
+
+.tags-cloud {
+  position: relative;
+  margin-top: 4px;
+}
+
+.tags-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 0 12px;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.tag-pill {
+  flex-shrink: 0;
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-surface) 60%, var(--color-background));
+  border: 1px solid var(--color-border);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  transition: all 0.2s ease;
+
+  &.active {
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+    border-color: var(--color-primary);
   }
 }
 

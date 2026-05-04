@@ -46,6 +46,10 @@ const emit = defineEmits<{
       <h3 class="route-title">{{ props.route.title }}</h3>
       <p class="route-description">{{ props.route.description }}</p>
       
+      <div v-if="props.route.tags?.length" class="route-tags">
+        <span v-for="tag in props.route.tags" :key="tag" class="tag">#{{ tag }}</span>
+      </div>
+      
       <div class="route-meta">
         <div class="meta-item">
           <MapPin :size="16" />
@@ -182,6 +186,22 @@ const emit = defineEmits<{
   overflow: hidden;
   height: 40px;
   margin-bottom: 12px;
+}
+
+.route-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+
+  .tag {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+    padding: 2px 6px;
+    border-radius: var(--radius-xs, 4px);
+  }
 }
 
 .route-meta {

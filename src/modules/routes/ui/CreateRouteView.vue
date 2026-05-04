@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useRoutesStore } from '../state/useRoutesStore'
 import { routeService } from '../services/routeService'
 import { authStore } from '@/modules/auth/store/authStore'
+import { useCategoryStore } from '../state/useCategoryStore'
 import { FpBackButton, FpInput, FpButton, FpSpinner, FpImageUpload } from '@/design-system'
 import ArtMap from '@/shared/ui/ArtMap.vue'
 import { Save, Plus, Trash2, MapPin, Star, X, MapPinOff } from 'lucide-vue-next'
@@ -13,6 +14,7 @@ import { LocationService } from '@/shared/lib/LocationService'
 const router = useRouter()
 const route = useRoute()
 const { fetchRoutes } = useRoutesStore()
+const { categoryNames, addCategory, init: initCategories } = useCategoryStore()
 
 const routeId = computed(() => route.params.id as string | undefined)
 const isEditMode = computed(() => !!routeId.value)
@@ -24,8 +26,11 @@ const images = ref<string[]>([])
 const coverUrl = ref<string | null>(null)
 const isSaving = ref(false)
 const isLoading = ref(false)
-const category = ref('Город')
-const categories = ['История', 'Мистика', 'Природа', 'Город', 'Для детей', 'Спорт']
+const category = ref('')
+const tags = ref<string[]>([])
+const tagInput = ref('')
+const isAddingCategory = ref(false)
+const newCategoryName = ref('')
 const userLocation = ref<[number, number] | undefined>(undefined)
 const mapCenter = ref<[number, number] | undefined>(undefined)
 
@@ -57,6 +62,11 @@ const mapPoints = computed(() =>
 const activeMarkerIndex = ref<number | null>(null)
 
 onMounted(async () => {
+  initCategories().then(() => {
+    if (!category.value && categoryNames.value.length > 0) {
+      category.value = categoryNames.value[0]
+    }
+  })
   if (isEditMode.value) {
     isLoading.value = true
     try {
@@ -71,6 +81,8 @@ onMounted(async () => {
       difficulty.value = routeData.difficulty
       coverUrl.value = routeData.image_url
       images.value = [...(routeData.images || [])]
+      category.value = routeData.category || ''
+      tags.value = [...(routeData.tags || [])]
 
       if (checkpointData.length > 0) {
         checkpoints.value = checkpointData.map(cp => ({
@@ -193,6 +205,28 @@ const captureCurrentLocation = async (index: number) => {
   }
 }
 
+const addTag = () => {
+  const val = tagInput.value.trim().replace(/^#/, '')
+  if (val && !tags.value.includes(val)) {
+    tags.value.push(val)
+  }
+  tagInput.value = ''
+}
+
+const removeTag = (index: number) => {
+  tags.value.splice(index, 1)
+}
+
+const handleAddCategory = async () => {
+  if (!newCategoryName.value.trim()) return
+  const newCat = await addCategory(newCategoryName.value.trim())
+  if (newCat) {
+    category.value = newCat.name
+    newCategoryName.value = ''
+    isAddingCategory.value = false
+  }
+}
+
 const handleSave = async () => {
   if (!title.value) return
   if (!authStore.user.value) return
@@ -208,6 +242,7 @@ const handleSave = async () => {
       images: images.value,
       status: 'draft' as const,
       category: category.value,
+      tags: tags.value,
       is_public: true
     }
 
@@ -295,13 +330,43 @@ const handleSave = async () => {
           <label>Категория</label>
           <div class="category-picker">
             <button 
-              v-for="cat in categories" 
+              v-for="cat in categoryNames" 
               :key="cat"
               :class="{ active: category === cat }"
               @click="category = cat"
             >
               {{ cat }}
             </button>
+            <button class="add-cat-btn" @click="isAddingCategory = true">
+              <Plus :size="16" />
+            </button>
+          </div>
+
+          <div v-if="isAddingCategory" class="add-category-form">
+            <input v-model="newCategoryName" placeholder="Новая категория..." @keydown.enter.prevent="handleAddCategory" />
+            <div class="actions">
+              <FpButton size="small" @click="handleAddCategory">Ок</FpButton>
+              <FpButton size="small" variant="secondary" @click="isAddingCategory = false">Отмена</FpButton>
+            </div>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label>Теги</label>
+          <div class="tags-input-wrapper">
+            <div class="tags-list">
+              <span v-for="(tag, idx) in tags" :key="idx" class="tag-chip">
+                #{{ tag }}
+                <button @click="removeTag(idx)"><X :size="12" /></button>
+              </span>
+            </div>
+            <input 
+              v-model="tagInput" 
+              placeholder="Добавить тег (через пробел)..." 
+              @keydown.enter.prevent="addTag"
+              @keydown.space.prevent="addTag"
+              @blur="addTag"
+            />
           </div>
         </div>
 
@@ -626,21 +691,103 @@ const handleSave = async () => {
   gap: 8px;
 
   button {
-    padding: 8px 14px;
+    padding: 8px 16px;
     border-radius: var(--radius-pill);
     border: 1.5px solid var(--color-border);
-    background: var(--color-background);
-    font-weight: 600;
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
     font-size: 13px;
-    cursor: pointer;
+    font-weight: 600;
     transition: all 0.2s;
 
     &.active {
       background: var(--color-primary);
-      color: var(--color-on-primary);
       border-color: var(--color-primary);
-      box-shadow: 0 4px 10px color-mix(in srgb, var(--color-primary) 20%, transparent);
+      color: var(--color-on-primary);
     }
+  }
+
+  .add-cat-btn {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-style: dashed;
+  }
+}
+
+.add-category-form {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--color-background);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  input {
+    width: 100%;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    color: var(--color-text-primary);
+  }
+
+  .actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+}
+
+.tags-input-wrapper {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  .tags-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .tag-chip {
+    background: var(--color-background);
+    color: var(--color-primary);
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+
+    button {
+      background: none;
+      border: none;
+      color: var(--color-text-tertiary);
+      display: flex;
+      padding: 0;
+      cursor: pointer;
+      &:hover { color: var(--color-error); }
+    }
+  }
+
+  input {
+    background: none;
+    border: none;
+    outline: none;
+    padding: 4px 8px;
+    color: var(--color-text-primary);
+    font-size: 14px;
   }
 }
 
