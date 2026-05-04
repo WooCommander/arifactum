@@ -65,6 +65,7 @@ interface Props {
   isClustered?: boolean
   targetLocation?: [number, number] | null
   bearing?: number
+  autoResumeFollow?: boolean
 }
 
 interface TeammateLocation {
@@ -82,7 +83,8 @@ const props = withDefaults(defineProps<Props>(), {
   followUser: false,
   teammates: () => [],
   showNames: false,
-  bearing: 0
+  bearing: 0,
+  autoResumeFollow: false
 })
 
 const emit = defineEmits<{
@@ -101,8 +103,49 @@ const clusterMarker = shallowRef<L.Marker | null>(null)
 const navLine = shallowRef<L.Polyline | null>(null)
 const navArrow = shallowRef<L.Marker | null>(null)
 
+const inactivityTimer = ref<any>(null)
+const autoFollowCountdown = ref<number | null>(null)
+let countdownInterval: any = null
+
+const clearTimers = () => {
+  clearTimeout(inactivityTimer.value)
+  clearInterval(countdownInterval)
+  autoFollowCountdown.value = null
+}
+
+const startInactivityTimer = () => {
+  if (!props.autoResumeFollow) return
+  
+  clearTimers()
+  autoFollowCountdown.value = 10
+  
+  countdownInterval = setInterval(() => {
+    if (autoFollowCountdown.value && autoFollowCountdown.value > 0) {
+      autoFollowCountdown.value--
+    } else {
+      clearInterval(countdownInterval)
+    }
+  }, 1000)
+
+  inactivityTimer.value = setTimeout(() => {
+    if (!props.followUser) {
+      emit('update:followUser', true)
+      autoFollowCountdown.value = null
+    }
+  }, 10000)
+}
+
 const toggleFollow = () => {
-  emit('update:followUser', !props.followUser)
+  const newValue = !props.followUser
+  emit('update:followUser', newValue)
+  
+  // Если выключили вручную - сбрасываем всё
+  if (!newValue) {
+    clearTimers()
+  } else {
+    autoFollowCountdown.value = null
+    clearInterval(countdownInterval)
+  }
 }
 
 const recenter = () => {
@@ -359,10 +402,12 @@ const initializeLeafletMap = () => {
 
   map.value.on('dragstart', () => {
     emit('update:followUser', false)
+    startInactivityTimer()
   })
 
   map.value.on('zoomstart', () => {
     emit('update:followUser', false)
+    startInactivityTimer()
   })
 }
 
@@ -399,6 +444,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  clearTimers()
   if (map.value) {
     map.value.remove()
   }
@@ -410,8 +456,11 @@ onUnmounted(() => {
     <div ref="mapContainer" class="art-map-container" :style="{ '--map-rotation': `${props.bearing || 0}deg` }"></div>
 
     <div v-if="interactive && userLocation" class="map-custom-controls">
-      <button :class="{ active: followUser }" title="Следование за мной" @click="toggleFollow">
+      <button :class="{ active: followUser }" class="follow-btn" title="Следование за мной" @click="toggleFollow">
         <Navigation :size="20" />
+        <div v-if="autoFollowCountdown !== null && !followUser" class="auto-follow-badge">
+          {{ autoFollowCountdown }}
+        </div>
       </button>
       <button :class="{ active: bearing !== 0 }" title="Режим компаса" @click="emit('toggleCompass')">
          <Compass :size="20" />
@@ -521,6 +570,35 @@ onUnmounted(() => {
       color: #000;
     }
   }
+}
+
+.follow-btn {
+  position: relative;
+}
+
+.auto-follow-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  background: var(--color-primary);
+  color: #000;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--color-surface);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  animation: pulse-badge 1s infinite;
+}
+
+@keyframes pulse-badge {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
 }
 </style>
 

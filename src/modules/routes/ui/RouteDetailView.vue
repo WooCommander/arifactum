@@ -567,6 +567,7 @@ onUnmounted(() => {
               :center="initialActiveCenter"
               :interactive="true" :user-location="userLocation ? [userLocation.latitude, userLocation.longitude] : null" 
               v-model:follow-user="isFollowMode" :is-clustered="false"
+              auto-resume-follow
               :bearing="isCompassMode ? (userLocation?.heading || 0) : 0"
               :target-location="nextCheckpointLocation" 
               @marker-click="handleMarkerClick" 
