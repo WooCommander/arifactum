@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { Edit2 } from 'lucide-vue-next'
+import { Edit2, Camera } from 'lucide-vue-next'
 import { AuthService } from '@/modules/auth/services/AuthService'
 import FpCard from '@/design-system/components/FpCard.vue'
 import FpButton from '@/design-system/components/FpButton.vue'
@@ -35,17 +35,48 @@ interface PersonalProfile {
   last_name: string
   gender: string
   birth_date: string
+  avatar_url?: string
 }
 
 const profile = ref<PersonalProfile>({ first_name: '', last_name: '', gender: '', birth_date: '' })
 const profileEdit = ref<PersonalProfile>({ first_name: '', last_name: '', gender: '', birth_date: '' })
 const isEditingProfile = ref(false)
 const isSavingProfile = ref(false)
+const isLoadingAvatar = ref(false)
+const avatarInput = ref<HTMLInputElement | null>(null)
 
 const genderOptions = computed(() => ([
   { value: 'male', label: t('profile.gender.male') },
   { value: 'female', label: t('profile.gender.female') }
 ]))
+
+const triggerAvatarUpload = () => {
+  avatarInput.value?.click()
+}
+
+const handleFileSelect = async (event: Event) => {
+  const input = event.target as HTMLInputElement
+  if (!input.files?.length) return
+
+  const file = input.files[0]
+  if (file.size > 2 * 1024 * 1024) {
+    notify('Файл слишком большой (макс 2МБ)', 'error')
+    return
+  }
+
+  isLoadingAvatar.value = true
+  try {
+    const publicUrl = await AuthService.uploadAvatar(file)
+    profile.value.avatar_url = publicUrl
+    notify('Фото профиля обновлено', 'success')
+  } catch (e) {
+    console.error('Avatar upload error', e)
+    notify('Ошибка при загрузке фото', 'error')
+  } finally {
+    isLoadingAvatar.value = false
+    input.value = ''
+  }
+}
 
 const savePersonalProfile = async () => {
   isSavingProfile.value = true
@@ -96,6 +127,7 @@ onMounted(async () => {
       last_name: profileData.last_name || '',
       gender: profileData.gender || '',
       birth_date: profileData.birth_date || '',
+      avatar_url: profileData.avatar_url || ''
     }
     profileEdit.value = { ...profile.value }
     displayName.value = profileData.display_name || profileData.first_name || ''
