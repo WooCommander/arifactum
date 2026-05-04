@@ -1,20 +1,18 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { Edit2, Wallet, Trophy } from 'lucide-vue-next'
+import { Edit2 } from 'lucide-vue-next'
 import { AuthService } from '@/modules/auth/services/AuthService'
 import FpCard from '@/design-system/components/FpCard.vue'
 import FpButton from '@/design-system/components/FpButton.vue'
 import { useNotify } from '@/composables/useNotify'
 import { useI18n } from 'vue-i18n'
-import { FpHaptics } from '@/shared/lib/haptics'
-import confetti from 'canvas-confetti'
 import { useRewardsStore } from '@/modules/rewards'
 
 const { t, locale } = useI18n()
 const { totalBonuses, fetchRewards } = useRewardsStore()
-
 const router = useRouter()
+const { notify } = useNotify()
 
 interface UserStats {
   joinedDate: Date
@@ -24,47 +22,21 @@ interface UserStats {
   nextLevelThreshold: number
   totalDistance: number
   routesCompleted: number
-  avgSpeed: number
 }
 
 const isLoading = ref(true)
 const stats = ref<UserStats | null>(null)
 const activityFeed = ref<any[]>([])
-const user = ref({ email: '', id: '', role: '' })
-
-// Display name
+const user = ref({ email: '', id: '' })
 const displayName = ref('')
-const displayNameEdit = ref('')
-const isEditingName = ref(false)
-const { notify } = useNotify()
-const isSavingName = ref(false)
 
-const startEditName = () => {
-  displayNameEdit.value = displayName.value
-  isEditingName.value = true
-}
-const cancelEditName = () => { isEditingName.value = false }
-const saveDisplayName = async () => {
-  isSavingName.value = true
-  try {
-    await AuthService.setDisplayName(displayNameEdit.value)
-    displayName.value = displayNameEdit.value.trim()
-    isEditingName.value = false
-    notify(t('profile.saved'), 'success')
-  } catch (e: any) {
-    notify(t('login.errors.registerFailed'), 'error')
-  } finally {
-    isSavingName.value = false
-  }
-}
-
-// Personal info
 interface PersonalProfile {
   first_name: string
   last_name: string
   gender: string
   birth_date: string
 }
+
 const profile = ref<PersonalProfile>({ first_name: '', last_name: '', gender: '', birth_date: '' })
 const profileEdit = ref<PersonalProfile>({ first_name: '', last_name: '', gender: '', birth_date: '' })
 const isEditingProfile = ref(false)
@@ -72,82 +44,66 @@ const isSavingProfile = ref(false)
 
 const genderOptions = computed(() => ([
   { value: 'male', label: t('profile.gender.male') },
-  { value: 'female', label: t('profile.gender.female') },
-  { value: 'other', label: t('profile.gender.other') }
+  { value: 'female', label: t('profile.gender.female') }
 ]))
 
-function genderLabel(g: string | null) {
-  return genderOptions.value.find(o => o.value === g)?.label ?? '—'
-}
-
-function formatBirthDate(d: string | null) {
-  if (!d) return '—'
-  return new Date(d).toLocaleDateString(locale.value || 'ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
-}
-
-const startEditProfile = () => {
-  profileEdit.value = { ...profile.value }
-  isEditingProfile.value = true
-}
-const cancelEditProfile = () => { isEditingProfile.value = false }
 const savePersonalProfile = async () => {
   isSavingProfile.value = true
   try {
     await AuthService.saveProfile({
-      first_name: profileEdit.value.first_name.trim() || null,
-      last_name: profileEdit.value.last_name.trim() || null,
-      gender: profileEdit.value.gender || null,
-      birth_date: profileEdit.value.birth_date || null,
+      first_name: profileEdit.value.first_name,
+      last_name: profileEdit.value.last_name,
+      gender: profileEdit.value.gender
     })
     profile.value = { ...profileEdit.value }
+    displayName.value = profile.value.first_name
     isEditingProfile.value = false
-    notify(t('profile.saved'), 'success')
-  } catch (e: any) {
-    notify(t('login.errors.registerFailed'), 'error')
+    notify('Профиль обновлен', 'success')
+  } catch (e) {
+    notify('Ошибка сохранения', 'error')
   } finally {
     isSavingProfile.value = false
   }
 }
 
+const handleSignOut = async () => {
+  try {
+    await AuthService.signOut()
+    router.push('/login')
+  } catch (e) {
+    notify('Ошибка при выходе', 'error')
+  }
+}
+
 onMounted(async () => {
   try {
-    await fetchRewards()
     const { user: authUser } = await AuthService.getUser()
     if (authUser) {
       user.value.email = authUser.email || ''
       user.value.id = authUser.id
-      user.value.role = authUser.role || t('auth.guest')
     }
 
-    const [rawStats, profileData] = await Promise.all([
+    const [rawStats, profileData, activity] = await Promise.all([
       AuthService.getUserStats(),
-      AuthService.getProfile()
+      AuthService.getProfile(),
+      AuthService.getUserActivity()
     ])
-    displayName.value = profileData.display_name || ''
+
+    if (rawStats) stats.value = rawStats
+    
     profile.value = {
       first_name: profileData.first_name || '',
       last_name: profileData.last_name || '',
       gender: profileData.gender || '',
       birth_date: profileData.birth_date || '',
     }
-    if (rawStats) {
-      stats.value = rawStats
-      
-      const lastSeenLevel = Number(localStorage.getItem('fp_last_seen_level')) || 0
-      if (lastSeenLevel > 0 && stats.value.level > lastSeenLevel) {
-        FpHaptics.heavy()
-        confetti({
-          particleCount: 150,
-          spread: 80,
-          origin: { y: 0.6 },
-          colors: ['#6C5DD3', '#FFB800', '#FF754C']
-        })
-      }
-      localStorage.setItem('fp_last_seen_level', String(stats.value.level))
-    }
-    activityFeed.value = await AuthService.getUserActivity()
+    profileEdit.value = { ...profile.value }
+    displayName.value = profileData.display_name || profileData.first_name || ''
+    activityFeed.value = activity
+    
+    await fetchRewards()
   } catch(err) {
-      console.error('Failed to load profile data', err)
+      console.error('Profile load error', err)
   } finally {
     isLoading.value = false
   }
@@ -158,163 +114,106 @@ onMounted(async () => {
   <div class="profile-view">
     <!-- Header -->
     <section class="profile-header">
-      <div class="avatar-placeholder">
-        {{ user.email.charAt(0).toUpperCase() }}
+      <div class="avatar-container" @click="triggerAvatarUpload">
+        <div v-if="isLoadingAvatar" class="avatar-loader">
+          <div class="spinner"></div>
+        </div>
+        <img v-if="profile.avatar_url" :src="profile.avatar_url" class="avatar-img" />
+        <div v-else class="avatar-placeholder">
+          {{ user.email.charAt(0).toUpperCase() }}
+        </div>
+        <div class="avatar-edit-overlay">
+          <Camera :size="16" />
+        </div>
       </div>
+      
+      <input 
+        type="file" 
+        ref="avatarInput" 
+        style="display: none" 
+        accept="image/*" 
+        @change="handleFileSelect"
+      />
+
       <div class="user-info">
-        <!-- Display name -->
-        <div v-if="!isEditingName" class="display-name-row">
+        <div v-if="!isEditingProfile" class="display-name-row">
           <h1>{{ displayName || user.email.split('@')[0] }}</h1>
-          <button class="edit-name-btn" @click="startEditName" :title="t('profile.personal.edit')">
-            <Edit2 :size="16" />
-          </button>
         </div>
         <div v-else class="display-name-edit">
-          <input v-model="displayNameEdit" class="name-input" :placeholder="t('profile.personal.placeholderName')"
-            maxlength="32" @keydown.enter="saveDisplayName" @keydown.escape="cancelEditName" />
-          <button class="name-save-btn" @click="saveDisplayName" :disabled="isSavingName">✓</button>
-          <button class="name-cancel-btn" @click="cancelEditName">✕</button>
+          <input 
+            v-model="profileEdit.first_name" 
+            class="name-input" 
+            :placeholder="t('profile.personal.name')"
+            maxlength="32" 
+          />
         </div>
         <p class="email">{{ user.email }}</p>
-        <div class="badges">
-          <span class="badge" v-if="stats">⚡ {{ stats.xp }} XP</span>
-          <span class="badge id-badge" title="User ID">🆔 {{ user.id.slice(0, 12) }}...</span>
+        <div class="badges" v-if="stats">
+          <span class="badge">⚡ {{ stats.xp }} XP</span>
+          <span class="badge level-badge">Уровень {{ stats.level }}</span>
         </div>
       </div>
+      <button class="settings-toggle" @click="isEditingProfile = !isEditingProfile">
+        <Edit2 :size="20" />
+      </button>
     </section>
 
     <!-- Stats Grid -->
-    <section class="stats-grid" v-if="stats">
-      <!-- Level Card -->
-      <FpCard class="stat-card level-card">
-        <div class="level-info">
-          <span class="level-number">Lvl {{ stats.level }}</span>
-          <span class="level-title">{{ stats.levelTitle }}</span>
-        </div>
-        <div class="progress-bar-container">
-          <div class="progress-bar"
-            :style="{ width: Math.min((stats.xp / stats.nextLevelThreshold) * 100, 100) + '%' }">
-          </div>
-        </div>
-        <span class="xp-text">{{ stats.xp }} / {{ stats.nextLevelThreshold }} XP</span>
+    <section class="stats-grid" v-if="stats && !isEditingProfile">
+      <FpCard class="stat-card">
+        <div class="stat-value">{{ stats.totalDistance.toFixed(1) }}</div>
+        <div class="stat-label">Километров</div>
       </FpCard>
 
-      <!-- Distance Card -->
       <FpCard class="stat-card">
-        <div class="stat-label">Общий путь</div>
-        <div class="stat-value">{{ stats.totalDistance.toFixed(1) }} <span>км</span></div>
-        <div class="stat-desc">За все время</div>
-      </FpCard>
-
-      <!-- Pace Card -->
-      <FpCard class="stat-card">
-        <div class="stat-label">Средний темп</div>
-        <div class="stat-value">{{ stats.avgSpeed.toFixed(1) }} <span>км/ч</span></div>
-        <div class="stat-desc">Скорость прохождения</div>
-      </FpCard>
-
-      <!-- Quests Card -->
-      <FpCard class="stat-card">
-        <div class="stat-label">Квесты</div>
         <div class="stat-value">{{ stats.routesCompleted }}</div>
-        <div class="stat-desc">Завершено маршрутов</div>
+        <div class="stat-label">Маршрутов</div>
       </FpCard>
 
-      <!-- Stats Summary -->
-      <div class="stats-summary">
-        <div class="stat-item">
-          <div class="stat-icon bonus"><Wallet :size="20" /></div>
-          <div class="stat-info">
-            <span class="stat-value">{{ totalBonuses }}</span>
-            <span class="stat-label">Бонусы</span>
-          </div>
-        </div>
-        <div class="stat-item" @click="router.push('/activity')">
-          <div class="stat-icon quests"><Trophy :size="20" /></div>
-          <div class="stat-info">
-            <span class="stat-value">Artifactum</span>
-            <span class="stat-label">Ранг</span>
-          </div>
-        </div>
-      </div>
-
-      <FpCard class="stat-card" @click="router.push('/favorites')" style="cursor: pointer">
-        <span class="stat-value">⭐</span>
-        <span class="stat-label">{{ t('profile.stats.favorites') }}</span>
+      <FpCard class="stat-card">
+        <div class="stat-value">{{ totalBonuses }}</div>
+        <div class="stat-label">Бонусов</div>
       </FpCard>
     </section>
 
-    <!-- Personal Info -->
-    <section class="personal-info-section">
-      <div class="section-title-row">
-        <h2>{{ t('profile.personal.title') }}</h2>
-        <button v-if="!isEditingProfile" class="edit-profile-btn" @click="startEditProfile">
-          <Edit2 :size="14" class="mr-2" />
-          {{ t('profile.personal.edit') }}
-        </button>
-      </div>
-
-      <FpCard v-if="!isEditingProfile" class="info-card">
-        <div class="info-row">
-          <span class="info-label">{{ t('profile.labels.name') }}</span>
-          <span class="info-value">{{ profile.first_name || '—' }}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">{{ t('profile.labels.lastName') }}</span>
-          <span class="info-value">{{ profile.last_name || '—' }}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">{{ t('profile.labels.gender') }}</span>
-          <span class="info-value">{{ genderLabel(profile.gender) }}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">{{ t('profile.labels.birthDate') }}</span>
-          <span class="info-value">{{ formatBirthDate(profile.birth_date) }}</span>
-        </div>
-      </FpCard>
-
-      <FpCard v-else class="info-card edit-mode">
+    <!-- Edit Profile Mode -->
+    <section v-if="isEditingProfile" class="edit-profile-section">
+      <FpCard class="info-card edit-mode">
         <div class="edit-field">
-          <label class="field-label">{{ t('profile.personal.name') }}</label>
-          <input v-model="profileEdit.first_name" class="field-input"
-            :placeholder="t('profile.personal.placeholderName')" maxlength="64" />
+          <label class="field-label">{{ t('profile.labels.name') }}</label>
+          <input v-model="profileEdit.first_name" class="field-input" placeholder="Имя" />
         </div>
         <div class="edit-field">
-          <label class="field-label">{{ t('profile.personal.lastName') }}</label>
-          <input v-model="profileEdit.last_name" class="field-input"
-            :placeholder="t('profile.personal.placeholderLastName')" maxlength="64" />
+          <label class="field-label">{{ t('profile.labels.lastName') }}</label>
+          <input v-model="profileEdit.last_name" class="field-input" placeholder="Фамилия" />
         </div>
         <div class="edit-field">
-          <label class="field-label">{{ t('profile.personal.gender') }}</label>
+          <label class="field-label">{{ t('profile.labels.gender') }}</label>
           <div class="gender-options">
-            <button v-for="g in genderOptions" :key="g.value" class="gender-btn"
+            <button 
+              v-for="g in genderOptions" 
+              :key="g.value" 
+              class="gender-btn"
               :class="{ active: profileEdit.gender === g.value }"
-              @click="profileEdit.gender = profileEdit.gender === g.value ? '' : g.value">
+              @click="profileEdit.gender = g.value"
+            >
               {{ g.label }}
             </button>
           </div>
         </div>
-        <div class="edit-field">
-          <label class="field-label">{{ t('profile.personal.birthDate') }}</label>
-          <input type="date" v-model="profileEdit.birth_date" class="field-input" />
-        </div>
         <div class="edit-actions">
-          <button class="cancel-btn" @click="cancelEditProfile">{{ t('profile.personal.cancel') }}</button>
-          <button class="save-btn" @click="savePersonalProfile" :disabled="isSavingProfile">{{
-            t('profile.personal.save') }}</button>
+          <FpButton variant="secondary" @click="isEditingProfile = false">Отмена</FpButton>
+          <FpButton :loading="isSavingProfile" @click="savePersonalProfile">Сохранить</FpButton>
         </div>
       </FpCard>
     </section>
 
-    <section class="activity-section">
+    <!-- Activity -->
+    <section v-if="!isEditingProfile && activityFeed.length > 0" class="activity-section">
       <div class="section-title-row">
-        <h2>{{ t('profile.activityTitle') }}</h2>
-        <FpButton variant="text" size="sm" @click="router.push('/activity')">{{ t('profile.viewAll') }}</FpButton>
+        <h2>Последняя активность</h2>
       </div>
       <div class="activity-list">
-        <div v-if="activityFeed.length === 0" class="empty-feed">
-          {{ t('profile.noActivity') }}
-        </div>
         <FpCard v-for="act in activityFeed" :key="act.id" class="activity-item" padding="sm">
           <div class="act-icon">{{ act.icon }}</div>
           <div class="act-content">
@@ -328,6 +227,12 @@ onMounted(async () => {
       </div>
     </section>
 
+    <!-- Bottom Actions -->
+    <section class="profile-actions">
+      <FpButton variant="outline" class="logout-btn" @click="handleSignOut">
+        Выйти из аккаунта
+      </FpButton>
+    </section>
   </div>
 </template>
 
@@ -335,834 +240,301 @@ onMounted(async () => {
 .profile-view {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
-  padding: 0 var(--spacing-sm);
+  gap: 20px;
+  padding: 20px;
   width: 100%;
 }
 
 .profile-header {
-  margin-top: .5rem;
   display: flex;
   align-items: center;
-  gap: var(--spacing-lg);
+  gap: 20px;
   background: var(--color-surface);
-  padding: var(--spacing-md);
-  border-radius: var(--radius-lg);
+  padding: 20px;
+  border-radius: 20px;
   border: 1px solid var(--color-border);
-  box-shadow: var(--shadow-1);
   position: relative;
-  overflow: hidden;
 
-  // Decorative geometric shape
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: -20%;
-    right: -5%;
-    width: 300px;
-    height: 300px;
-    background: linear-gradient(45deg, color-mix(in srgb, var(--color-primary) 5%, transparent), color-mix(in srgb, var(--color-secondary) 5%, transparent));
-    border-radius: 50%;
-    z-index: 0;
+  .avatar-container {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    cursor: pointer;
+    border-radius: 16px;
+    overflow: hidden;
+    
+    &:hover .avatar-edit-overlay {
+      opacity: 1;
+    }
+  }
+
+  .avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 
   .avatar-placeholder {
-    min-width: 4rem;
-    min-height: 4rem;
-    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-variant));
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, var(--color-primary), #a29bfe);
     color: white;
-    border-radius: var(--radius-md); // Squircle
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 36px;
-    font-weight: 700;
-    box-shadow: var(--shadow-2);
-    z-index: 1;
+    font-size: 28px;
+    font-weight: 800;
+  }
+
+  .avatar-edit-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .avatar-loader {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--color-primary);
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
   }
 
   .user-info {
-    z-index: 1;
-    width: 100%;
+    flex: 1;
     min-width: 0;
 
     h1 {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
       margin: 0;
-      font-size: var(--text-h3);
-      font-weight: 700;
-      letter-spacing: -0.5px;
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--color-text-primary);
     }
 
     .email {
+      font-size: 13px;
       color: var(--color-text-secondary);
-      margin: 4px 0 12px;
-      font-size: var(--text-body-1);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      margin: 4px 0 10px;
+    }
+
+    .badges {
+      display: flex;
+      gap: 8px;
+
+      .badge {
+        padding: 4px 10px;
+        background: var(--color-background);
+        border: 1px solid var(--color-border);
+        border-radius: 8px;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--color-text-secondary);
+      }
     }
   }
 
-  .badges {
-    // display: flex;
-    gap: var(--spacing-sm);
-    width: 100%;
+  .settings-toggle {
+    background: none;
+    border: none;
+    color: var(--color-text-secondary);
+    padding: 8px;
+    cursor: pointer;
+    transition: color 0.2s;
 
-    .badge {
-      background: var(--color-background);
-      padding: 6px 14px;
-      border-radius: var(--radius-pill);
-      font-size: var(--text-caption);
-      font-weight: 600;
-      border: 1px solid var(--color-border);
-      display: flex;
-      align-items: center;
-      gap: 6px;
+    &:hover {
+      color: var(--color-primary);
     }
   }
 }
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: var(--spacing-sm);
-
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-  }
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
 
   .stat-card {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    padding: var(--spacing-md);
-    gap: 4px;
+    padding: 16px 8px;
     text-align: center;
     background: var(--color-surface);
-    border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
-    transition: all 0.2s;
-    min-height: 100px;
-    border-radius: 14px;
-
-    &:hover {
-      border-color: var(--color-primary);
-      box-shadow: var(--shadow-1);
-      transform: translateY(-1px);
-    }
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
 
     .stat-value {
-      font-size: 26px;
+      font-size: 22px;
       font-weight: 800;
       color: var(--color-primary);
-      line-height: 1;
     }
 
     .stat-label {
-      font-size: var(--text-caption);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--color-text-tertiary);
+      margin-top: 4px;
+    }
+  }
+}
+
+.edit-profile-section {
+  .edit-mode {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px;
+  }
+
+  .edit-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    .field-label {
+      font-size: 12px;
+      font-weight: 700;
       color: var(--color-text-secondary);
       text-transform: uppercase;
-      letter-spacing: 1px;
-      font-weight: 600;
-    }
-  }
-
-  .level-card {
-    grid-column: span 2;
-
-    .level-info {
-      display: flex;
-      align-items: baseline;
-      gap: 8px;
-      margin-bottom: 6px;
     }
 
-    .level-number {
-      font-size: 20px;
-      font-weight: 800;
-      color: var(--color-primary);
-    }
-
-    .level-title {
-      font-size: 16px;
-      font-weight: 600;
-      color: var(--color-text-primary);
-    }
-
-    .progress-bar-container {
+    .field-input, .name-input {
       width: 100%;
-      height: 6px;
+      padding: 12px;
+      border: 1px solid var(--color-border);
+      border-radius: 12px;
       background: var(--color-background);
-      border-radius: 4px;
-      overflow: hidden;
-      margin-bottom: 6px;
-    }
+      color: var(--color-text-primary);
+      font-size: 15px;
 
-    .progress-bar {
-      height: 100%;
-      background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
-      transition: width 0.5s ease-out;
+      &:focus {
+        outline: none;
+        border-color: var(--color-primary);
+      }
     }
+  }
 
-    .xp-text {
-      font-size: 0.95rem;
+  .gender-options {
+    display: flex;
+    gap: 10px;
+
+    .gender-btn {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid var(--color-border);
+      border-radius: 12px;
+      background: var(--color-surface);
+      font-size: 14px;
+      font-weight: 600;
       color: var(--color-text-secondary);
+      cursor: pointer;
+
+      &.active {
+        border-color: var(--color-primary);
+        background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+        color: var(--color-primary);
+      }
     }
   }
-}
 
-.stats-summary {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-md);
-}
-
-.stat-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: var(--color-surface);
-  padding: 12px 16px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  flex: 1;
-}
-
-.stat-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  
-  &.bonus {
-    background: color-mix(in srgb, var(--color-primary) 15%, transparent);
-    color: var(--color-primary);
-  }
-  
-  &.quests {
-    background: color-mix(in srgb, var(--color-secondary) 15%, transparent);
-    color: var(--color-secondary);
-  }
-}
-
-.stat-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.stat-value {
-  font-size: 18px;
-  font-weight: 800;
-  line-height: 1.2;
-}
-
-.stat-label {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-}
-
-.profile-section {
-  margin-bottom: 24px;
-}
-
-.settings-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-
-  h2 {
-    font-size: var(--text-h5);
-    font-weight: 800;
-    margin: 0;
-    letter-spacing: -0.2px;
-  }
-}
-
-.currency-options {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: var(--spacing-sm);
-}
-
-.currency-option-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 14px 10px;
-  background: linear-gradient(180deg, var(--color-surface), color-mix(in srgb, var(--color-primary) 2%, transparent));
-  border: 1.5px solid var(--color-border);
-  border-radius: 14px;
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s, background 0.15s;
-  min-height: 92px;
-
-  &.active {
-    border-color: var(--color-primary);
-    background: radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--color-primary) 12%, transparent), color-mix(in srgb, var(--color-primary) 4%, transparent) 55%, transparent 80%),
-      linear-gradient(180deg, var(--color-surface), color-mix(in srgb, var(--color-primary) 6%, transparent));
-    box-shadow: 0 10px 20px color-mix(in srgb, var(--color-primary) 18%, transparent);
-    transform: translateY(-2px);
-  }
-
-  .currency-symbol {
-    font-size: 20px;
-    font-weight: 800;
-    color: var(--color-primary);
-  }
-
-  .currency-code {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--color-text-primary);
-  }
-
-  .currency-label {
-    font-size: 11px;
-    color: var(--color-text-secondary);
-  }
-}
-
-.settings-saved {
-  margin-top: var(--spacing-sm);
-  font-size: 13px;
-  color: var(--color-success);
-  font-weight: 600;
-}
-
-.rates-section {
-  margin-top: var(--spacing-lg);
-  border-top: 1px solid var(--color-border);
-  padding-top: var(--spacing-md);
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-.rates-hint {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  margin: 0 0 var(--spacing-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.rates-inputs {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-md);
-}
-
-.rate-field {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-
-  label {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--color-text-primary);
-    white-space: nowrap;
-  }
-
-  span {
-    font-size: 14px;
-    color: var(--color-text-secondary);
-  }
-}
-
-.rate-input {
-  flex: 1;
-  min-width: 0;
-  padding: 8px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-background);
-  color: var(--color-text-primary);
-  font-size: 14px;
-  font-weight: 600;
-  text-align: center;
-
-  &:focus {
-    outline: none;
-    border-color: var(--color-primary);
-  }
-}
-
-.save-rates-btn {
-  width: 100%;
-  padding: 12px;
-  background: var(--color-primary);
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: opacity 0.15s;
-
-  &:active {
-    opacity: 0.85;
+  .edit-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+    
+    & > * {
+      flex: 1;
+    }
   }
 }
 
 .activity-section {
   h2 {
-    font-size: var(--text-h5);
-    font-weight: 700;
-    margin: 0;
-  }
-
-  .section-title-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: var(--spacing-md);
-  }
-}
-
-.activity-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-.empty-feed {
-  text-align: center;
-  color: var(--color-text-secondary);
-  padding: var(--spacing-lg);
-  background: var(--color-surface);
-  border: 1px dashed var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-.activity-item {
-  display: flex;
-  gap: var(--spacing-md);
-  align-items: flex-start;
-  border: 1px solid var(--color-border); // Visible border
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  transition: all 0.2s;
-
-  &:hover {
-    border-color: var(--color-primary);
-    box-shadow: var(--shadow-1);
-  }
-
-  .act-icon {
-    font-size: 24px;
-    background: var(--color-background);
-    width: 48px;
-    height: 48px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-sm);
-  }
-
-  .act-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .act-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-
-    .act-action {
-      font-weight: 700;
-      font-size: var(--text-button);
-      color: var(--color-primary);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .act-time {
-      font-size: var(--text-caption);
-      color: var(--color-text-disabled);
-    }
-  }
-
-  .act-item {
-    font-weight: 600;
-    font-size: var(--text-body-1);
+    font-size: 16px;
+    font-weight: 800;
+    margin-bottom: 12px;
     color: var(--color-text-primary);
   }
 
-  .act-details {
-    font-size: var(--text-body-2);
-    color: var(--color-text-secondary);
-  }
-}
-
-.moderation-section {
-  .section-title-row {
+  .activity-list {
     display: flex;
-    align-items: center;
-    gap: 12px;
-
-    .caption {
-      color: var(--color-text-secondary);
-      font-size: 13px;
-    }
-  }
-}
-
-.pending-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-.pending-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  transition: all 0.2s;
-
-  &:hover {
-    border-color: var(--color-primary);
-    box-shadow: var(--shadow-1);
-  }
-}
-
-.pending-main {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.pending-name {
-  font-weight: 700;
-  font-size: var(--text-body-1);
-}
-
-.pending-meta {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.pending-right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.pending-date {
-  color: var(--color-text-secondary);
-  font-size: var(--text-caption);
-}
-
-.moderation-actions {
-  display: flex;
-  gap: 6px;
-}
-
-.mod-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  border: none;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: opacity 0.15s;
-
-  &:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
+    flex-direction: column;
+    gap: 10px;
   }
 
-  &.approve {
-    background: color-mix(in srgb, var(--color-success) 15%, transparent);
-    color: var(--color-success);
-
-    &:active:not(:disabled) {
-      opacity: 0.75;
-    }
-  }
-
-  &.reject {
-    background: color-mix(in srgb, var(--color-error) 12%, transparent);
-    color: var(--color-error);
-
-    &:active:not(:disabled) {
-      opacity: 0.75;
-    }
-  }
-}
-
-.badge.warning {
-  background: color-mix(in srgb, var(--color-error) 12%, transparent);
-  color: var(--color-error);
-}
-
-.badge.muted {
-  background: var(--color-background);
-  color: var(--color-text-secondary);
-}
-
-.badge.price {
-  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
-  color: var(--color-primary);
-  font-weight: 700;
-}
-
-.display-name-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-
-  h1 {
-    margin: 0;
-  }
-}
-
-.edit-name-btn {
-  background: none;
-  border: none;
-  padding: 4px;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-
-  &:hover {
-    color: var(--color-primary);
-  }
-}
-
-.display-name-edit {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.name-input {
-  border: 1.5px solid var(--color-primary);
-  border-radius: 8px;
-  padding: 4px 10px;
-  font-size: 1.1rem;
-  font-weight: 700;
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  outline: none;
-  width: 160px;
-}
-
-.name-save-btn,
-.name-cancel-btn {
-  background: none;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  padding: 4px 8px;
-  font-size: 14px;
-  cursor: pointer;
-  color: var(--color-text-secondary);
-
-  &:hover {
-    border-color: var(--color-primary);
-    color: var(--color-primary);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-}
-
-.personal-info-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-
-  h2 {
-    font-size: var(--text-h5);
-    font-weight: 800;
-    margin: 0;
-    letter-spacing: -0.2px;
-  }
-
-  .section-title-row {
+  .activity-item {
     display: flex;
-    justify-content: space-between;
+    gap: 16px;
     align-items: center;
+    padding: 12px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+
+    .act-icon {
+      font-size: 20px;
+    }
+
+    .act-content {
+      flex: 1;
+
+      .act-header {
+        display: flex;
+        justify-content: space-between;
+        
+        .act-action {
+          font-weight: 700;
+          font-size: 13px;
+          color: var(--color-text-primary);
+        }
+
+        .act-time {
+          font-size: 11px;
+          color: var(--color-text-tertiary);
+        }
+      }
+
+      .act-item {
+        font-size: 13px;
+        color: var(--color-text-secondary);
+      }
+    }
   }
 }
 
-.edit-profile-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: none;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 6px 12px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: all 0.15s;
-
-  &:hover {
-    border-color: var(--color-primary);
-    color: var(--color-primary);
-  }
-}
-
-.info-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.info-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.profile-actions {
+  margin-top: auto;
   padding: 10px 0;
-  border-bottom: 1px solid var(--color-border);
 
-  &:last-child {
-    border-bottom: none;
-  }
-}
-
-.info-label {
-  font-size: 14px;
-  color: var(--color-text-secondary);
-}
-
-.info-value {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.edit-mode {
-  gap: var(--spacing-md);
-}
-
-.edit-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.field-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-}
-
-.field-input {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1.5px solid var(--color-border);
-  border-radius: 10px;
-  background: var(--color-background);
-  color: var(--color-text-primary);
-  font-size: 15px;
-  box-sizing: border-box;
-  transition: border-color 0.15s;
-
-  &:focus {
-    outline: none;
-    border-color: var(--color-primary);
-  }
-}
-
-.gender-options {
-  display: flex;
-  gap: 8px;
-}
-
-.gender-btn {
-  flex: 1;
-  padding: 8px 4px;
-  border: 1.5px solid var(--color-border);
-  border-radius: 10px;
-  background: var(--color-surface);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: all 0.15s;
-  text-align: center;
-
-  &.active {
-    border-color: var(--color-primary);
-    background: color-mix(in srgb, var(--color-primary) 8%, transparent);
-    color: var(--color-primary);
-    font-weight: 700;
-  }
-}
-
-.edit-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 4px;
-}
-
-.cancel-btn {
-  flex: 1;
-  padding: 11px;
-  border: 1.5px solid var(--color-border);
-  border-radius: 12px;
-  background: none;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: all 0.15s;
-
-  &:hover {
-    border-color: var(--color-text-secondary);
-  }
-}
-
-.save-btn {
-  flex: 2;
-  padding: 11px;
-  border: none;
-  border-radius: 12px;
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: opacity 0.15s;
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  &:active:not(:disabled) {
-    opacity: 0.85;
+  .logout-btn {
+    width: 100%;
+    color: var(--color-error);
+    border-color: color-mix(in srgb, var(--color-error) 20%, transparent);
+    
+    &:hover {
+      background: color-mix(in srgb, var(--color-error) 5%, transparent);
+    }
   }
 }
 </style>

@@ -47,33 +47,42 @@ class AuthService {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return null
 
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('xp, level, total_distance_meters, routes_completed_count, total_seconds_spent')
-            .eq('id', user.id)
-            .single()
+        try {
+            const { data: profile, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', user.id)
+                .single()
 
-        const xp = profile?.xp || 0
-        const level = profile?.level || 1
-        const nextLevelXP = level * 1000
-        
-        let title = 'Новичок'
-        if (level >= 10) title = 'Артефактор'
-        else if (level >= 7) title = 'Легенда'
-        else if (level >= 5) title = 'Хранитель'
-        else if (level >= 3) title = 'Исследователь'
+            if (error && error.code !== 'PGRST116') {
+                console.warn('Error fetching profile stats:', error)
+            }
 
-        return {
-            joinedDate: new Date(user.created_at || Date.now()),
-            xp,
-            level,
-            levelTitle: title,
-            nextLevelThreshold: nextLevelXP,
-            totalDistance: (profile?.total_distance_meters || 0) / 1000, // km
-            routesCompleted: profile?.routes_completed_count || 0,
-            avgSpeed: (profile?.total_seconds_spent || 0) > 0 
-                ? ((profile?.total_distance_meters || 0) / 1000) / ((profile?.total_seconds_spent || 0) / 3600)
-                : 0
+            const xp = profile?.xp || 0
+            const level = profile?.level || 1
+            const nextLevelXP = level * 1000
+            
+            let title = 'Новичок'
+            if (level >= 10) title = 'Артефактор'
+            else if (level >= 7) title = 'Легенда'
+            else if (level >= 5) title = 'Хранитель'
+            else if (level >= 3) title = 'Исследователь'
+
+            return {
+                joinedDate: new Date(user.created_at || Date.now()),
+                xp,
+                level,
+                levelTitle: title,
+                nextLevelThreshold: nextLevelXP,
+                totalDistance: (profile?.total_distance_meters || 0) / 1000, // km
+                routesCompleted: profile?.routes_completed_count || 0,
+                avgSpeed: (profile?.total_seconds_spent || 0) > 0 
+                    ? ((profile?.total_distance_meters || 0) / 1000) / ((profile?.total_seconds_spent || 0) / 3600)
+                    : 0
+            }
+        } catch (e) {
+            console.error('Failed to get user stats:', e)
+            return null
         }
     }
 
@@ -83,20 +92,30 @@ class AuthService {
         last_name: string | null
         gender: string | null
         birth_date: string | null
+        avatar_url: string | null
     }> {
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return { display_name: null, first_name: null, last_name: null, gender: null, birth_date: null }
-        const { data } = await supabase
-            .from('profiles')
-            .select('display_name, first_name, last_name, gender, birth_date')
-            .eq('id', user.id)
-            .single()
-        return {
-            display_name: data?.display_name ?? null,
-            first_name:   data?.first_name ?? null,
-            last_name:    data?.last_name ?? null,
-            gender:       data?.gender ?? null,
-            birth_date:   data?.birth_date ?? null,
+        if (!user) return { display_name: null, first_name: null, last_name: null, gender: null, birth_date: null, avatar_url: null }
+        
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('display_name, first_name, last_name, gender, birth_date, avatar_url')
+                .eq('id', user.id)
+                .single()
+            
+            if (error && error.code !== 'PGRST116') throw error
+            
+            return {
+                display_name: data?.display_name ?? null,
+                first_name:   data?.first_name ?? null,
+                last_name:    data?.last_name ?? null,
+                gender:       data?.gender ?? null,
+                birth_date:   data?.birth_date ?? null,
+                avatar_url:   data?.avatar_url ?? null
+            }
+        } catch (e) {
+            return { display_name: null, first_name: null, last_name: null, gender: null, birth_date: null, avatar_url: null }
         }
     }
 
@@ -106,6 +125,7 @@ class AuthService {
         last_name?: string | null
         gender?: string | null
         birth_date?: string | null
+        avatar_url?: string | null
     }): Promise<void> {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) throw new Error('Not authenticated')
@@ -119,57 +139,45 @@ class AuthService {
         return this.saveProfile({ display_name: name.trim() || null })
     }
 
-    async setCurrencyPreference(code: string): Promise<void> {
-        await supabase.auth.updateUser({
-            data: { preferred_currency: code }
-        })
-    }
-
-    async setExchangeRates(usd: number, eur: number): Promise<void> {
-        await supabase.auth.updateUser({
-            data: { usd_rate: usd, eur_rate: eur }
-        })
-    }
-
     async getUserActivity(limit: number = 5) {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return []
 
         const { data } = await supabase
-            .from('prices')
-            .select(`
-                id,
-                price,
-                created_at,
-                product_id,
-                products (name, unit)
-            `)
-            .eq('created_by', user.id)
+            .from('routes')
+            .select('id, title, created_at')
+            .eq('author_id', user.id)
             .order('created_at', { ascending: false })
             .limit(limit)
 
-        // Type the response to avoid 'any'
-        interface PriceActivity {
-            id: string
-            price: number
-            created_at: string
-            product_id: string
-            products: { name: string; unit: string } | null
-        }
-
-        const typedData = data as unknown as PriceActivity[]
-
-        return typedData?.map(item => ({
+        return data?.map(item => ({
             id: item.id,
-            productId: item.product_id,
-            action: 'Добавил цену',
-            item: item.products?.name || 'Товар',
-            price: item.price,
-            details: `${item.price.toLocaleString()} ₽`,
+            action: 'Создан маршрут',
+            item: item.title,
             time: new Date(item.created_at).toLocaleDateString('ru-RU'),
-            fullDate: item.created_at,
-            icon: '🏷️'
+            icon: '📍'
         })) || []
+    }
+
+    async uploadAvatar(file: File): Promise<string> {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) throw new Error('Not authenticated')
+
+        const fileExt = file.name.split('.').pop()
+        const filePath = `${user.id}/${Math.random()}.${fileExt}`
+
+        const { error: uploadError } = await supabase.storage
+            .from('avatars')
+            .upload(filePath, file)
+
+        if (uploadError) throw uploadError
+
+        const { data: { publicUrl } } = supabase.storage
+            .from('avatars')
+            .getPublicUrl(filePath)
+
+        await this.saveProfile({ avatar_url: publicUrl })
+        return publicUrl
     }
 }
 
