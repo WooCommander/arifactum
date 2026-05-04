@@ -6,13 +6,29 @@ export const teamService = {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return []
 
-        const { data, error } = await supabase
+        // 1. Get IDs of teams where user is a member
+        const { data: memberEntries } = await supabase
+            .from('team_members')
+            .select('team_id')
+            .eq('user_id', user.id)
+        
+        const memberTeamIds = memberEntries?.map(m => m.team_id) || []
+
+        // 2. Query teams (where user is leader OR member)
+        let query = supabase
             .from('teams')
             .select(`
                 *,
                 team_members ( count )
             `)
-            .or(`leader_id.eq.${user.id},id.in.(select team_id from team_members where user_id = '${user.id}')`)
+
+        if (memberTeamIds.length > 0) {
+            query = query.or(`leader_id.eq.${user.id},id.in.(${memberTeamIds.join(',')})`)
+        } else {
+            query = query.eq('leader_id', user.id)
+        }
+
+        const { data, error } = await query
 
         if (error) throw error
         
