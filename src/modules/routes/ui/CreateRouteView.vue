@@ -345,8 +345,8 @@ const handleSave = async () => {
           <div v-if="isAddingCategory" class="add-category-form">
             <input v-model="newCategoryName" placeholder="Новая категория..." @keydown.enter.prevent="handleAddCategory" />
             <div class="actions">
-              <FpButton size="small" @click="handleAddCategory">Ок</FpButton>
-              <FpButton size="small" variant="secondary" @click="isAddingCategory = false">Отмена</FpButton>
+              <FpButton size="sm" @click="handleAddCategory">Ок</FpButton>
+              <FpButton size="sm" variant="secondary" @click="isAddingCategory = false">Отмена</FpButton>
             </div>
           </div>
         </div>

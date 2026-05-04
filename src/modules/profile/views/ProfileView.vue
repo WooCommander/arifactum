@@ -9,7 +9,7 @@ import { useNotify } from '@/composables/useNotify'
 import { useI18n } from 'vue-i18n'
 import { useRewardsStore } from '@/modules/rewards'
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const { totalBonuses, fetchRewards } = useRewardsStore()
 const router = useRouter()
 const { notify } = useNotify()
