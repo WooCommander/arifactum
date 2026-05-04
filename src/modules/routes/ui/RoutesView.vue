@@ -121,7 +121,8 @@ const handleWheel = (e: WheelEvent) => {
       </div>
     </header>
 
-    <FpPullToRefresh :onRefresh="handleRefresh">
+    <div class="routes-content">
+      <FpPullToRefresh :onRefresh="handleRefresh">
       <div v-if="isLoading && routes.length === 0" class="loader">
         <FpSpinner />
       </div>
@@ -143,28 +144,36 @@ const handleWheel = (e: WheelEvent) => {
           @click="navigateToDetail"
         />
       </div>
-    </FpPullToRefresh>
+      </FpPullToRefresh>
+    </div>
   </div>
 </template>
 
 <style scoped lang="scss">
 .routes-view {
-  padding-bottom: 80px; // bottom nav height
-  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: var(--color-background);
+  overflow: hidden;
 }
 
 .routes-header {
-  position: sticky;
-  top: 0;
-  z-index: 100;
+  flex-shrink: 0;
   padding: 16px 20px 8px;
-  background: color-mix(in srgb, var(--color-background) 95%, transparent);
-  backdrop-filter: blur(12px);
+  background: var(--color-background);
   border-bottom: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   gap: 12px;
+  z-index: 10;
+}
+
+.routes-content {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 100px; // bottom nav + extra space
+  -webkit-overflow-scrolling: touch;
 }
 
 .header-top {
