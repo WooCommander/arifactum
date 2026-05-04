@@ -5,10 +5,9 @@ import FpCard from '@/design-system/components/FpCard.vue'
 import { FpSkeleton } from '@/design-system'
 
 const categories: { key: LeaderboardCategory; label: string; unit: string; icon: string }[] = [
-    { key: 'reputation', label: 'Репутация', unit: 'очков', icon: '🏆' },
-    { key: 'games', label: 'Игры', unit: 'pts', icon: '🎮' },
-    { key: 'products', label: 'Товары', unit: 'товаров', icon: '📦' },
-    { key: 'prices', label: 'Цены', unit: 'цен', icon: '💰' },
+    { key: 'xp', label: 'Опыт', unit: 'XP', icon: '✨' },
+    { key: 'distance', label: 'Дистанция', unit: 'км', icon: '🏃' },
+    { key: 'routes', label: 'Маршруты', unit: 'шт', icon: '🗺️' },
 ]
 
 const LEVEL_COLORS: Record<number, string> = {
@@ -19,7 +18,7 @@ const LEVEL_COLORS: Record<number, string> = {
     5: 'var(--color-level-5)',
 }
 
-const activeCategory = ref<LeaderboardCategory>('reputation')
+const activeCategory = ref<LeaderboardCategory>('xp')
 const entries = ref<LeaderboardEntry[]>([])
 const isLoading = ref(false)
 const error = ref<string | null>(null)
@@ -60,6 +59,7 @@ onMounted(load)
         <div v-if="isLoading" class="entries-list" style="margin-top: 24px;">
             <FpCard v-for="i in 5" :key="i" class="entry-card" style="display: flex; gap: 12px; align-items: center;">
                 <FpSkeleton width="36px" height="24px" />
+                <FpSkeleton width="40px" height="40px" style="border-radius: 50%;" />
                 <div style="flex: 1;">
                     <FpSkeleton width="40%" height="16px" style="margin-bottom: 4px;" />
                     <FpSkeleton width="20%" height="12px" />
@@ -85,25 +85,31 @@ onMounted(load)
                     <span v-else class="rank-num">#{{ entry.rank }}</span>
                 </div>
 
+                <!-- Avatar -->
+                <div class="entry-avatar">
+                  <img v-if="entry.avatarUrl" :src="entry.avatarUrl" class="avatar-img" />
+                  <div v-else class="avatar-placeholder">{{ entry.displayName.charAt(0).toUpperCase() }}</div>
+                </div>
+
                 <!-- Info -->
                 <div class="entry-info">
                     <div class="entry-name-row">
                         <span class="entry-name" :class="{ 'me-label': entry.isCurrentUser }" :title="entry.displayName">
                             {{ entry.displayName }}
                         </span>
-                        <span class="level-badge" :style="{ color: LEVEL_COLORS[entry.level] }">
-                            Lvl {{ entry.level }} · {{ entry.levelTitle }}
+                        <span class="level-badge" :style="{ color: LEVEL_COLORS[Math.min(entry.level, 5)] }">
+                            Lvl {{ entry.level }}
                         </span>
                     </div>
                     <div class="entry-sub">
-                        <span>📦 {{ entry.productsCount }}</span>
-                        <span>💰 {{ entry.pricesCount }}</span>
+                        <span>🏃 {{ entry.distance.toFixed(1) }} км</span>
+                        <span>🗺️ {{ entry.routesCount }}</span>
                     </div>
                 </div>
 
                 <!-- Score -->
                 <div class="entry-score">
-                    <span class="score-value">{{ entry.score.toLocaleString('ru-RU') }}</span>
+                    <span class="score-value">{{ Math.floor(entry.score).toLocaleString('ru-RU') }}</span>
                     <span class="score-unit">{{categories.find(c => c.key === activeCategory)?.unit}}</span>
                 </div>
             </FpCard>
@@ -249,6 +255,33 @@ onMounted(load)
     .score-unit {
         font-size: 11px;
         color: var(--color-text-secondary);
+    }
+}
+.entry-avatar {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--color-surface-variant);
+    border: 1px solid var(--color-border);
+
+    .avatar-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .avatar-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 16px;
+        color: var(--color-primary);
+        background: color-mix(in srgb, var(--color-primary) 10%, transparent);
     }
 }
 </style>

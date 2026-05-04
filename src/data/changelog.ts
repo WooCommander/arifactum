@@ -9,6 +9,20 @@ export interface ReleaseNote {
 
 export const changelog: ReleaseNote[] = [
     {
+        version: '2.14.4',
+        date: '2026-05-05',
+        highlights: [
+            'Leaderboard 2.0: Перезапуск рейтинга игроков'
+        ],
+        features: [
+            'Artifactum Metrics: Рейтинг теперь строится на Опыте (XP), Дистанции и Пройденных маршрутах.',
+            'Visual Avatars: Добавлены аватарки пользователей в список лучших игроков.',
+            'Build Fix: Устранены ошибки типизации в ProfileView и CreateRouteView, блокировавшие сборку проекта.',
+            'Refined Levels: Логика уровней в рейтинге теперь синхронизирована с профилем игрока.',
+            'Performance: Прямые запросы к профилям заменили медленные RPC-вызовы.'
+        ]
+    },
+    {
         version: '2.14.3',
         date: '2026-05-05',
         highlights: [
