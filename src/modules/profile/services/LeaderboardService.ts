@@ -16,15 +16,6 @@ export interface LeaderboardEntry {
     levelTitle: string
 }
 
-function calcLevel(xp: number): { level: number; levelTitle: string } {
-    const level = Math.floor(xp / 1000) + 1
-    let title = 'Новичок'
-    if (level >= 10) title = 'Артефактор'
-    else if (level >= 7) title = 'Легенда'
-    else if (level >= 5) title = 'Хранитель'
-    else if (level >= 3) title = 'Исследователь'
-    return { level, levelTitle: title }
-}
 
 class LeaderboardServiceImpl {
     async getLeaderboard(category: LeaderboardCategory): Promise<LeaderboardEntry[]> {
