@@ -27,6 +27,7 @@ const isLoading = ref(false)
 const category = ref('Город')
 const categories = ['История', 'Мистика', 'Природа', 'Город', 'Для детей', 'Спорт']
 const userLocation = ref<[number, number] | undefined>(undefined)
+const mapCenter = ref<[number, number] | undefined>(undefined)
 
 interface CheckpointForm {
   title: string
@@ -81,6 +82,11 @@ onMounted(async () => {
           photo_url: cp.photo_url,
           images: [...(cp.images || [])]
         }))
+        
+        // Центрируем на первой точке при редактировании
+        if (checkpoints.value[0].lat !== 0) {
+          mapCenter.value = [checkpoints.value[0].lat, checkpoints.value[0].lng]
+        }
       }
     } catch (err) {
       console.error('Failed to load route for editing:', err)
@@ -91,10 +97,15 @@ onMounted(async () => {
     }
   }
 
-  // Получаем текущую геопозицию автора для центрирования карты
+  // Получаем текущую геопозицию автора
   try {
     const pos = await LocationService.getCurrentPosition()
     userLocation.value = [pos.latitude, pos.longitude]
+    
+    // Если это новый маршрут - центрируем на пользователе
+    if (!isEditMode.value) {
+      mapCenter.value = userLocation.value
+    }
   } catch (err) {
     console.warn('Could not get initial creator location:', err)
   }
@@ -246,7 +257,7 @@ const handleSave = async () => {
       <ArtMap 
         class="creation-map" 
         :points="mapPoints" 
-        :center="userLocation"
+        :center="mapCenter"
         :user-location="userLocation"
         @map-click="handleMapClick"
       />
