@@ -3,6 +3,8 @@ import type { TeamWithMembers } from '../types'
 import { FpCard, FpButton } from '@/design-system'
 import { Users, LogOut, Copy } from 'lucide-vue-next'
 
+import { useNotify } from '@/composables/useNotify'
+
 interface Props {
   team: TeamWithMembers
 }
@@ -12,9 +14,11 @@ const emit = defineEmits<{
   (e: 'leave', id: string): void
 }>()
 
+const { notify } = useNotify()
+
 const copyInviteCode = () => {
   navigator.clipboard.writeText(props.team.invite_code)
-  alert('Код приглашения скопирован!')
+  notify('Код приглашения скопирован', 'success')
 }
 </script>
 

@@ -68,6 +68,7 @@ const handleFileSelect = async (event: Event) => {
   try {
     const publicUrl = await AuthService.uploadAvatar(file)
     profile.value.avatar_url = publicUrl
+    profileEdit.value.avatar_url = publicUrl // Sync with edit state
     notify('Фото профиля обновлено', 'success')
   } catch (e) {
     console.error('Avatar upload error', e)

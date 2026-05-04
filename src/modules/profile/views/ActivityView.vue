@@ -27,7 +27,7 @@ onMounted(async () => {
     <div class="activity-view">
         <header class="section-header">
             <h1>Моя активность</h1>
-            <p v-if="activityData.length > 0">Вы внесли {{ activityData.length }} цен</p>
+            <p v-if="activityData.length > 0">Вы создали {{ activityData.length }} маршрутов</p>
         </header>
 
         <div v-if="isLoading" class="activity-list">
@@ -45,7 +45,7 @@ onMounted(async () => {
         </div>
 
         <TransitionGroup name="list" tag="div" v-else-if="activityData.length > 0" class="activity-list">
-            <FpCard v-for="act in activityData" :key="act.id" class="activity-item fp-interactive" padding="sm">
+            <FpCard v-for="act in activityData" :key="act.id" class="activity-item fp-interactive" padding="sm" @click="router.push(`/routes/${act.id}`)">
                 <div class="act-icon">{{ act.icon }}</div>
                 <div class="act-content">
                     <div class="act-header">
@@ -58,10 +58,10 @@ onMounted(async () => {
         </TransitionGroup>
 
         <div v-else class="empty-state">
-            <span class="empty-icon">📝</span>
+            <span class="empty-icon">📍</span>
             <h3>История пуста</h3>
-            <p>Ваши добавленные цены будут отображаться здесь</p>
-            <FpButton size="md" @click="router.push('/search')">Найти товар</FpButton>
+            <p>Здесь будут отображаться ваши созданные маршруты и достижения</p>
+            <FpButton size="md" @click="router.push('/routes')">Найти маршрут</FpButton>
         </div>
     </div>
 </template>

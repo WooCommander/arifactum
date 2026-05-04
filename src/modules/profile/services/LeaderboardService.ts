@@ -37,14 +37,13 @@ class LeaderboardServiceImpl {
 
         const { data, error } = await supabase
             .from('profiles')
-            .select('id, display_name, first_name, avatar_url, xp, total_distance_meters, routes_completed_count')
+            .select('id, display_name, first_name, avatar_url, xp, level, total_distance_meters, routes_completed_count')
             .order(orderBy, { ascending: false })
             .limit(50)
 
         if (error) throw error
 
         return (data || []).map((entry, index) => {
-            const { level, levelTitle } = calcLevel(entry.xp || 0)
             const isCurrentUser = entry.id === currentUserId
             
             // Fallback for name
@@ -53,6 +52,14 @@ class LeaderboardServiceImpl {
             let score = entry.xp || 0
             if (category === 'distance') score = (entry.total_distance_meters || 0) / 1000 // Convert to km
             if (category === 'routes') score = entry.routes_completed_count || 0
+
+            // Reuse same logic for titles
+            let title = 'Новичок'
+            const level = entry.level || 1
+            if (level >= 10) title = 'Артефактор'
+            else if (level >= 7) title = 'Легенда'
+            else if (level >= 5) title = 'Хранитель'
+            else if (level >= 3) title = 'Исследователь'
 
             return {
                 userId: entry.id,
@@ -65,7 +72,7 @@ class LeaderboardServiceImpl {
                 distance: (entry.total_distance_meters || 0) / 1000,
                 routesCount: entry.routes_completed_count || 0,
                 level,
-                levelTitle
+                levelTitle: title
             }
         })
     }
