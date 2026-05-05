@@ -298,12 +298,10 @@ const handleMapClick = async (lat: number, lng: number) => {
         description: '',
         lat: Number(lat.toFixed(6)),
         lng: Number(lng.toFixed(6)),
-        order_index: checkpoints.value.length + 1,
+        order_index: Math.max(0, ...checkpoints.value.map(c => c.order_index)) + 1,
         photo_url: null,
         images: [] as string[]
       })
-      // Пересчитываем индексы: нижняя (старая) — 1, верхняя (новая) — N
-      checkpoints.value.forEach((cp, i) => cp.order_index = checkpoints.value.length - i)
       activeMarkerIndex.value = 0
     }
   }
@@ -390,7 +388,6 @@ const requestDeleteCheckpoint = (index: number) => {
 const confirmDeleteCheckpoint = () => {
   if (indexToDelete.value !== null) {
     checkpoints.value.splice(indexToDelete.value, 1)
-    checkpoints.value.forEach((cp, i) => cp.order_index = checkpoints.value.length - i)
     indexToDelete.value = null
   }
   showDeleteConfirm.value = false
@@ -404,7 +401,6 @@ const onDrop = (index: number) => {
   if (draggedIndex.value === null) return
   const item = checkpoints.value.splice(draggedIndex.value, 1)[0]
   checkpoints.value.splice(index, 0, item)
-  checkpoints.value.forEach((cp, i) => cp.order_index = checkpoints.value.length - i)
   draggedIndex.value = null
 }
 
@@ -451,8 +447,12 @@ const handleAddCategory = async () => {
 }
 
 const handleSave = async () => {
-  if (!title.value) return
   if (!authStore.user.value) return
+
+  // Пересчитываем индексы перед сохранением: нижняя в списке (старая) — 1, верхняя (новая) — N
+  checkpoints.value.forEach((cp, i) => {
+    cp.order_index = checkpoints.value.length - i
+  })
 
   isSaving.value = true
   try {

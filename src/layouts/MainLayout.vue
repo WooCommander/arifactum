@@ -77,33 +77,67 @@ const handleLogout = async () => {
 // Global Gestures
 const touchStartX = ref(0)
 const touchStartY = ref(0)
+const currentSwipeX = ref(0)
 const SWIPE_THRESHOLD = 150
 
 const onTouchStart = (e: TouchEvent) => {
 	touchStartX.value = e.touches[0].clientX
 	touchStartY.value = e.touches[0].clientY
+	currentSwipeX.value = 0
+}
+
+const onTouchMove = (e: TouchEvent) => {
+	if (touchStartX.value === 0) return
+	
+	const dx = e.touches[0].clientX - touchStartX.value
+	const dy = e.touches[0].clientY - touchStartY.value
+	
+	// Track horizontal swipe only if it's dominant
+	if (dx > 0 && Math.abs(dx) > Math.abs(dy)) {
+		const target = e.target as HTMLElement
+		if (target.closest('.leaflet-container') || target.closest('.cp-list')) {
+			currentSwipeX.value = 0
+			return
+		}
+		currentSwipeX.value = Math.min(dx, SWIPE_THRESHOLD + 50)
+	} else {
+		currentSwipeX.value = 0
+	}
 }
 
 const onTouchEnd = (e: TouchEvent) => {
 	const dx = e.changedTouches[0].clientX - touchStartX.value
 	const dy = e.changedTouches[0].clientY - touchStartY.value
 
-	// Swipe Right (Left to Right) -> Go Home
-	// Only if horizontal swipe is dominant and exceeds threshold
 	if (dx > SWIPE_THRESHOLD && Math.abs(dy) < 100) {
-		// Prevent accidental swipes while interacting with maps or horizontal scrolls
 		const target = e.target as HTMLElement
-		if (target.closest('.leaflet-container') || target.closest('.cp-list')) return
+		if (target.closest('.leaflet-container') || target.closest('.cp-list')) {
+			currentSwipeX.value = 0
+			return
+		}
 
 		FpHaptics.light()
 		navigate('/')
 	}
+	
+	currentSwipeX.value = 0
+	touchStartX.value = 0
 }
 
 </script>
 
 <template>
-	<div class="main-layout" @touchstart="onTouchStart" @touchend="onTouchEnd">
+	<div class="main-layout" @touchstart="onTouchStart" @touchmove="onTouchMove" @touchend="onTouchEnd">
+		<!-- Swipe Visual Feedback -->
+		<div class="swipe-indicator-edge" :style="{ 
+			transform: `translateX(${Math.min(0, -80 + currentSwipeX * 0.5)}px)`,
+			opacity: Math.min(0.8, currentSwipeX / SWIPE_THRESHOLD)
+		}">
+			<div class="swipe-icon-wrap" :style="{ transform: `scale(${Math.min(1.2, 0.5 + currentSwipeX / SWIPE_THRESHOLD)})` }">
+				<Home :size="20" />
+			</div>
+		</div>
+
 		<header class="top-nav">
 			<div class="nav-container">
 				<div class="logo-area">
@@ -812,5 +846,35 @@ const onTouchEnd = (e: TouchEvent) => {
 			}
 		}
 	}
+}
+
+.swipe-indicator-edge {
+	position: fixed;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	width: 80px;
+	z-index: 9999;
+	pointer-events: none;
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+	padding-left: 12px;
+	background: linear-gradient(to right, color-mix(in srgb, var(--color-primary) 30%, transparent), transparent);
+	border-top-right-radius: 40px;
+	border-bottom-right-radius: 40px;
+	will-change: transform, opacity;
+}
+
+.swipe-icon-wrap {
+	width: 40px;
+	height: 40px;
+	background: var(--color-primary);
+	color: var(--color-on-primary);
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-shadow: 0 4px 15px color-mix(in srgb, var(--color-primary) 40%, transparent);
 }
 </style>
