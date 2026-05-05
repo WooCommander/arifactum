@@ -5,7 +5,7 @@ import { useRoutesStore } from '../state/useRoutesStore'
 import { routeService } from '../services/routeService'
 import { authStore } from '@/modules/auth/store/authStore'
 import { useCategoryStore } from '../state/useCategoryStore'
-import { FpBackButton, FpInput, FpButton, FpSpinner, FpImageUpload } from '@/design-system'
+import { FpBackButton, FpInput, FpButton, FpSpinner, FpImageUpload, FpConfirmationModal } from '@/design-system'
 import ArtMap from '@/shared/ui/ArtMap.vue'
 import { Save, Plus, Trash2, MapPin, Star, X as CloseIcon, MapPinOff } from 'lucide-vue-next'
 import { Haptics } from '@capacitor/haptics'
@@ -68,13 +68,30 @@ const isDirty = computed(() => {
     checkpoints.value.some(cp => cp.title !== '' || cp.lat !== 0)
 })
 
+const showLeaveConfirm = ref(false)
+const pendingRoute = ref<any>(null)
+
 onBeforeRouteLeave((to, from, next) => {
   if (isDirty.value) {
-    const answer = window.confirm('У вас есть несохраненные изменения. Вы уверены, что хотите уйти?')
-    if (!answer) return next(false)
+    pendingRoute.value = to
+    showLeaveConfirm.value = true
+    return next(false)
   }
   next()
 })
+
+const handleConfirmLeave = () => {
+  skipDirtyCheck.value = true
+  showLeaveConfirm.value = false
+  if (pendingRoute.value) {
+    router.push(pendingRoute.value)
+  }
+}
+
+const handleCancelLeave = () => {
+  pendingRoute.value = null
+  showLeaveConfirm.value = false
+}
 
 // Auto-save logic
 const saveDraft = () => {
@@ -593,6 +610,16 @@ const handleSave = async () => {
         </span>
       </FpButton>
     </div>
+    <FpConfirmationModal
+      v-model:visible="showLeaveConfirm"
+      title="Несохраненные изменения"
+      message="Вы уверены, что хотите покинуть страницу? Все введенные данные будут потеряны."
+      confirmText="Уйти"
+      cancelText="Остаться"
+      variant="danger"
+      @confirm="handleConfirmLeave"
+      @cancel="handleCancelLeave"
+    />
   </div>
 </template>
 
