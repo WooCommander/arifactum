@@ -298,11 +298,12 @@ const handleMapClick = async (lat: number, lng: number) => {
         description: '',
         lat: Number(lat.toFixed(6)),
         lng: Number(lng.toFixed(6)),
-        order_index: 0,
+        order_index: checkpoints.value.length + 1,
         photo_url: null,
         images: [] as string[]
       })
-      checkpoints.value.forEach((cp, i) => cp.order_index = i)
+      // Пересчитываем индексы: нижняя (старая) — 1, верхняя (новая) — N
+      checkpoints.value.forEach((cp, i) => cp.order_index = checkpoints.value.length - i)
       activeMarkerIndex.value = 0
     }
   }
@@ -388,7 +389,8 @@ const requestDeleteCheckpoint = (index: number) => {
 
 const confirmDeleteCheckpoint = () => {
   if (indexToDelete.value !== null) {
-    removeCheckpoint(indexToDelete.value)
+    checkpoints.value.splice(indexToDelete.value, 1)
+    checkpoints.value.forEach((cp, i) => cp.order_index = checkpoints.value.length - i)
     indexToDelete.value = null
   }
   showDeleteConfirm.value = false
@@ -402,7 +404,7 @@ const onDrop = (index: number) => {
   if (draggedIndex.value === null) return
   const item = checkpoints.value.splice(draggedIndex.value, 1)[0]
   checkpoints.value.splice(index, 0, item)
-  checkpoints.value.forEach((cp, i) => cp.order_index = i)
+  checkpoints.value.forEach((cp, i) => cp.order_index = checkpoints.value.length - i)
   draggedIndex.value = null
 }
 
@@ -615,7 +617,7 @@ const handleSave = async () => {
               @dragover.prevent
               @drop="onDrop(index)">
               <div class="cp-main-row" @click="activeMarkerIndex = activeMarkerIndex === index ? null : index">
-                <span class="cp-number">{{ index + 1 }}</span>
+                <span class="cp-number">{{ cp.order_index }}</span>
                 <div class="cp-info">
                   <span class="cp-title">{{ cp.title || 'Без названия' }}</span>
                   <span class="cp-coords" v-if="cp.lat">{{ cp.lat }}, {{ cp.lng }}</span>

@@ -70,16 +70,17 @@ const isAuthor = computed(() => currentRoute.value?.authorId === authStore.curre
 const isDraft = computed(() => currentRoute.value?.status === 'draft')
 
 const mapPoints = computed(() => {
-  const points = currentCheckpoints.value.map(cp => ({
-    id: cp.id,
-    lat: cp.latitude,
-    lng: cp.longitude,
-    title: cp.title,
-    order: cp.order,
-    isCompleted: completedCheckpointIds.value.has(cp.id),
-    isActive: nextCheckpoint.value?.id === cp.id
-  }))
-  return points
+  return [...currentCheckpoints.value]
+    .sort((a, b) => a.order - b.order)
+    .map((cp, index) => ({
+      id: cp.id,
+      lat: cp.latitude,
+      lng: cp.longitude,
+      title: cp.title,
+      order: cp.order,
+      isCompleted: completedCheckpointIds.value.has(cp.id),
+      isActive: nextCheckpoint.value?.id === cp.id
+    }))
 })
 
 // Active Tracking State
@@ -92,6 +93,10 @@ const selectedCheckpoint = ref<any | null>(null)
 const isFollowMode = ref(true)
 const isCompassMode = ref(false)
 const initialActiveCenter = ref<[number, number] | undefined>(undefined)
+
+const sortedCheckpoints = computed(() => {
+  return [...currentCheckpoints.value].sort((a, b) => a.order - b.order)
+})
 
 // Gesture state for panel
 const touchStartY = ref(0)
@@ -519,7 +524,7 @@ onUnmounted(() => {
           <div class="section">
             <h2 v-if="!isActiveMode">Маршрутные точки</h2>
             <div v-if="!isActiveMode" class="checkpoints-list">
-              <div v-for="cp in currentCheckpoints" :key="cp.id" class="checkpoint-item"
+              <div v-for="cp in sortedCheckpoints" :key="cp.id" class="checkpoint-item"
                 :class="{ completed: completedCheckpointIds.has(cp.id), next: nextCheckpoint?.id === cp.id }"
                 @click="Haptics.impact({ style: ImpactStyle.Light }); handleMarkerClick(cp.id)">
                 <div class="checkpoint-number">{{ cp.order }}</div>
