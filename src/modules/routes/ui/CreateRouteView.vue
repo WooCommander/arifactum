@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
+import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router'
 import { useRoutesStore } from '../state/useRoutesStore'
 import { routeService } from '../services/routeService'
 import { authStore } from '@/modules/auth/store/authStore'
@@ -40,15 +40,9 @@ const steps = [
   { id: 3, title: 'Медиа' }
 ]
 
-const nextStep = () => {
-  if (currentStep.value < 3) currentStep.value++
-}
-
-const prevStep = () => {
-  if (currentStep.value > 1) currentStep.value--
-}
 
 interface CheckpointForm {
+  id: string
   title: string
   description: string
   lat: number
@@ -59,8 +53,90 @@ interface CheckpointForm {
 }
 
 const checkpoints = ref<CheckpointForm[]>([
-  { title: '', description: '', lat: 0, lng: 0, order_index: 0, photo_url: null, images: [] }
+  { id: Math.random().toString(36).substr(2, 9), title: '', description: '', lat: 0, lng: 0, order_index: 0, photo_url: null, images: [] }
 ])
+
+const DRAFT_KEY = 'artifactum_route_draft'
+
+// Dirty check logic
+const isDirty = computed(() => {
+  if (isSaving.value) return false
+  return title.value !== '' ||
+    description.value !== '' ||
+    images.value.length > 0 ||
+    checkpoints.value.some(cp => cp.title !== '' || cp.lat !== 0)
+})
+
+onBeforeRouteLeave((to, from, next) => {
+  if (isDirty.value) {
+    const answer = window.confirm('У вас есть несохраненные изменения. Вы уверены, что хотите уйти?')
+    if (!answer) return next(false)
+  }
+  next()
+})
+
+// Auto-save logic
+const saveDraft = () => {
+  if (isEditMode.value || isSaving.value) return
+
+  const draft = {
+    title: title.value,
+    description: description.value,
+    difficulty: difficulty.value,
+    images: images.value,
+    coverUrl: coverUrl.value,
+    category: category.value,
+    tags: tags.value,
+    checkpoints: checkpoints.value,
+    currentStep: currentStep.value
+  }
+  localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+}
+
+const restoreDraft = () => {
+  if (isEditMode.value) return
+
+  const saved = localStorage.getItem(DRAFT_KEY)
+  if (!saved) return
+
+  try {
+    const draft = JSON.parse(saved)
+    title.value = draft.title || ''
+    description.value = draft.description || ''
+    difficulty.value = draft.difficulty || 'medium'
+    images.value = draft.images || []
+    coverUrl.value = draft.coverUrl || null
+    category.value = draft.category || ''
+    tags.value = draft.tags || []
+    checkpoints.value = draft.checkpoints || [{ title: '', description: '', lat: 0, lng: 0, order_index: 0, photo_url: null, images: [] }]
+    currentStep.value = draft.currentStep || 1
+  } catch (e) {
+    console.error('Failed to restore draft:', e)
+  }
+}
+
+const clearDraft = () => {
+  localStorage.removeItem(DRAFT_KEY)
+}
+
+const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+  if (isDirty.value) {
+    e.preventDefault()
+    e.returnValue = ''
+  }
+}
+
+watch([title, description, difficulty, images, coverUrl, category, tags, checkpoints, currentStep], () => {
+  saveDraft()
+}, { deep: true })
+
+const nextStep = () => {
+  if (currentStep.value < 3) currentStep.value++
+}
+
+const prevStep = () => {
+  if (currentStep.value > 1) currentStep.value--
+}
 
 const mapPoints = computed(() =>
   checkpoints.value
@@ -68,7 +144,7 @@ const mapPoints = computed(() =>
     .map((cp, index) => ({
       lat: cp.lat,
       lng: cp.lng,
-      id: index.toString(),
+      id: cp.id,
       title: cp.title || `Точка ${index + 1}`
     }))
 )
@@ -81,6 +157,13 @@ onMounted(async () => {
       category.value = categoryNames.value[0]
     }
   })
+
+  if (!isEditMode.value) {
+    restoreDraft()
+  }
+
+  window.addEventListener('beforeunload', handleBeforeUnload)
+
   if (isEditMode.value) {
     isLoading.value = true
     try {
@@ -100,6 +183,7 @@ onMounted(async () => {
 
       if (checkpointData.length > 0) {
         checkpoints.value = checkpointData.map(cp => ({
+          id: cp.id || Math.random().toString(36).substr(2, 9),
           title: cp.title,
           description: cp.description,
           lat: cp.lat,
@@ -137,6 +221,10 @@ onMounted(async () => {
   }
 })
 
+onUnmounted(() => {
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+})
+
 const handleMapClick = (lat: number, lng: number) => {
   if (activeMarkerIndex.value !== null) {
     const cp = checkpoints.value[activeMarkerIndex.value]
@@ -146,33 +234,40 @@ const handleMapClick = (lat: number, lng: number) => {
     return
   }
 
-  const lastCp = checkpoints.value[checkpoints.value.length - 1]
-  if (checkpoints.value.length === 1 && !lastCp.title && lastCp.lat === 0) {
-    lastCp.lat = Number(lat.toFixed(6))
-    lastCp.lng = Number(lng.toFixed(6))
+  const firstCp = checkpoints.value[0]
+  if (checkpoints.value.length === 1 && !firstCp.title && firstCp.lat === 0) {
+    firstCp.lat = Number(lat.toFixed(6))
+    firstCp.lng = Number(lng.toFixed(6))
+    activeMarkerIndex.value = 0
   } else {
-    checkpoints.value.push({
+    checkpoints.value.unshift({
+      id: Math.random().toString(36).substr(2, 9),
       title: '',
       description: '',
       lat: Number(lat.toFixed(6)),
       lng: Number(lng.toFixed(6)),
-      order_index: checkpoints.value.length,
+      order_index: 0,
       photo_url: null,
       images: [] as string[]
     })
+    checkpoints.value.forEach((cp, i) => cp.order_index = i)
+    activeMarkerIndex.value = 0
   }
 }
 
 const addCheckpoint = () => {
-  checkpoints.value.push({
+  checkpoints.value.unshift({
+    id: Math.random().toString(36).substr(2, 9),
     title: '',
     description: '',
     lat: 0,
     lng: 0,
-    order_index: checkpoints.value.length,
+    order_index: 0,
     photo_url: null,
     images: [] as string[]
   })
+  checkpoints.value.forEach((cp, i) => cp.order_index = i)
+  activeMarkerIndex.value = 0
 }
 
 const addImage = (target: string[] | { images: string[] }, url: string) => {
@@ -279,6 +374,7 @@ const handleSave = async () => {
     ))
 
     await fetchRoutes(authStore.currentUserId.value)
+    clearDraft()
     router.push({ name: 'RouteDetail', params: { id: savedRouteId } })
   } catch (err: any) {
     console.error('Failed to save route:', err)
@@ -390,8 +486,8 @@ const handleSave = async () => {
             </FpButton>
           </div>
 
-          <div class="cp-list">
-            <div v-for="(cp, index) in checkpoints" :key="index" class="cp-compact-card"
+          <TransitionGroup name="list" tag="div" class="cp-list">
+            <div v-for="(cp, index) in checkpoints" :key="cp.id" class="cp-compact-card"
               :class="{ active: activeMarkerIndex === index }">
               <div class="cp-main-row" @click="activeMarkerIndex = activeMarkerIndex === index ? null : index">
                 <span class="cp-number">{{ index + 1 }}</span>
@@ -429,7 +525,7 @@ const handleSave = async () => {
                 </div>
               </div>
             </div>
-          </div>
+          </TransitionGroup>
         </div>
       </section>
 
@@ -974,9 +1070,17 @@ const handleSave = async () => {
 }
 
 @keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.05);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 
 .btn-content {

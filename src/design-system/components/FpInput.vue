@@ -96,11 +96,12 @@ const onBlur = () => {
 .fp-label {
   position: absolute;
   left: 16px;
-  top: 16px;
-  font-size: var(--text-body-1);
+  top: 18px;
+  font-size: 1rem;
   color: var(--color-text-secondary);
   transition: all 0.2s ease;
   pointer-events: none;
+  transform-origin: left top;
 }
 
 // States
@@ -115,8 +116,7 @@ const onBlur = () => {
 
 .is-focused .fp-label,
 .has-value .fp-label {
-  top: 4px;
-  font-size: var(--text-caption);
+  transform: translateY(-12px) scale(0.75);
   color: var(--color-primary);
 }
 

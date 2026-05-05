@@ -418,7 +418,7 @@ onUnmounted(() => {
             <div class="detail-stats">
               <div class="stat">
                 <MapPin :size="20" />
-                <span>{{ currentRoute.checkpointsCount }} точек</span>
+                <span>{{ currentCheckpoints.length }} точек</span>
               </div>
               <div class="stat">
                 <Info :size="20" />

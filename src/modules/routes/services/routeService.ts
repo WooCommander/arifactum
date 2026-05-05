@@ -7,7 +7,7 @@ export const routeService = {
     async getRoutes(userId?: string, options?: { search?: string, category?: string }): Promise<RouteDTO[]> {
         let query = supabase
             .from('routes')
-            .select('*')
+            .select('*, checkpoints_count:checkpoints(count)')
             .order('created_at', { ascending: false })
 
         if (userId) {
@@ -42,7 +42,7 @@ export const routeService = {
 
         const { data, error } = await supabase
             .from('routes')
-            .select('*')
+            .select('*, checkpoints_count:checkpoints(count)')
             .eq('id', id)
             .single()
 

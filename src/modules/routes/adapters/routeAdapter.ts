@@ -7,7 +7,9 @@ export const routeAdapter = {
             title: dto.title,
             description: dto.description,
             authorId: dto.author_id,
-            checkpointsCount: dto.checkpoints_count,
+            checkpointsCount: typeof dto.checkpoints_count === 'object' 
+                ? (dto.checkpoints_count as any)?.[0]?.count || 0 
+                : (Number(dto.checkpoints_count) || 0),
             rating: dto.rating_avg,
             difficulty: dto.difficulty,
             imageUrl: dto.image_url,
