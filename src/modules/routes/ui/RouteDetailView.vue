@@ -405,17 +405,18 @@ onUnmounted(() => {
               </button>
             </div>
           </div>
-
-          <div v-if="isAuthor" class="status-badge" :class="currentRoute.status">
-            {{ currentRoute.status === 'draft' ? 'Черновик' : currentRoute.status === 'pending' ? 'На модерации' :
-              'Опубликован' }}
-          </div>
         </div>
 
         <div v-if="!isActiveMode" class="route-info-section">
           <div class="route-hero-meta">
-            <div class="category-tag" v-if="currentRoute.category">
-              {{ currentRoute.category }}
+            <div class="meta-top">
+              <div class="category-tag" v-if="currentRoute.category">
+                {{ currentRoute.category }}
+              </div>
+              <div v-if="isAuthor && currentRoute.status" class="status-badge" :class="currentRoute.status">
+                <span class="status-dot"></span>
+                {{ currentRoute.status === 'draft' ? 'Черновик' : currentRoute.status === 'pending' ? 'На модерации' : 'Опубликован' }}
+              </div>
             </div>
             <h1 class="route-title">{{ currentRoute.title }}</h1>
           </div>
@@ -816,61 +817,147 @@ onUnmounted(() => {
   padding: 24px 20px;
 }
 
-.route-title {
-  font-size: 24px;
+.route-hero-meta {
+  margin-bottom: 24px;
+
+  .meta-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+}
+
+.category-tag {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-size: 11px;
   font-weight: 800;
+  text-transform: uppercase;
+  
+  &.draft {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--color-text-secondary);
+    .status-dot { background: var(--color-text-tertiary); }
+  }
+  
+  &.pending {
+    background: rgba(255, 193, 7, 0.15);
+    color: #ffc107;
+    .status-dot { 
+      background: #ffc107;
+      animation: status-pulse 1.5s infinite;
+    }
+  }
+  
+  &.published {
+    background: rgba(var(--color-success-rgb), 0.15);
+    color: var(--color-success);
+    .status-dot { background: var(--color-success); }
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+}
+
+@keyframes status-pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.5; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.route-title {
+  font-size: 28px;
+  font-weight: 900;
   color: var(--color-text-primary);
-  margin: 0 0 16px;
+  line-height: 1.2;
+  margin: 0;
 }
 
 .social-summary-bar {
   display: flex;
-  justify-content: space-around;
-  padding: 16px 0;
-  border-top: 1px solid var(--color-border);
-  border-bottom: 1px solid var(--color-border);
+  justify-content: space-between;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 20px;
   margin-bottom: 24px;
+  width: 100%;
 }
 
 .social-action {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   color: var(--color-text-secondary);
   cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 8px 0;
+  border-radius: 12px;
+
+  &:active {
+    transform: scale(0.9);
+    background: rgba(255, 255, 255, 0.05);
+  }
 
   span {
     font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
+    font-weight: 600;
+    // Удален uppercase для более мягкого вида
   }
 
   &.active {
     color: var(--color-primary);
+    
+    svg {
+      transform: scale(1.1);
+    }
   }
 }
 
 .detail-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin: 16px 0;
-  padding: 16px 0;
-  border-top: 1px solid var(--color-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: 32px;
 }
 
 .stat {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 4px;
-  font-size: 12px;
+  gap: 8px;
+  font-size: 13px;
   font-weight: 700;
-  color: var(--color-text-secondary);
+  color: var(--color-text-primary);
 
   svg {
     color: var(--color-primary);
+    width: 18px;
+    height: 18px;
+  }
+
+  .stat-label {
+    color: var(--color-text-secondary);
+    font-weight: 500;
   }
 }
 
