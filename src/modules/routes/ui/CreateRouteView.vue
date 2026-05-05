@@ -25,6 +25,7 @@ const difficulty = ref<'easy' | 'medium' | 'hard'>('medium')
 const images = ref<string[]>([])
 const coverUrl = ref<string | null>(null)
 const isSaving = ref(false)
+const skipDirtyCheck = ref(false)
 const isLoading = ref(false)
 const category = ref('')
 const tags = ref<string[]>([])
@@ -60,7 +61,7 @@ const DRAFT_KEY = 'artifactum_route_draft'
 
 // Dirty check logic
 const isDirty = computed(() => {
-  if (isSaving.value) return false
+  if (isSaving.value || skipDirtyCheck.value) return false
   return title.value !== '' ||
     description.value !== '' ||
     images.value.length > 0 ||
@@ -366,15 +367,24 @@ const handleSave = async () => {
     }
 
     // Save checkpoints
-    await Promise.all(checkpoints.value.map(cp =>
-      routeService.createCheckpoint({
-        ...cp,
+    if (!savedRouteId) throw new Error('ID маршрута не получен')
+    
+    await Promise.all(checkpoints.value.map(cp => {
+      return routeService.createCheckpoint({
+        title: cp.title,
+        description: cp.description,
+        lat: cp.lat,
+        lng: cp.lng,
+        order_index: cp.order_index,
+        photo_url: cp.photo_url,
+        images: cp.images,
         route_id: savedRouteId!
       })
-    ))
+    }))
 
     await fetchRoutes(authStore.currentUserId.value)
     clearDraft()
+    skipDirtyCheck.value = true
     router.push({ name: 'RouteDetail', params: { id: savedRouteId } })
   } catch (err: any) {
     console.error('Failed to save route:', err)
