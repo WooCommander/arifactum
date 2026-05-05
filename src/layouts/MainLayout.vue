@@ -74,11 +74,36 @@ const handleLogout = async () => {
 
 
 
+// Global Gestures
+const touchStartX = ref(0)
+const touchStartY = ref(0)
+const SWIPE_THRESHOLD = 150
+
+const onTouchStart = (e: TouchEvent) => {
+	touchStartX.value = e.touches[0].clientX
+	touchStartY.value = e.touches[0].clientY
+}
+
+const onTouchEnd = (e: TouchEvent) => {
+	const dx = e.changedTouches[0].clientX - touchStartX.value
+	const dy = e.changedTouches[0].clientY - touchStartY.value
+
+	// Swipe Right (Left to Right) -> Go Home
+	// Only if horizontal swipe is dominant and exceeds threshold
+	if (dx > SWIPE_THRESHOLD && Math.abs(dy) < 100) {
+		// Prevent accidental swipes while interacting with maps or horizontal scrolls
+		const target = e.target as HTMLElement
+		if (target.closest('.leaflet-container') || target.closest('.cp-list')) return
+
+		FpHaptics.light()
+		navigate('/')
+	}
+}
 
 </script>
 
 <template>
-	<div class="main-layout">
+	<div class="main-layout" @touchstart="onTouchStart" @touchend="onTouchEnd">
 		<header class="top-nav">
 			<div class="nav-container">
 				<div class="logo-area">

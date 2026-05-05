@@ -122,7 +122,7 @@ const handleWheel = (e: WheelEvent) => {
     </header>
 
     <div class="routes-content">
-      <FpPullToRefresh :onRefresh="handleRefresh">
+      <FpPullToRefresh @refresh="handleRefresh">
       <div v-if="isLoading && routes.length === 0" class="loader">
         <FpSpinner />
       </div>
