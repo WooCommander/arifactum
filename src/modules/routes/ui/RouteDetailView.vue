@@ -27,7 +27,8 @@ import {
   Send,
   Trophy,
   Tag,
-  X
+  X,
+  QrCode
 } from 'lucide-vue-next'
 
 const route = useRoute()
@@ -56,6 +57,11 @@ const isLiked = ref(false)
 const isFavorite = ref(false)
 const commentText = ref('')
 const isSubmittingComment = ref(false)
+const showQrCode = ref(false)
+const qrUrl = computed(() => {
+  const url = window.location.href
+  return `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(url)}&bgcolor=ffffff&color=000000&margin=10`
+})
 
 const { currentRoute, currentCheckpoints, isLoading, error } = routesStore
 const { comments } = socialStore
@@ -427,6 +433,10 @@ onUnmounted(() => {
               <Share2 :size="24" />
               <span>Поделиться</span>
             </div>
+            <div class="social-action" @click="showQrCode = true">
+              <QrCode :size="24" />
+              <span>QR-код</span>
+            </div>
           </div>
 
           <div class="route-stats">
@@ -606,6 +616,35 @@ onUnmounted(() => {
               :disabled="!isNearNext || !nextCheckpoint || isArMode" @click="handleCheckIn">
               {{ isLastPoint ? 'Финиш' : 'Забрать' }}
             </FpButton>
+          </div>
+        </div>
+      </transition>
+    </Teleport>
+
+    <!-- QR Code Modal -->
+    <Teleport to="body">
+      <transition name="fade">
+        <div v-if="showQrCode" class="modal-overlay" @click.self="showQrCode = false">
+          <div class="qr-modal-container">
+            <FpCard class="qr-card">
+              <div class="qr-header">
+                <h3>QR-код маршрута</h3>
+                <button class="close-qr" @click="showQrCode = false">
+                  <X :size="20" />
+                </button>
+              </div>
+              
+              <div class="qr-content">
+                <div class="qr-image-wrap">
+                  <img :src="qrUrl" alt="Route QR Code" />
+                </div>
+                <p class="qr-hint">Покажите этот код другу, чтобы он мог отсканировать его своей камерой</p>
+              </div>
+
+              <FpButton variant="primary" class="qr-done-btn" @click="showQrCode = false">
+                Готово
+              </FpButton>
+            </FpCard>
           </div>
         </div>
       </transition>
@@ -1549,5 +1588,60 @@ onUnmounted(() => {
   100% {
     opacity: 1;
   }
+}
+.qr-modal-container {
+  width: 90%;
+  max-width: 320px;
+  animation: slideUp 0.3s ease-out;
+}
+
+.qr-card {
+  text-align: center;
+  padding: 24px;
+}
+
+.qr-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  
+  h3 {
+    margin: 0;
+    font-size: 18px;
+  }
+}
+
+.close-qr {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  padding: 4px;
+}
+
+.qr-image-wrap {
+  background: white;
+  padding: 12px;
+  border-radius: 16px;
+  display: inline-block;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-1);
+  
+  img {
+    display: block;
+    width: 200px;
+    height: 200px;
+  }
+}
+
+.qr-hint {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+  margin-bottom: 24px;
+}
+
+.qr-done-btn {
+  width: 100%;
 }
 </style>
