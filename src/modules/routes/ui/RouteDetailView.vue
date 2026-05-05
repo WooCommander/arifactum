@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useRoutesStore } from '../state/useRoutesStore'
 import { FpSpinner, FpBackButton, FpConfirmationModal, FpPullToRefresh, FpButton, FpCard } from '@/design-system'
 import ArtMap from '@/shared/ui/ArtMap.vue'
+import { useNotify } from '@/composables/useNotify'
 import { useSocialStore } from '@/modules/social/state/useSocialStore'
 import { MuseumService } from '@/modules/profile/services/MuseumService'
 import { authStore } from '@/modules/auth/store/authStore'
@@ -33,6 +34,7 @@ const route = useRoute()
 const router = useRouter()
 const routesStore = useRoutesStore()
 const socialStore = useSocialStore()
+const { notify } = useNotify()
 
 const routeId = route.params.id as string
 const showDeleteConfirm = ref(false)
@@ -226,13 +228,28 @@ async function handleToggleFavorite() {
   }
 }
 
-function handleShare() {
-  if (navigator.share) {
-    navigator.share({
-      title: currentRoute.value?.title,
-      text: currentRoute.value?.description,
-      url: window.location.href
-    })
+async function handleShare() {
+  const shareData = {
+    title: currentRoute.value?.title || 'Интересный маршрут в Artifactum',
+    text: currentRoute.value?.description || 'Посмотри этот маршрут!',
+    url: window.location.href
+  }
+
+  try {
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      await navigator.share(shareData)
+    } else {
+      throw new Error('Web Share not supported')
+    }
+  } catch (err) {
+    // Fallback: Copy to clipboard
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      notify('Ссылка скопирована в буфер обмена!', 'success')
+    } catch (clipboardErr) {
+      console.error('Share failed entirely', clipboardErr)
+      alert('Не удалось поделиться ссылкой')
+    }
   }
 }
 
