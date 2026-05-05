@@ -7,7 +7,7 @@ import { authStore } from '@/modules/auth/store/authStore'
 import { useCategoryStore } from '../state/useCategoryStore'
 import { FpBackButton, FpInput, FpButton, FpSpinner, FpImageUpload } from '@/design-system'
 import ArtMap from '@/shared/ui/ArtMap.vue'
-import { Save, Plus, Trash2, MapPin, Star, X, MapPinOff } from 'lucide-vue-next'
+import { Save, Plus, Trash2, MapPin, Star, X as CloseIcon, MapPinOff } from 'lucide-vue-next'
 import { Haptics } from '@capacitor/haptics'
 import { LocationService } from '@/shared/lib/LocationService'
 
@@ -33,6 +33,20 @@ const isAddingCategory = ref(false)
 const newCategoryName = ref('')
 const userLocation = ref<[number, number] | undefined>(undefined)
 const mapCenter = ref<[number, number] | undefined>(undefined)
+const currentStep = ref(1)
+const steps = [
+  { id: 1, title: 'Основное' },
+  { id: 2, title: 'Маршрут' },
+  { id: 3, title: 'Медиа' }
+]
+
+const nextStep = () => {
+  if (currentStep.value < 3) currentStep.value++
+}
+
+const prevStep = () => {
+  if (currentStep.value > 1) currentStep.value--
+}
 
 interface CheckpointForm {
   title: string
@@ -48,7 +62,7 @@ const checkpoints = ref<CheckpointForm[]>([
   { title: '', description: '', lat: 0, lng: 0, order_index: 0, photo_url: null, images: [] }
 ])
 
-const mapPoints = computed(() => 
+const mapPoints = computed(() =>
   checkpoints.value
     .filter(cp => cp.lat !== 0 || cp.lng !== 0)
     .map((cp, index) => ({
@@ -94,7 +108,7 @@ onMounted(async () => {
           photo_url: cp.photo_url,
           images: [...(cp.images || [])]
         }))
-        
+
         // Центрируем на первой точке при редактировании
         if (checkpoints.value[0].lat !== 0) {
           mapCenter.value = [checkpoints.value[0].lat, checkpoints.value[0].lng]
@@ -113,7 +127,7 @@ onMounted(async () => {
   try {
     const pos = await LocationService.getCurrentPosition()
     userLocation.value = [pos.latitude, pos.longitude]
-    
+
     // Если это новый маршрут - центрируем на пользователе
     if (!isEditMode.value) {
       mapCenter.value = userLocation.value
@@ -191,11 +205,11 @@ const captureCurrentLocation = async (index: number) => {
   isLocating.value = index
   try {
     const coords = await LocationService.getCurrentPosition()
-    
+
     const cp = checkpoints.value[index]
     cp.lat = Number(coords.latitude.toFixed(6))
     cp.lng = Number(coords.longitude.toFixed(6))
-    
+
     await Haptics.vibrate()
   } catch (e) {
     console.error('Failed to get location:', e)
@@ -257,7 +271,7 @@ const handleSave = async () => {
     }
 
     // Save checkpoints
-    await Promise.all(checkpoints.value.map(cp => 
+    await Promise.all(checkpoints.value.map(cp =>
       routeService.createCheckpoint({
         ...cp,
         route_id: savedRouteId!
@@ -279,9 +293,17 @@ const handleSave = async () => {
 <template>
   <div class="create-route-view">
     <header class="header">
-      <FpBackButton @click="router.back()" />
-      <h1>{{ isEditMode ? 'Редактировать маршрут' : 'Новый маршрут' }}</h1>
+      <FpBackButton @click="currentStep === 1 ? router.back() : prevStep()" />
+      <div class="header-content">
+        <h1>{{ isEditMode ? 'Редактировать' : 'Новый маршрут' }}</h1>
+        <span class="step-badge">Шаг {{ currentStep }} из 3</span>
+      </div>
     </header>
+
+    <div class="step-indicator">
+      <div v-for="s in steps" :key="s.id" class="step-dot"
+        :class="{ active: currentStep === s.id, completed: currentStep > s.id }"></div>
+    </div>
 
     <div v-if="isLoading" class="loader-overlay">
       <FpSpinner />
@@ -289,201 +311,180 @@ const handleSave = async () => {
     </div>
 
     <div v-else class="form-content">
-      <ArtMap 
-        class="creation-map" 
-        :points="mapPoints" 
-        :center="mapCenter"
-        :user-location="userLocation"
-        @map-click="handleMapClick"
-      />
-      <div class="map-hint">
-        <MapPin :size="14" />
-        <span>Нажмите на карту, чтобы быстро добавить новую точку</span>
-      </div>
+      <!-- STEP 1: BASIC INFO -->
+      <section v-if="currentStep === 1" class="basic-info-step">
+        <div class="section-card">
+          <FpInput v-model="title" label="Название маршрута" placeholder="Например: Тайны центра" autofocus />
 
-      <section class="basic-info">
-        <FpInput 
-          v-model="title" 
-          label="Название маршрута" 
-          placeholder="Например: Тайны центра"
-        />
-        <div class="input-group">
-          <label>Описание</label>
-          <textarea v-model="description" placeholder="О чем этот маршрут..."></textarea>
-        </div>
-        
-        <div class="input-group">
-          <label>Сложность</label>
-          <div class="difficulty-picker">
-            <button 
-              v-for="d in ['easy', 'medium', 'hard'] as const" 
-              :key="d"
-              :class="{ active: difficulty === d, [d]: true }"
-              @click="difficulty = d"
-            >
-              {{ d === 'easy' ? 'Легко' : d === 'medium' ? 'Средне' : 'Сложно' }}
-            </button>
-          </div>
-        </div>
+          <div class="input-group">
+            <label>Категория</label>
+            <div class="category-picker">
+              <button v-for="cat in categoryNames" :key="cat" :class="{ active: category === cat }"
+                @click="category = cat">
+                {{ cat }}
+              </button>
+              <button class="add-cat-btn" @click="isAddingCategory = true">
+                <Plus :size="16" />
+              </button>
+            </div>
 
-        <div class="input-group">
-          <label>Категория</label>
-          <div class="category-picker">
-            <button 
-              v-for="cat in categoryNames" 
-              :key="cat"
-              :class="{ active: category === cat }"
-              @click="category = cat"
-            >
-              {{ cat }}
-            </button>
-            <button class="add-cat-btn" @click="isAddingCategory = true">
-              <Plus :size="16" />
-            </button>
-          </div>
-
-          <div v-if="isAddingCategory" class="add-category-form">
-            <input v-model="newCategoryName" placeholder="Новая категория..." @keydown.enter.prevent="handleAddCategory" />
-            <div class="actions">
-              <FpButton size="sm" @click="handleAddCategory">Ок</FpButton>
-              <FpButton size="sm" variant="secondary" @click="isAddingCategory = false">Отмена</FpButton>
+            <div v-if="isAddingCategory" class="add-category-form">
+              <input v-model="newCategoryName" placeholder="Новая категория..."
+                @keydown.enter.prevent="handleAddCategory" />
+              <div class="actions">
+                <FpButton size="sm" @click="handleAddCategory">Ок</FpButton>
+                <FpButton size="sm" variant="secondary" @click="isAddingCategory = false">Отмена</FpButton>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div class="input-group">
-          <label>Теги</label>
-          <div class="tags-input-wrapper">
-            <div class="tags-list">
-              <span v-for="(tag, idx) in tags" :key="idx" class="tag-chip">
-                #{{ tag }}
-                <button @click="removeTag(idx)"><X :size="12" /></button>
-              </span>
+          <div class="input-group">
+            <label>Сложность</label>
+            <div class="difficulty-picker">
+              <button v-for="d in (['easy', 'medium', 'hard'] as const)" :key="d"
+                :class="{ active: difficulty === d, [d]: true }" @click="difficulty = d">
+                {{ d === 'easy' ? 'Легко' : d === 'medium' ? 'Средне' : 'Сложно' }}
+              </button>
             </div>
-            <input 
-              v-model="tagInput" 
-              placeholder="Добавить тег (через пробел)..." 
-              @keydown.enter.prevent="addTag"
-              @keydown.space.prevent="addTag"
-              @blur="addTag"
-            />
+          </div>
+
+          <div class="input-group">
+            <label>Теги</label>
+            <div class="tags-input-wrapper">
+              <div class="tags-list">
+                <span v-for="(tag, idx) in tags" :key="idx" class="tag-chip">
+                  #{{ tag }}
+                  <button @click="removeTag(idx)">
+                    <CloseIcon :size="12" />
+                  </button>
+                </span>
+              </div>
+              <input v-model="tagInput" placeholder="Добавить тег..." @keydown.enter.prevent="addTag"
+                @keydown.space.prevent="addTag" @blur="addTag" />
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label>Описание</label>
+            <textarea v-model="description" placeholder="О чем этот маршрут..."></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- STEP 2: ROUTE & MAP -->
+      <section v-if="currentStep === 2" class="route-map-step">
+        <div class="map-container-sticky">
+          <ArtMap class="creation-map" :points="mapPoints" :center="mapCenter" :user-location="userLocation" show-path
+            @map-click="handleMapClick" />
+          <div class="map-hint">
+            <MapPin :size="14" />
+            <span>Нажмите на карту, чтобы добавить точку</span>
           </div>
         </div>
 
-        <div class="gallery-section">
-          <label>Галерея маршрута</label>
-          <FpImageUpload 
-            label="Добавить фото маршрута"
-            @uploaded="addImage(images, $event)"
-          />
-          
-          <div v-if="images.length > 0" class="image-previews">
-            <div v-for="(img, idx) in images" :key="idx" class="image-card" :class="{ isCover: coverUrl === img }">
-              <img :src="img" alt="preview" />
-              <div class="image-actions">
-                 <button class="img-btn star" @click="setCover({}, img)" :title="coverUrl === img ? 'Обложка' : 'Сделать обложкой'">
-                   <Star :size="16" :fill="coverUrl === img ? 'currentColor' : 'none'" />
-                 </button>
-                 <button class="img-btn delete" @click="removeImage(images, idx)">
-                   <X :size="16" />
-                 </button>
+        <div class="checkpoints-section">
+          <div class="section-header">
+            <h2>Точки ({{ checkpoints.length }})</h2>
+            <FpButton variant="text" size="sm" @click="addCheckpoint">
+              <Plus :size="20" /> Добавить
+            </FpButton>
+          </div>
+
+          <div class="cp-list">
+            <div v-for="(cp, index) in checkpoints" :key="index" class="cp-compact-card"
+              :class="{ active: activeMarkerIndex === index }">
+              <div class="cp-main-row" @click="activeMarkerIndex = activeMarkerIndex === index ? null : index">
+                <span class="cp-number">{{ index + 1 }}</span>
+                <div class="cp-info">
+                  <span class="cp-title">{{ cp.title || 'Без названия' }}</span>
+                  <span class="cp-coords" v-if="cp.lat">{{ cp.lat }}, {{ cp.lng }}</span>
+                </div>
+                <div class="cp-actions">
+                  <button class="delete-cp" @click.stop="removeCheckpoint(index)">
+                    <Trash2 :size="18" />
+                  </button>
+                </div>
+              </div>
+
+              <div v-if="activeMarkerIndex === index" class="cp-details-form">
+                <FpInput v-model="cp.title" label="Название точки" />
+                <FpInput v-model="cp.description" label="Задание/Описание" />
+
+                <div class="cp-actions-row">
+                  <FpButton variant="outline" size="sm" class="capture-gps-btn-small" :disabled="isLocating !== null"
+                    @click="captureCurrentLocation(index)">
+                    <FpSpinner v-if="isLocating === index" size="sm" />
+                    <span v-else class="btn-content">
+                      <MapPinOff :size="16" />
+                      <span>Я здесь!</span>
+                    </span>
+                  </FpButton>
+
+                  <div class="cp-mini-gallery">
+                    <FpImageUpload label="Фото точки" size="sm" @uploaded="addImage(cp, $event)" />
+                    <div class="cp-previews">
+                      <img v-for="(img, idx) in cp.images" :key="idx" :src="img" @click="removeImage(cp.images, idx)" />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section class="checkpoints-section">
-        <div class="section-header">
-          <h2>Точки маршрута</h2>
-          <FpButton variant="text" size="sm" @click="addCheckpoint">
-            <Plus :size="20" /> Добавить
-          </FpButton>
-        </div>
+      <!-- STEP 3: MEDIA & SAVE -->
+      <section v-if="currentStep === 3" class="media-step">
+        <div class="section-card">
+          <label class="section-label">Обложка и галерея</label>
+          <p class="section-hint">Загрузите фотографии, которые будут отображаться в карточке маршрута</p>
 
-        <div class="cp-list">
-          <div v-for="(cp, index) in checkpoints" :key="index" class="cp-form-card">
-            <div class="cp-header">
-              <span class="cp-number">{{ index + 1 }}</span>
-              <button class="delete-cp" @click="removeCheckpoint(index)">
-                <Trash2 :size="18" />
-              </button>
-            </div>
-            
-            <FpInput v-model="cp.title" label="Название точки" />
-            <FpInput v-model="cp.description" label="Задание/Описание" />
+          <FpImageUpload label="Загрузить фото" @uploaded="addImage(images, $event)" />
 
-            <div class="checkpoint-gallery">
-              <label>Картинки точки</label>
-              <FpImageUpload 
-                label="Загрузить фото точки"
-                @uploaded="addImage(cp, $event)"
-              />
-              <div v-if="cp.images.length > 0" class="image-previews small">
-                <div v-for="(img, idx) in cp.images" :key="idx" class="image-card" :class="{ isCover: cp.photo_url === img }">
-                  <img :src="img" alt="preview" />
-                  <div class="image-actions">
-                    <button class="img-btn star" @click="setCover(cp, img)">
-                      <Star :size="14" :fill="cp.photo_url === img ? 'currentColor' : 'none'" />
-                    </button>
-                    <button class="img-btn delete" @click="removeImage(cp.images, idx)">
-                      <X :size="14" />
-                    </button>
-                  </div>
-                </div>
+          <div v-if="images.length > 0" class="image-previews">
+            <div v-for="(img, idx) in images" :key="idx" class="image-card" :class="{ isCover: coverUrl === img }">
+              <img :src="img" alt="preview" />
+              <div class="image-actions">
+                <button class="img-btn star" @click="setCover({}, img)">
+                  <Star :size="16" :fill="coverUrl === img ? 'currentColor' : 'none'" />
+                </button>
+                <button class="img-btn delete" @click="removeImage(images, idx)">
+                  <CloseIcon :size="16" />
+                </button>
               </div>
             </div>
-            
-            <div class="lat-lng-row">
-               <div class="coord-field">
-                 <FpInput v-model.number="cp.lat" type="number" label="Широта" />
-               </div>
-               <div class="coord-field">
-                 <FpInput v-model.number="cp.lng" type="number" label="Долгота" />
-               </div>
-            </div>
+          </div>
+        </div>
 
-            <div class="cp-actions-row">
-              <FpButton 
-                variant="outline" 
-                size="sm" 
-                class="pick-map-btn"
-                :class="{ active: activeMarkerIndex === index }"
-                @click="activeMarkerIndex = activeMarkerIndex === index ? null : index"
-              >
-                <MapPin :size="16" /> 
-                <span>{{ activeMarkerIndex === index ? 'Выбор...' : 'Карта' }}</span>
-              </FpButton>
-
-              <FpButton 
-                variant="primary" 
-                size="sm" 
-                class="capture-gps-btn"
-                :disabled="isLocating !== null"
-                @click="captureCurrentLocation(index)"
-              >
-                <FpSpinner v-if="isLocating === index" size="sm" />
-                <template v-else>
-                  <MapPinOff :size="16" />
-                  <span>Я здесь!</span>
-                </template>
-              </FpButton>
-            </div>
+        <div class="route-summary section-card">
+          <h3>Готово к публикации?</h3>
+          <div class="summary-item">
+            <strong>Название:</strong> {{ title }}
+          </div>
+          <div class="summary-item">
+            <strong>Точек:</strong> {{ checkpoints.length }}
+          </div>
+          <div class="summary-item">
+            <strong>Категория:</strong> {{ category }}
           </div>
         </div>
       </section>
     </div>
 
-    <div class="actions">
-      <FpButton 
-        class="save-btn" 
-        :disabled="isSaving || !title" 
-        @click="handleSave"
-      >
+    <div class="sticky-navigation">
+      <FpButton v-if="currentStep > 1" variant="secondary" class="nav-btn" @click="prevStep">
+        Назад
+      </FpButton>
+
+      <FpButton v-if="currentStep < 3" class="nav-btn" :disabled="currentStep === 1 && !title" @click="nextStep">
+        Далее
+      </FpButton>
+
+      <FpButton v-if="currentStep === 3" class="nav-btn save-btn" :disabled="isSaving || !title" @click="handleSave">
         <FpSpinner v-if="isSaving" size="sm" />
-        <template v-else>
-          <Save :size="20" /> {{ isEditMode ? 'Сохранить изменения' : 'Создать маршрут' }}
-        </template>
+        <span v-else class="btn-content">
+          <Save :size="20" /> {{ isEditMode ? 'Сохранить' : 'Создать' }}
+        </span>
       </FpButton>
     </div>
   </div>
@@ -497,39 +498,101 @@ const handleSave = async () => {
 }
 
 .header {
-  padding: 20px;
+  padding: 16px 20px;
   display: flex;
   align-items: center;
   gap: 16px;
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
 
-  h1 {
-    font-size: 20px;
-    font-weight: 800;
-    margin: 0;
+  .header-content {
+    display: flex;
+    flex-direction: column;
+
+    h1 {
+      font-size: 18px;
+      font-weight: 800;
+      margin: 0;
+    }
+
+    .step-badge {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--color-text-tertiary);
+      font-weight: 700;
+    }
   }
 }
 
-.loader-overlay {
+.step-indicator {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 20px;
-  gap: 16px;
-  color: var(--color-text-secondary);
+  gap: 8px;
+  padding: 12px 20px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+
+  .step-dot {
+    flex: 1;
+    height: 4px;
+    background: var(--color-border);
+    border-radius: 2px;
+    transition: all 0.3s ease;
+
+    &.active {
+      background: var(--color-primary);
+      box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary) 40%, transparent);
+    }
+
+    &.completed {
+      background: var(--color-success);
+    }
+  }
 }
 
 .form-content {
   padding: 20px;
 }
 
+.section-card {
+  background: var(--color-surface);
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.section-label {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+.section-hint {
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+  margin-top: -12px;
+  line-height: 1.4;
+}
+
+.map-container-sticky {
+  position: sticky;
+  top: 80px;
+  z-index: 10;
+  margin-bottom: 24px;
+}
+
 .creation-map {
-  height: 240px;
+  height: 30vh;
+  min-height: 240px;
   border-radius: var(--radius-lg);
   overflow: hidden;
-  margin-bottom: 8px;
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-sm);
 }
@@ -537,99 +600,17 @@ const handleSave = async () => {
 .map-hint {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--color-text-tertiary);
-  margin-bottom: 24px;
-  padding: 0 4px;
-}
-
-.gallery-section, .checkpoint-gallery {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
   margin-top: 8px;
-
-  label {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--color-text-secondary);
-  }
-}
-
-.image-previews {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-  gap: 12px;
-  margin-top: 8px;
-
-  &.small {
-    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
-  }
-}
-
-.image-card {
-  position: relative;
-  aspect-ratio: 1;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  border: 2px solid transparent;
-  transition: all 0.2s;
-
-  &.isCover {
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
-  }
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  .image-actions {
-    position: absolute;
-    inset: 0;
-    background: rgba(0,0,0,0.4);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 8px;
-    opacity: 0;
-    transition: opacity 0.2s;
-  }
-
-  &:hover .image-actions, &:active .image-actions {
-    opacity: 1;
-  }
-
-  .img-btn {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    color: white;
-
-    &.star { 
-      background: var(--color-primary); 
-    }
-    &.delete { background: var(--color-error); }
-  }
-}
-
-.basic-info {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
   background: var(--color-surface);
-  padding: 20px;
-  border-radius: var(--radius-lg);
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  width: fit-content;
+  margin-inline: auto;
   border: 1px solid var(--color-border);
-  margin-bottom: 32px;
 }
 
 .input-group {
@@ -638,19 +619,21 @@ const handleSave = async () => {
   gap: 8px;
 
   label {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 700;
     color: var(--color-text-secondary);
   }
 
   textarea {
-    min-height: 100px;
+    min-height: 120px;
     border-radius: var(--radius-md);
     border: 1.5px solid var(--color-border);
+    background: var(--color-background);
     padding: 12px;
     font-family: inherit;
     font-size: 16px;
     resize: none;
+    color: var(--color-text-primary);
 
     &:focus {
       outline: none;
@@ -665,22 +648,31 @@ const handleSave = async () => {
 
   button {
     flex: 1;
-    padding: 10px;
+    padding: 12px;
     border-radius: var(--radius-md);
     border: 1.5px solid var(--color-border);
-    background: var(--color-surface);
+    background: var(--color-background);
     font-weight: 700;
     font-size: 13px;
     cursor: pointer;
     transition: all 0.2s;
+    color: var(--color-text-secondary);
 
     &.active {
       color: white;
       border-color: transparent;
 
-      &.easy { background: var(--color-success); }
-      &.medium { background: var(--color-warning); }
-      &.hard { background: var(--color-error); }
+      &.easy {
+        background: var(--color-success);
+      }
+
+      &.medium {
+        background: var(--color-warning);
+      }
+
+      &.hard {
+        background: var(--color-error);
+      }
     }
   }
 }
@@ -694,7 +686,7 @@ const handleSave = async () => {
     padding: 8px 16px;
     border-radius: var(--radius-pill);
     border: 1.5px solid var(--color-border);
-    background: var(--color-surface);
+    background: var(--color-background);
     color: var(--color-text-secondary);
     font-size: 13px;
     font-weight: 600;
@@ -718,39 +710,14 @@ const handleSave = async () => {
   }
 }
 
-.add-category-form {
-  margin-top: 12px;
-  padding: 12px;
-  background: var(--color-background);
-  border-radius: var(--radius-md);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-
-  input {
-    width: 100%;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    padding: 8px 12px;
-    color: var(--color-text-primary);
-  }
-
-  .actions {
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-  }
-}
-
 .tags-input-wrapper {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: var(--color-background);
+  border: 1.5px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 8px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 
   .tags-list {
     display: flex;
@@ -759,9 +726,9 @@ const handleSave = async () => {
   }
 
   .tag-chip {
-    background: var(--color-background);
+    background: var(--color-surface);
     color: var(--color-primary);
-    padding: 4px 8px;
+    padding: 4px 10px;
     border-radius: var(--radius-sm);
     font-size: 12px;
     font-weight: 700;
@@ -774,10 +741,8 @@ const handleSave = async () => {
       background: none;
       border: none;
       color: var(--color-text-tertiary);
-      display: flex;
       padding: 0;
       cursor: pointer;
-      &:hover { color: var(--color-error); }
     }
   }
 
@@ -785,134 +750,239 @@ const handleSave = async () => {
     background: none;
     border: none;
     outline: none;
-    padding: 4px 8px;
+    padding: 4px;
     color: var(--color-text-primary);
     font-size: 14px;
-  }
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-
-  h2 {
-    font-size: 18px;
-    font-weight: 800;
-    margin: 0;
   }
 }
 
 .cp-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
-.cp-form-card {
+.cp-compact-card {
   background: var(--color-surface);
-  padding: 16px;
-  border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: all 0.3s ease;
+
+  &.active {
+    border-color: var(--color-primary);
+    box-shadow: var(--shadow-md);
+  }
+
+  .cp-main-row {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+
+    .cp-number {
+      width: 28px;
+      height: 28px;
+      background: var(--color-background);
+      color: var(--color-text-secondary);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 13px;
+      border: 1px solid var(--color-border);
+    }
+
+    .cp-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+
+      .cp-title {
+        font-weight: 700;
+        font-size: 14px;
+        color: var(--color-text-primary);
+      }
+
+      .cp-coords {
+        font-size: 11px;
+        color: var(--color-text-tertiary);
+        font-family: monospace;
+      }
+    }
+
+    .delete-cp {
+      color: var(--color-error);
+      opacity: 0.6;
+      background: none;
+      border: none;
+      padding: 8px;
+
+      &:hover {
+        opacity: 1;
+      }
+    }
+  }
+
+  .cp-details-form {
+    padding: 16px;
+    border-top: 1px solid var(--color-border);
+    background: color-mix(in srgb, var(--color-background) 50%, transparent);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+}
+
+.active .cp-number {
+  background: var(--color-primary) !important;
+  color: white !important;
+  border-color: var(--color-primary) !important;
+}
+
+.cp-actions-row {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.cp-header {
+.cp-mini-gallery {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: -8px;
-}
-
-.cp-number {
-  width: 24px;
-  height: 24px;
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  font-size: 12px;
-}
-
-.delete-cp {
-  background: none;
-  border: none;
-  color: var(--color-error);
-  cursor: pointer;
-  padding: 4px;
-}
-
-.lat-lng-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-.cp-actions-row {
-  display: grid;
-  grid-template-columns: 1fr 1.2fr;
-  gap: 12px;
-  margin-top: 4px;
-}
-
-.pick-map-btn, .capture-gps-btn {
-  height: 44px;
+  flex-direction: column;
   gap: 8px;
-  font-size: 14px;
+
+  .cp-previews {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+
+    img {
+      width: 60px;
+      height: 60px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid var(--color-border);
+    }
+  }
 }
 
-.pick-map-btn {
-  border-style: dashed;
-  
-  &.active {
-    background: color-mix(in srgb, var(--color-primary) 15%, transparent);
-    color: var(--color-primary);
+.image-previews {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 12px;
+}
+
+.image-card {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 2px solid transparent;
+
+  &.isCover {
     border-color: var(--color-primary);
-    border-style: solid;
-    animation: blink 1.5s infinite;
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .image-actions {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    opacity: 0;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  .img-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+
+    &.star {
+      background: var(--color-primary);
+    }
+
+    &.delete {
+      background: var(--color-error);
+    }
   }
 }
 
-.capture-gps-btn {
-  background: var(--color-primary);
-  color: white;
-  box-shadow: 0 4px 10px color-mix(in srgb, var(--color-primary) 20%, transparent);
+.route-summary {
+  h3 {
+    margin: 0 0 16px 0;
+    font-size: 18px;
+  }
 
-  &:active {
-    transform: scale(0.96);
+  .summary-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 14px;
+
+    &:last-child {
+      border: none;
+    }
   }
 }
 
-@keyframes blink {
-  0% { opacity: 1; }
-  50% { opacity: 0.7; }
-  100% { opacity: 1; }
-}
-
-.actions {
+.sticky-navigation {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 20px;
+  padding: 16px 20px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   background: var(--color-surface-translucent);
   backdrop-filter: blur(12px);
   border-top: 1px solid var(--color-border);
-  z-index: 1100;
-  padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  display: flex;
+  gap: 12px;
+  z-index: 2000;
+
+  .nav-btn {
+    flex: 1;
+    height: 52px;
+    font-weight: 800;
+    font-size: 16px;
+  }
+
+  .save-btn {
+    background: var(--color-primary);
+    color: white;
+  }
 }
 
-.save-btn {
-  width: 100%;
-  height: 56px;
-  font-size: 18px;
-  font-weight: 800;
-  box-shadow: var(--shadow-3);
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.btn-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
 }
 </style>

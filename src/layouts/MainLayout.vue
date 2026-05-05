@@ -50,6 +50,7 @@ const handleProfileClick = async () => {
 
 
 const currentPath = computed(() => route.path)
+const showBottomNav = computed(() => !route.path.includes('/create-route'))
 
 const navigate = (path: string) => {
 	FpHaptics.light()
@@ -122,7 +123,7 @@ const handleLogout = async () => {
 		</main>
 
 		<!-- Bottom Navigation (Mobile) -->
-		<nav class="bottom-nav">
+		<nav v-if="showBottomNav" class="bottom-nav">
 			<a class="nav-item" :class="{ active: route.path === '/' }" @click.prevent="navigate('/')">
 				<Home class="icon" :size="20" />
 				<span class="label">Главная</span>

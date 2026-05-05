@@ -66,6 +66,7 @@ interface Props {
   targetLocation?: [number, number] | null
   bearing?: number
   autoResumeFollow?: boolean
+  showPath?: boolean
 }
 
 interface TeammateLocation {
@@ -84,7 +85,8 @@ const props = withDefaults(defineProps<Props>(), {
   teammates: () => [],
   showNames: false,
   bearing: 0,
-  autoResumeFollow: false
+  autoResumeFollow: false,
+  showPath: false
 })
 
 const emit = defineEmits<{
@@ -101,6 +103,7 @@ const userMarker = shallowRef<L.Marker | null>(null)
 const teammateMarkers = ref<Map<string, L.Marker>>(new Map())
 const clusterMarker = shallowRef<L.Marker | null>(null)
 const navLine = shallowRef<L.Polyline | null>(null)
+const routeLine = shallowRef<L.Polyline | null>(null)
 const navArrow = shallowRef<L.Marker | null>(null)
 
 const inactivityTimer = ref<any>(null)
@@ -322,6 +325,29 @@ const createArrowIcon = (angle: number) => {
   })
 }
 
+const updateRouteLine = () => {
+  if (!map.value || !props.showPath || props.points.length < 2) {
+    if (routeLine.value) routeLine.value.remove()
+    routeLine.value = null
+    return
+  }
+
+  const latlngs = props.points.map(p => [p.lat, p.lng] as [number, number])
+
+  if (routeLine.value) {
+    routeLine.value.setLatLngs(latlngs)
+  } else {
+    routeLine.value = L.polyline(latlngs, {
+      color: 'var(--color-primary)',
+      weight: 4,
+      opacity: 0.8,
+      dashArray: '10, 10',
+      lineJoin: 'round',
+      className: 'route-path-line'
+    }).addTo(map.value)
+  }
+}
+
 const updateTeammateMarkers = () => {
   if (!map.value) return
   const currentIds = new Set(props.teammates.map(t => t.user_id))
@@ -395,6 +421,7 @@ const initializeLeafletMap = () => {
   refreshMarkersLayer()
   updateUserMarker()
   updateTeammateMarkers()
+  updateRouteLine()
 
   ;(map.value as L.Map).on('click', (e: L.LeafletMouseEvent) => {
     emit('mapClick', e.latlng.lat, e.latlng.lng)
@@ -411,17 +438,14 @@ const initializeLeafletMap = () => {
   })
 }
 
-watch(() => props.points, () => {
-  refreshMarkersLayer()
-}, { deep: true })
-
-watch(() => props.isClustered, () => {
-  refreshMarkersLayer()
-})
-
 watch(() => props.targetLocation, () => {
   updateNavigationLine()
 })
+
+watch(() => props.points, () => {
+  refreshMarkersLayer()
+  updateRouteLine()
+}, { deep: true })
 
 watch(() => props.center, (newCenter) => {
   if (newCenter && map.value) {
