@@ -7,6 +7,8 @@ export interface UserComment {
   userName: string
   avatarUrl: string | null
   createdAt: Date
+  reactions: Record<string, number>
+  userReaction: string | null
 }
 
 export const socialAdapter = {
@@ -17,7 +19,9 @@ export const socialAdapter = {
       content: dto.content,
       userName: dto.user_name || 'Инкогнито',
       avatarUrl: dto.avatar_url || null,
-      createdAt: new Date(dto.created_at)
+      createdAt: new Date(dto.created_at),
+      reactions: {}, // Будет подгружаться позже
+      userReaction: null
     }
   }
 }

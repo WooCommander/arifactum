@@ -54,6 +54,30 @@ export const useSocialStore = () => {
         return await socialService.getRouteSocialStatus(routeId, userId)
     }
 
+    const toggleCommentReaction = async (commentId: string, emoji: string) => {
+        const comment = comments.value.find(c => c.id === commentId)
+        if (!comment) return
+
+        // Локальное обновление (Optimistic UI)
+        const currentReaction = comment.userReaction
+        
+        if (currentReaction === emoji) {
+            // Удаляем реакцию
+            comment.userReaction = null
+            comment.reactions[emoji] = Math.max(0, (comment.reactions[emoji] || 0) - 1)
+        } else {
+            // Если была другая реакция — сначала убираем её
+            if (currentReaction) {
+                comment.reactions[currentReaction] = Math.max(0, (comment.reactions[currentReaction] || 0) - 1)
+            }
+            // Добавляем новую
+            comment.userReaction = emoji
+            comment.reactions[emoji] = (comment.reactions[emoji] || 0) + 1
+        }
+        
+        // В будущем здесь будет вызов socialService.toggleReaction(...)
+    }
+
     return {
         comments: readonly(comments),
         isLoading: readonly(isLoading),
@@ -63,6 +87,7 @@ export const useSocialStore = () => {
         deleteComment,
         toggleLike,
         toggleFavorite,
-        getRouteSocialStatus
+        getRouteSocialStatus,
+        toggleCommentReaction
     }
 }
