@@ -124,4 +124,37 @@ export class LocationService {
 
     await Geolocation.clearWatch({ id: watchId })
   }
+
+  /**
+   * Получает адрес или название места по координатам (Reverse Geocoding)
+   * Использует OpenStreetMap Nominatim API
+   */
+  static async reverseGeocode(lat: number, lng: number): Promise<string> {
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
+        headers: {
+          'Accept-Language': 'ru',
+          'User-Agent': 'Artifactum-App'
+        }
+      })
+      
+      if (!response.ok) return ''
+      
+      const data = await response.json()
+      if (data.address) {
+        const addr = data.address
+        const title = addr.amenity || addr.building || addr.tourism || addr.historic || addr.museum || addr.monument
+        const street = addr.road || addr.pedestrian || addr.suburb
+        const house = addr.house_number
+        
+        if (title) return title
+        if (street) return `${street}${house ? ', ' + house : ''}`
+        return data.display_name.split(',')[0]
+      }
+      return ''
+    } catch (e) {
+      console.warn('[LocationService] Reverse geocoding failed:', e)
+      return ''
+    }
+  }
 }

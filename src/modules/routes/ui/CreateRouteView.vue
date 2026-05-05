@@ -168,6 +168,37 @@ const mapPoints = computed(() =>
 )
 
 const activeMarkerIndex = ref<number | null>(null)
+const showDeleteConfirm = ref(false)
+const indexToDelete = ref<number | null>(null)
+const draggedIndex = ref<number | null>(null)
+const geocodingIndices = ref<Set<number>>(new Set())
+
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371e3
+  const φ1 = lat1 * Math.PI / 180
+  const φ2 = lat2 * Math.PI / 180
+  const Δφ = (lat2 - lat1) * Math.PI / 180
+  const Δλ = (lon2 - lon1) * Math.PI / 180
+  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) *
+    Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c
+}
+
+function formatDistance(meters: number) {
+  if (meters >= 1000) return `${(meters / 1000).toFixed(1)} км`
+  return `${Math.round(meters)} м`
+}
+
+const checkpointDistances = computed(() => {
+  return checkpoints.value.map((cp, index) => {
+    if (index === checkpoints.value.length - 1) return null
+    const next = checkpoints.value[index + 1]
+    if (!cp.lat || !cp.lng || !next.lat || !next.lng) return null
+    return calculateDistance(cp.lat, cp.lng, next.lat, next.lng)
+  })
+})
 
 onMounted(async () => {
   initCategories().then(() => {
@@ -243,33 +274,71 @@ onUnmounted(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload)
 })
 
-const handleMapClick = (lat: number, lng: number) => {
+const handleMapClick = async (lat: number, lng: number) => {
+  let targetIndex = -1
+
   if (activeMarkerIndex.value !== null) {
-    const cp = checkpoints.value[activeMarkerIndex.value]
+    targetIndex = activeMarkerIndex.value
+    const cp = checkpoints.value[targetIndex]
     cp.lat = Number(lat.toFixed(6))
     cp.lng = Number(lng.toFixed(6))
     activeMarkerIndex.value = null
-    return
+  } else {
+    const firstCp = checkpoints.value[0]
+    if (checkpoints.value.length === 1 && !firstCp.title && firstCp.lat === 0) {
+      targetIndex = 0
+      firstCp.lat = Number(lat.toFixed(6))
+      firstCp.lng = Number(lng.toFixed(6))
+      activeMarkerIndex.value = 0
+    } else {
+      targetIndex = 0
+      checkpoints.value.unshift({
+        id: Math.random().toString(36).substr(2, 9),
+        title: '',
+        description: '',
+        lat: Number(lat.toFixed(6)),
+        lng: Number(lng.toFixed(6)),
+        order_index: 0,
+        photo_url: null,
+        images: [] as string[]
+      })
+      checkpoints.value.forEach((cp, i) => cp.order_index = i)
+      activeMarkerIndex.value = 0
+    }
   }
 
-  const firstCp = checkpoints.value[0]
-  if (checkpoints.value.length === 1 && !firstCp.title && firstCp.lat === 0) {
-    firstCp.lat = Number(lat.toFixed(6))
-    firstCp.lng = Number(lng.toFixed(6))
-    activeMarkerIndex.value = 0
-  } else {
-    checkpoints.value.unshift({
-      id: Math.random().toString(36).substr(2, 9),
-      title: '',
-      description: '',
-      lat: Number(lat.toFixed(6)),
-      lng: Number(lng.toFixed(6)),
-      order_index: 0,
-      photo_url: null,
-      images: [] as string[]
-    })
-    checkpoints.value.forEach((cp, i) => cp.order_index = i)
-    activeMarkerIndex.value = 0
+  // Автоматическое получение адреса
+  if (targetIndex !== -1) {
+    const cp = checkpoints.value[targetIndex]
+    geocodingIndices.value.add(targetIndex)
+    try {
+      const address = await LocationService.reverseGeocode(lat, lng)
+      if (address && (!cp.title || cp.title === 'Без названия')) {
+        cp.title = address
+      }
+    } finally {
+      geocodingIndices.value.delete(targetIndex)
+    }
+  }
+}
+
+const handleMarkerDragEnd = async (id: string, lat: number, lng: number) => {
+  const index = checkpoints.value.findIndex(cp => cp.id === id)
+  if (index !== -1) {
+    const cp = checkpoints.value[index]
+    cp.lat = Number(lat.toFixed(6))
+    cp.lng = Number(lng.toFixed(6))
+    
+    // При перетаскивании тоже обновляем адрес, если название не кастомное
+    geocodingIndices.value.add(index)
+    try {
+      const address = await LocationService.reverseGeocode(lat, lng)
+      if (address) {
+        cp.title = address
+      }
+    } finally {
+      geocodingIndices.value.delete(index)
+    }
   }
 }
 
@@ -310,6 +379,31 @@ const removeCheckpoint = (index: number) => {
   checkpoints.value.splice(index, 1)
   checkpoints.value.forEach((cp, i) => cp.order_index = i)
   if (checkpoints.value.length === 0) addCheckpoint()
+}
+
+const requestDeleteCheckpoint = (index: number) => {
+  indexToDelete.value = index
+  showDeleteConfirm.value = true
+}
+
+const confirmDeleteCheckpoint = () => {
+  if (indexToDelete.value !== null) {
+    removeCheckpoint(indexToDelete.value)
+    indexToDelete.value = null
+  }
+  showDeleteConfirm.value = false
+}
+
+const onDragStart = (index: number) => {
+  draggedIndex.value = index
+}
+
+const onDrop = (index: number) => {
+  if (draggedIndex.value === null) return
+  const item = checkpoints.value.splice(draggedIndex.value, 1)[0]
+  checkpoints.value.splice(index, 0, item)
+  checkpoints.value.forEach((cp, i) => cp.order_index = i)
+  draggedIndex.value = null
 }
 
 const isLocating = ref<number | null>(null)
@@ -498,7 +592,7 @@ const handleSave = async () => {
       <section v-if="currentStep === 2" class="route-map-step">
         <div class="map-container-sticky">
           <ArtMap class="creation-map" :points="mapPoints" :center="mapCenter" :user-location="userLocation" show-path
-            @map-click="handleMapClick" />
+            draggable-markers @map-click="handleMapClick" @marker-drag-end="handleMarkerDragEnd" />
           <div class="map-hint">
             <MapPin :size="14" />
             <span>Нажмите на карту, чтобы добавить точку</span>
@@ -515,7 +609,11 @@ const handleSave = async () => {
 
           <TransitionGroup name="list" tag="div" class="cp-list">
             <div v-for="(cp, index) in checkpoints" :key="cp.id" class="cp-compact-card"
-              :class="{ active: activeMarkerIndex === index }">
+              :class="{ active: activeMarkerIndex === index, 'is-dragging': draggedIndex === index }"
+              draggable="true"
+              @dragstart="onDragStart(index)"
+              @dragover.prevent
+              @drop="onDrop(index)">
               <div class="cp-main-row" @click="activeMarkerIndex = activeMarkerIndex === index ? null : index">
                 <span class="cp-number">{{ index + 1 }}</span>
                 <div class="cp-info">
@@ -523,14 +621,20 @@ const handleSave = async () => {
                   <span class="cp-coords" v-if="cp.lat">{{ cp.lat }}, {{ cp.lng }}</span>
                 </div>
                 <div class="cp-actions">
-                  <button class="delete-cp" @click.stop="removeCheckpoint(index)">
+                  <button class="delete-cp" @click.stop="requestDeleteCheckpoint(index)">
                     <Trash2 :size="18" />
                   </button>
                 </div>
               </div>
 
+              <!-- Distance info -->
+              <div v-if="checkpointDistances[index]" class="cp-distance-line">
+                <div class="line-dot"></div>
+                <span>{{ formatDistance(checkpointDistances[index]!) }} до следующей</span>
+              </div>
+
               <div v-if="activeMarkerIndex === index" class="cp-details-form">
-                <FpInput v-model="cp.title" label="Название точки" />
+                <FpInput v-model="cp.title" label="Название точки" :loading="geocodingIndices.has(index)" />
                 <FpInput v-model="cp.description" label="Задание/Описание" />
 
                 <div class="cp-actions-row">
@@ -619,6 +723,15 @@ const handleSave = async () => {
       variant="danger"
       @confirm="handleConfirmLeave"
       @cancel="handleCancelLeave"
+    />
+
+    <FpConfirmationModal
+      v-model:visible="showDeleteConfirm"
+      title="Удалить точку?"
+      message="Вы уверены, что хотите удалить эту точку маршрута?"
+      confirmText="Удалить"
+      variant="danger"
+      @confirm="confirmDeleteCheckpoint"
     />
   </div>
 </template>
@@ -1103,6 +1216,50 @@ const handleSave = async () => {
   .save-btn {
     background: var(--color-primary);
     color: white;
+  }
+}
+
+.cp-compact-card {
+  &.is-dragging {
+    opacity: 0.5;
+    background: var(--color-surface-hover);
+  }
+}
+
+.cp-distance-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 48px;
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 26px;
+    top: -10px;
+    bottom: -10px;
+    width: 2px;
+    background: repeating-linear-gradient(
+      to bottom,
+      var(--color-border) 0,
+      var(--color-border) 4px,
+      transparent 4px,
+      transparent 8px
+    );
+  }
+
+  .line-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--color-border);
+    z-index: 1;
   }
 }
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import FpSpinner from './FpSpinner.vue'
 
 interface Props {
   modelValue: string | number
@@ -8,13 +9,15 @@ interface Props {
   type?: 'text' | 'number' | 'password' | 'email' | 'date'
   error?: string
   disabled?: boolean
+  loading?: boolean
   id?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: '',
   type: 'text',
-  disabled: false
+  disabled: false,
+  loading: false
 })
 
 const emit = defineEmits<{
@@ -48,11 +51,16 @@ const onBlur = () => {
 </script>
 
 <template>
-  <div class="fp-input-wrapper" :class="{ 'has-error': !!props.error, 'is-focused': isFocused, 'has-value': hasValue }">
+  <div class="fp-input-wrapper" :class="{ 'has-error': !!props.error, 'is-focused': isFocused, 'has-value': hasValue, 'is-loading': props.loading }">
     <div class="input-container">
-      <input :id="inputId" class="fp-input" :type="props.type" :value="props.modelValue" :disabled="props.disabled"
+      <input :id="inputId" class="fp-input" :type="props.type" :value="props.modelValue" :disabled="props.disabled || props.loading"
         :placeholder="props.label && !isFocused && !hasValue ? '' : props.placeholder || ' '" @input="onInput"
         @focus="onFocus" @blur="onBlur" />
+      
+      <div v-if="props.loading" class="input-loading-icon">
+        <FpSpinner size="sm" />
+      </div>
+
       <label v-if="props.label" :for="inputId" class="fp-label">
         {{ props.label }}
       </label>
@@ -128,5 +136,14 @@ const onBlur = () => {
   font-size: var(--text-caption);
   color: var(--color-error);
   padding: 4px 16px 0;
+}
+
+.input-loading-icon {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>

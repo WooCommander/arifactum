@@ -485,7 +485,7 @@ onUnmounted(() => {
             <h2>Карта маршрута</h2>
             <ArtMap class="route-map" :points="mapPoints" :interactive="true" 
               :user-location="userLocation ? [userLocation.latitude, userLocation.longitude] : null"
-              :is-clustered="true" @checkpoint-select="handleMarkerClick" @map-click="selectedCheckpoint = null" />
+              :is-clustered="true" @marker-click="handleMarkerClick" @map-click="selectedCheckpoint = null" />
           </div>
 
           <div class="section">

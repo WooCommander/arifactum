@@ -67,6 +67,7 @@ interface Props {
   bearing?: number
   autoResumeFollow?: boolean
   showPath?: boolean
+  draggableMarkers?: boolean
 }
 
 interface TeammateLocation {
@@ -86,7 +87,8 @@ const props = withDefaults(defineProps<Props>(), {
   showNames: false,
   bearing: 0,
   autoResumeFollow: false,
-  showPath: false
+  showPath: false,
+  draggableMarkers: false
 })
 
 const emit = defineEmits<{
@@ -94,6 +96,7 @@ const emit = defineEmits<{
   (e: 'mapClick', lat: number, lng: number): void
   (e: 'update:followUser', value: boolean): void
   (e: 'toggleCompass'): void
+  (e: 'markerDragEnd', id: string, lat: number, lng: number): void
 }>()
 
 const mapContainer = ref<HTMLElement | null>(null)
@@ -190,6 +193,11 @@ const refreshMarkersLayer = () => {
       })
     }).addTo(map.value as L.Map)
 
+    clusterMarker.value.on('click', () => {
+      const group = L.featureGroup(props.points.map(p => L.marker([p.lat, p.lng])))
+      map.value?.fitBounds(group.getBounds(), { padding: [50, 50] })
+    })
+
     if (!props.center) {
       map.value.setView([avgLat, avgLng], 14)
     }
@@ -200,6 +208,7 @@ const refreshMarkersLayer = () => {
 
   props.points.forEach(p => {
     const marker = L.marker([p.lat, p.lng], {
+      draggable: props.draggableMarkers,
       icon: L.divIcon({
         className: 'art-marker',
         html: `
@@ -211,6 +220,13 @@ const refreshMarkersLayer = () => {
         iconAnchor: [16, 32]
       })
     })
+
+    if (props.draggableMarkers && p.id) {
+      marker.on('dragend', (e) => {
+        const newLatLng = e.target.getLatLng()
+        emit('markerDragEnd', String(p.id), newLatLng.lat, newLatLng.lng)
+      })
+    }
 
     if (p.id) {
       marker.on('click', (e) => {
@@ -623,6 +639,57 @@ onUnmounted(() => {
   0% { transform: scale(1); }
   50% { transform: scale(1.1); }
   100% { transform: scale(1); }
+}
+
+.route-cluster-marker {
+  .cluster-inner {
+    width: 64px;
+    height: 64px;
+    background: var(--color-primary);
+    border: 4px solid var(--color-surface);
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #000;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    position: relative;
+    z-index: 2;
+
+    .count {
+      font-size: 20px;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      opacity: 0.8;
+    }
+  }
+
+  .cluster-pulse {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    height: 100%;
+    margin-top: -32px;
+    margin-left: -32px;
+    background: var(--color-primary);
+    border-radius: 50%;
+    opacity: 0.3;
+    animation: cluster-pulse 2s infinite;
+    z-index: 1;
+  }
+}
+
+@keyframes cluster-pulse {
+  0% { transform: scale(1); opacity: 0.3; }
+  100% { transform: scale(1.5); opacity: 0; }
 }
 </style>
 
