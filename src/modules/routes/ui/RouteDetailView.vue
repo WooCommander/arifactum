@@ -72,7 +72,7 @@ const isDraft = computed(() => currentRoute.value?.status === 'draft')
 const mapPoints = computed(() => {
   return [...currentCheckpoints.value]
     .sort((a, b) => a.order - b.order)
-    .map((cp, index) => ({
+    .map((cp) => ({
       id: cp.id,
       lat: cp.latitude,
       lng: cp.longitude,

@@ -71,7 +71,7 @@ const isDirty = computed(() => {
 const showLeaveConfirm = ref(false)
 const pendingRoute = ref<any>(null)
 
-onBeforeRouteLeave((to, from, next) => {
+onBeforeRouteLeave((to, _from, next) => {
   if (isDirty.value) {
     pendingRoute.value = to
     showLeaveConfirm.value = true
@@ -374,11 +374,6 @@ const setCover = (item: { photo_url?: string | null, image_url?: string | null }
   else coverUrl.value = url
 }
 
-const removeCheckpoint = (index: number) => {
-  checkpoints.value.splice(index, 1)
-  checkpoints.value.forEach((cp, i) => cp.order_index = i)
-  if (checkpoints.value.length === 0) addCheckpoint()
-}
 
 const requestDeleteCheckpoint = (index: number) => {
   indexToDelete.value = index
