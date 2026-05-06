@@ -127,7 +127,7 @@ onMounted(async () => {
     ])
 
     if (rawStats) stats.value = rawStats
-    
+
     profile.value = {
       first_name: profileData.first_name || '',
       last_name: profileData.last_name || '',
@@ -138,10 +138,10 @@ onMounted(async () => {
     profileEdit.value = { ...profile.value }
     displayName.value = profileData.display_name || profileData.first_name || ''
     activityFeed.value = activity
-    
+
     await fetchRewards()
-  } catch(err) {
-      console.error('Profile load error', err)
+  } catch (err) {
+    console.error('Profile load error', err)
   } finally {
     isLoading.value = false
   }
@@ -171,26 +171,16 @@ onMounted(async () => {
           <Camera :size="16" />
         </div>
       </div>
-      
-      <input 
-        type="file" 
-        ref="avatarInput" 
-        style="display: none" 
-        accept="image/*" 
-        @change="handleFileSelect"
-      />
+
+      <input type="file" ref="avatarInput" style="display: none" accept="image/*" @change="handleFileSelect" />
 
       <div class="user-info">
         <div v-if="!isEditingProfile" class="display-name-row">
           <span class="user-name-text">{{ displayName || user.email.split('@')[0] }}</span>
         </div>
         <div v-else class="display-name-edit">
-          <input 
-            v-model="profileEdit.first_name" 
-            class="name-input" 
-            :placeholder="t('profile.personal.name')"
-            maxlength="32" 
-          />
+          <input v-model="profileEdit.first_name" class="name-input" :placeholder="t('profile.personal.name')"
+            maxlength="32" />
         </div>
         <p class="email">{{ user.email }}</p>
         <div class="badges" v-if="stats">
@@ -235,13 +225,8 @@ onMounted(async () => {
         <div class="edit-field">
           <label class="field-label">{{ t('profile.labels.gender') }}</label>
           <div class="gender-options">
-            <button 
-              v-for="g in genderOptions" 
-              :key="g.value" 
-              class="gender-btn"
-              :class="{ active: profileEdit.gender === g.value }"
-              @click="profileEdit.gender = g.value"
-            >
+            <button v-for="g in genderOptions" :key="g.value" class="gender-btn"
+              :class="{ active: profileEdit.gender === g.value }" @click="profileEdit.gender = g.value">
               {{ g.label }}
             </button>
           </div>
@@ -297,7 +282,8 @@ onMounted(async () => {
 
     <!-- App Version & Info -->
     <footer class="profile-footer">
-      <p class="app-description">Artifactum — твоя история в каждом шаге. Исследуй, собирай артефакты и создавай свои маршруты.</p>
+      <p class="app-description">Artifactum — твоя история в каждом шаге. Исследуй, собирай артефакты и создавай свои
+        маршруты.</p>
       <div class="version-badge">v{{ appVersion }}</div>
     </footer>
   </div>
@@ -308,7 +294,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  padding: 20px 0;
+
   width: 100%;
 }
 
@@ -329,7 +315,7 @@ onMounted(async () => {
     cursor: pointer;
     border-radius: 16px;
     overflow: hidden;
-    
+
     &:hover .avatar-edit-overlay {
       opacity: 1;
     }
@@ -385,7 +371,9 @@ onMounted(async () => {
   }
 
   @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   .user-info {
@@ -485,7 +473,8 @@ onMounted(async () => {
       text-transform: uppercase;
     }
 
-    .field-input, .name-input {
+    .field-input,
+    .name-input {
       width: 100%;
       padding: 12px;
       border: 1px solid var(--color-border);
@@ -528,8 +517,8 @@ onMounted(async () => {
     display: flex;
     gap: 12px;
     margin-top: 8px;
-    
-    & > * {
+
+    &>* {
       flex: 1;
     }
   }
@@ -568,7 +557,7 @@ onMounted(async () => {
       .act-header {
         display: flex;
         justify-content: space-between;
-        
+
         .act-action {
           font-weight: 700;
           font-size: 13px;
@@ -597,12 +586,13 @@ onMounted(async () => {
     width: 100%;
     color: var(--color-error);
     border-color: color-mix(in srgb, var(--color-error) 20%, transparent);
-    
+
     &:hover {
       background: color-mix(in srgb, var(--color-error) 5%, transparent);
     }
   }
 }
+
 .admin-section {
   .admin-card {
     display: flex;
@@ -643,6 +633,7 @@ onMounted(async () => {
         font-weight: 800;
         color: var(--color-text-primary);
       }
+
       p {
         margin: 4px 0 0 0;
         font-size: 12px;
@@ -655,6 +646,7 @@ onMounted(async () => {
     }
   }
 }
+
 .profile-footer {
   margin-top: 20px;
   padding: 24px 20px;
