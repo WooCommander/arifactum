@@ -546,10 +546,18 @@ onUnmounted(() => {
             </div>
 
             <div v-if="isAuthor && isDraft" class="publish-block">
-              <p>Ваш маршрут пока никто не видит кроме вас.</p>
-              <button class="publish-btn" @click="showPublishConfirm = true">
-                <Send :size="18" /> Опубликовать
-              </button>
+              <FpCard class="publish-card">
+                <div class="publish-icon-wrap">
+                  <Send :size="24" />
+                </div>
+                <div class="publish-text">
+                  <h3>Опубликовать маршрут?</h3>
+                  <p>Сейчас ваш маршрут находится в черновиках и виден только вам.</p>
+                </div>
+                <FpButton variant="primary" @click="showPublishConfirm = true">
+                  Опубликовать
+                </FpButton>
+              </FpCard>
             </div>
           </div>
 
@@ -1847,6 +1855,52 @@ onUnmounted(() => {
     
     .count {
       color: var(--color-primary);
+    }
+  }
+}
+.publish-block {
+  margin: 32px 0;
+
+  .publish-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 24px;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 10%, var(--color-surface)), var(--color-surface));
+    border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+    gap: 16px;
+
+    .publish-icon-wrap {
+      width: 56px;
+      height: 56px;
+      border-radius: 18px;
+      background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+      color: var(--color-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 4px;
+    }
+
+    .publish-text {
+      h3 {
+        margin: 0 0 8px 0;
+        font-size: 18px;
+        font-weight: 800;
+        color: var(--color-text-primary);
+      }
+      p {
+        margin: 0;
+        font-size: 14px;
+        color: var(--color-text-tertiary);
+        line-height: 1.5;
+      }
+    }
+
+    button {
+      width: 100%;
+      margin-top: 8px;
     }
   }
 }

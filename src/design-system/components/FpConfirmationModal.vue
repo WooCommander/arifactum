@@ -9,6 +9,7 @@ defineProps<{
     confirmText?: string
     cancelText?: string
     variant?: 'primary' | 'danger'
+    confirmDisabled?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -45,7 +46,7 @@ const confirm = () => {
                             <FpButton variant="text" @click="close">
                                 {{ cancelText || 'Отмена' }}
                             </FpButton>
-                            <FpButton :variant="variant || 'primary'" @click="confirm">
+                            <FpButton :variant="variant || 'primary'" :disabled="confirmDisabled" @click="confirm">
                                 {{ confirmText || 'Подтвердить' }}
                             </FpButton>
                         </div>

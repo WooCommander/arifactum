@@ -147,7 +147,7 @@ onMounted(load)
             message="Укажите автору, что нужно исправить в маршруте"
             confirmText="Отклонить"
             variant="danger"
-            :disabled="!rejectReason.trim() || isProcessing"
+            :confirmDisabled="!rejectReason.trim() || isProcessing"
             @confirm="handleReject"
         >
             <template #default>
