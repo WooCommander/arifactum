@@ -506,13 +506,15 @@ const handleSave = async () => {
 
 <template>
   <div class="create-route-view">
-    <header class="header">
-      <FpBackButton @click="currentStep === 1 ? router.back() : prevStep()" />
-      <div class="header-content">
-        <h1>{{ isEditMode ? 'Редактировать' : 'Новый маршрут' }}</h1>
-        <span class="step-badge">Шаг {{ currentStep }} из 3</span>
+    <div class="page-title-row">
+      <div class="title-with-back">
+        <FpBackButton @click="currentStep === 1 ? router.back() : prevStep()" />
+        <div class="title-group">
+          <h1 class="page-title">{{ isEditMode ? 'Редактировать маршрут' : 'Новый маршрут' }}</h1>
+          <p class="page-subtitle">Шаг {{ currentStep }} из 3: {{ steps[currentStep - 1].title }}</p>
+        </div>
       </div>
-    </header>
+    </div>
 
     <div class="step-indicator">
       <div v-for="s in steps" :key="s.id" class="step-dot"
@@ -740,42 +742,20 @@ const handleSave = async () => {
   padding-bottom: 120px;
 }
 
-.header {
-  padding: 16px 20px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
+.page-title-row {
   position: sticky;
   top: 0;
   z-index: 100;
-
-  .header-content {
-    display: flex;
-    flex-direction: column;
-
-    h1 {
-      font-size: 18px;
-      font-weight: 800;
-      margin: 0;
-    }
-
-    .step-badge {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--color-text-tertiary);
-      font-weight: 700;
-    }
-  }
+  background: var(--color-background);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .step-indicator {
   display: flex;
   gap: 8px;
-  padding: 12px 20px;
-  background: var(--color-surface);
+  padding: 12px 0;
+  background: var(--color-background);
   border-bottom: 1px solid var(--color-border);
 
   .step-dot {
@@ -797,7 +777,7 @@ const handleSave = async () => {
 }
 
 .form-content {
-  padding: 20px;
+  padding: 20px 0;
 }
 
 .section-card {
