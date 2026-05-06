@@ -8,6 +8,8 @@ import FpButton from '@/design-system/components/FpButton.vue'
 import { useNotify } from '@/composables/useNotify'
 import { useI18n } from 'vue-i18n'
 import { useRewardsStore } from '@/modules/rewards'
+import { authStore } from '@/modules/auth/store/authStore'
+import { Shield, Settings, LogOut, ChevronRight } from 'lucide-vue-next'
 
 const { t } = useI18n()
 const { totalBonuses, fetchRewards } = useRewardsStore()
@@ -245,6 +247,22 @@ onMounted(async () => {
           <FpButton variant="secondary" @click="isEditingProfile = false">Отмена</FpButton>
           <FpButton :loading="isSavingProfile" @click="savePersonalProfile">Сохранить</FpButton>
         </div>
+      </FpCard>
+    </section>
+
+    <!-- Admin Actions -->
+    <section v-if="authStore.isAdmin.value && !isEditingProfile" class="admin-section">
+      <FpCard class="admin-card" @click="router.push('/admin/moderation')">
+        <div class="admin-content">
+          <div class="admin-icon">
+            <Shield :size="24" />
+          </div>
+          <div class="admin-text">
+            <h3>Панель модератора</h3>
+            <p>Проверка новых маршрутов</p>
+          </div>
+        </div>
+        <ChevronRight :size="24" class="chevron" />
       </FpCard>
     </section>
 
@@ -573,6 +591,58 @@ onMounted(async () => {
     
     &:hover {
       background: color-mix(in srgb, var(--color-error) 5%, transparent);
+    }
+  }
+}
+.admin-section {
+  .admin-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px;
+    cursor: pointer;
+    border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 5%, var(--color-surface)), var(--color-surface));
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+    &:active {
+      transform: scale(0.98);
+      background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
+    }
+
+    .admin-content {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .admin-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+      color: var(--color-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .admin-text {
+      h3 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 800;
+        color: var(--color-text-primary);
+      }
+      p {
+        margin: 4px 0 0 0;
+        font-size: 12px;
+        color: var(--color-text-tertiary);
+      }
+    }
+
+    .chevron {
+      color: var(--color-text-tertiary);
     }
   }
 }

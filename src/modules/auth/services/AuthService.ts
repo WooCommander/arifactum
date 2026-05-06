@@ -93,14 +93,15 @@ class AuthService {
         gender: string | null
         birth_date: string | null
         avatar_url: string | null
+        role: string | null
     }> {
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return { display_name: null, first_name: null, last_name: null, gender: null, birth_date: null, avatar_url: null }
+        if (!user) return { display_name: null, first_name: null, last_name: null, gender: null, birth_date: null, avatar_url: null, role: null }
         
         try {
             const { data, error } = await supabase
                 .from('profiles')
-                .select('display_name, first_name, last_name, gender, birth_date, avatar_url')
+                .select('display_name, first_name, last_name, gender, birth_date, avatar_url, role')
                 .eq('id', user.id)
                 .single()
             
@@ -112,10 +113,11 @@ class AuthService {
                 last_name:    data?.last_name ?? null,
                 gender:       data?.gender ?? null,
                 birth_date:   data?.birth_date ?? null,
-                avatar_url:   data?.avatar_url ?? null
+                avatar_url:   data?.avatar_url ?? null,
+                role:         data?.role ?? 'user'
             }
         } catch (e) {
-            return { display_name: null, first_name: null, last_name: null, gender: null, birth_date: null, avatar_url: null }
+            return { display_name: null, first_name: null, last_name: null, gender: null, birth_date: null, avatar_url: null, role: null }
         }
     }
 

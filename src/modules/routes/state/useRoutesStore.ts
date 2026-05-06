@@ -2,6 +2,7 @@ import { ref, readonly } from 'vue'
 import type { Route, Checkpoint } from '../types'
 import { routeService } from '../services/routeService'
 import { routeAdapter } from '../adapters/routeAdapter'
+import { authStore } from '@/modules/auth/store/authStore'
 
 const routes = ref<Route[]>([])
 const currentRoute = ref<Route | null>(null)
@@ -53,11 +54,21 @@ export const useRoutesStore = () => {
     }
 
     const publishRoute = async (id: string) => {
-        await routeService.updateRouteStatus(id, 'pending')
+        // Auto-moderation for trusted users (Level 5+)
+        // For simplicity, we can fetch stats or use a flag. 
+        // Let's assume we'll check profile role or level.
+        const profile = await routeService.getUserProfile(authStore.currentUserId.value!)
+        const isTrusted = (profile?.level || 1) >= 5 || profile?.role === 'admin'
+        const newStatus = isTrusted ? 'published' : 'pending'
+
+        await routeService.updateRouteStatus(id, newStatus)
+        
         if (currentRoute.value?.id === id) {
-            // @ts-ignore - simple way to update local read-only ref for UI reactivity
-            currentRoute.value = { ...currentRoute.value, status: 'pending' }
+            // @ts-ignore
+            currentRoute.value = { ...currentRoute.value, status: newStatus }
         }
+
+        return isTrusted
     }
 
     return {

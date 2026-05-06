@@ -63,6 +63,12 @@ const routes = [
         component: () => import('@/views/ChangelogView.vue')
     },
     {
+        path: '/admin/moderation',
+        name: 'Moderation',
+        component: () => import('@/modules/admin/ui/ModerationListView.vue'),
+        meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
         path: '/design-system',
         name: 'DesignSystem',
         component: () => import('@/views/DesignSystemView.vue')
@@ -75,20 +81,16 @@ const router = createRouter({
 })
 
 // Guard placeholder
-// Guard placeholder
 router.beforeEach(async (to, _from, next) => {
-    const { isAuthenticated, isLoading } = authStore
-
-    // Wait for auth init if needed (simple check)
-    // In real app we might wait for a promise
-    if (isLoading.value) {
-        // console.log('Auth loading...')
-    }
+    const { isAuthenticated, isAdmin, isLoading } = authStore
 
     const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+    const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin)
 
     if (requiresAuth && !isAuthenticated.value) {
         next({ name: 'Login', query: { redirect: to.fullPath } })
+    } else if (requiresAdmin && !isAdmin.value) {
+        next({ name: 'Home' }) // Redirect non-admins to home
     } else {
         next()
     }

@@ -132,5 +132,16 @@ export const routeService = {
             .eq('route_id', routeId)
 
         if (error) throw error
+    },
+
+    async getUserProfile(userId: string) {
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('level, role')
+            .eq('id', userId)
+            .single()
+
+        if (error && error.code !== 'PGRST116') throw error
+        return data
     }
 }

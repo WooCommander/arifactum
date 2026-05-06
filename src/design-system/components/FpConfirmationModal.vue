@@ -38,7 +38,8 @@ const confirm = () => {
                             <h3>{{ title }}</h3>
                         </div>
                         <div class="modal-body">
-                            <p>{{ message }}</p>
+                            <p v-if="message">{{ message }}</p>
+                            <slot />
                         </div>
                         <div class="modal-footer">
                             <FpButton variant="text" @click="close">

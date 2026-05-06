@@ -2,17 +2,20 @@ import { ref, readonly, computed } from 'vue'
 import { AuthService, type User, type Session } from '../services/AuthService'
 
 const user = ref<User | null>(null)
+const userRole = ref<string | null>(null)
 const session = ref<Session | null>(null)
 const isLoading = ref(true)
 const error = ref<string | null>(null)
 
 export const authStore = {
   user: readonly(user),
+  userRole: readonly(userRole),
   session: readonly(session),
   isLoading: readonly(isLoading),
   error: readonly(error),
 
   isAuthenticated: computed(() => !!user.value),
+  isAdmin: computed(() => userRole.value === 'admin'),
   currentUserId: computed(() => user.value?.id),
 
   async init() {
@@ -21,17 +24,30 @@ export const authStore = {
       const { session: currentSession } = await AuthService.getSession()
       session.value = currentSession
       user.value = currentSession?.user || null
+      
+      if (user.value) {
+        const profile = await AuthService.getProfile()
+        userRole.value = profile.role
+      }
     } catch (e: any) {
       console.error('Auth init error:', e)
     } finally {
       isLoading.value = false
     }
 
-    // Listen for auth changes to keep state in sync
-    AuthService.onAuthStateChange((event, currentSession) => {
+    // Listen for auth changes
+    AuthService.onAuthStateChange(async (event, currentSession) => {
       console.log('Auth event:', event)
       session.value = currentSession
       user.value = currentSession?.user || null
+      
+      if (user.value) {
+        const profile = await AuthService.getProfile()
+        userRole.value = profile.role
+      } else {
+        userRole.value = null
+      }
+      
       isLoading.value = false
     })
   },
@@ -45,6 +61,12 @@ export const authStore = {
 
       session.value = data.session
       user.value = data.user
+      
+      if (user.value) {
+        const profile = await AuthService.getProfile()
+        userRole.value = profile.role
+      }
+      
       return true
     } catch (e: any) {
       error.value = e.message
