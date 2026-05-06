@@ -52,10 +52,15 @@ const onLeave = async (id: string) => {
 
 <template>
   <div class="teams-view">
-    <header class="header">
-      <FpBackButton @click="router.back()" />
-      <h1>Мои команды</h1>
-    </header>
+    <div class="page-title-row">
+      <div class="title-with-back">
+
+        <div class="title-group">
+          <h1 class="page-title">Мои команды</h1>
+          <p class="page-subtitle">Твои друзья и соратники</p>
+        </div>
+      </div>
+    </div>
 
     <div class="content">
       <div v-if="error" class="error-banner">
@@ -69,41 +74,39 @@ const onLeave = async (id: string) => {
       </div>
 
       <div v-else-if="!myTeams.length" class="empty-state">
-        <div class="empty-icon"><PersonStanding :size="64" /></div>
+        <div class="empty-icon">
+          <PersonStanding :size="64" />
+        </div>
         <h2>Вы пока не в команде</h2>
         <p>Создайте свою команду или вступите по коду приглашения.</p>
-        
+
         <div class="empty-actions">
-           <FpButton @click="showCreateModal = true">
-             <Plus :size="20" /> Создать команду
-           </FpButton>
-           <FpButton variant="text" @click="showJoinModal = true">
-             <LogIn :size="20" /> Вступить по коду
-           </FpButton>
+          <FpButton @click="showCreateModal = true">
+            <Plus :size="20" /> Создать команду
+          </FpButton>
+          <FpButton variant="text" @click="showJoinModal = true">
+            <LogIn :size="20" /> Вступить по коду
+          </FpButton>
         </div>
       </div>
 
       <div v-else class="teams-list">
         <div class="list-header">
-           <FpButton size="sm" @click="showCreateModal = true">
-             <Plus :size="18" /> Новая
-           </FpButton>
-           <FpButton variant="text" size="sm" @click="showJoinModal = true">
-             <LogIn :size="18" /> Вступить
-           </FpButton>
+          <FpButton size="sm" @click="showCreateModal = true">
+            <Plus :size="18" /> Новая
+          </FpButton>
+          <FpButton variant="text" size="sm" @click="showJoinModal = true">
+            <LogIn :size="18" /> Вступить
+          </FpButton>
         </div>
 
-        <TeamCard 
-          v-for="team in myTeams" 
-          :key="team.id" 
-          :team="team" 
-          @leave="onLeave"
-        />
+        <TeamCard v-for="team in myTeams" :key="team.id" :team="team" @leave="onLeave" />
       </div>
     </div>
 
     <!-- Modals (Simple overlays for now) -->
-    <div v-if="showCreateModal || showJoinModal" class="modal-overlay" @click="showCreateModal = false; showJoinModal = false">
+    <div v-if="showCreateModal || showJoinModal" class="modal-overlay"
+      @click="showCreateModal = false; showJoinModal = false">
       <div class="modal-content" @click.stop>
         <template v-if="showCreateModal">
           <h2>Создание команды</h2>
@@ -133,38 +136,26 @@ const onLeave = async (id: string) => {
   background: var(--color-background);
 }
 
-.header {
-  padding: 24px 20px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
 
-  h1 {
-    font-size: 20px;
-    font-weight: 800;
-    margin: 0;
-  }
-}
 
 .content {
-  padding: 20px;
+  padding: var(--spacing-md) 0;
 }
 
-.loading-state, .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 60px 20px;
-    text-align: center;
-    color: var(--color-text-secondary);
+.loading-state,
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--color-text-secondary);
 
-    h2 {
-      margin: 16px 0 8px;
-      color: var(--color-text-primary);
-    }
+  h2 {
+    margin: 16px 0 8px;
+    color: var(--color-text-primary);
+  }
 }
 
 .empty-icon {
@@ -207,7 +198,7 @@ const onLeave = async (id: string) => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0,0,0,0.6);
+  background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
   z-index: 1000;
   display: flex;

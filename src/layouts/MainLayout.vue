@@ -201,13 +201,9 @@ const onTouchEnd = (e: TouchEvent) => {
 				<Users class="icon" :size="20" />
 				<span class="label">Команды</span>
 			</a>
-			<a class="nav-item" :class="{ active: route.path === '/museum' }" @click.prevent="navigate('/museum')">
+			<a class="nav-item" :class="{ active: route.path === '/leaderboard' }" @click.prevent="navigate('/leaderboard')">
 				<Trophy class="icon" :size="20" />
-				<span class="label">Музей</span>
-			</a>
-			<a class="nav-item" :class="{ active: route.path === '/profile' }" @click.prevent="navigate('/profile')">
-				<User class="icon" :size="20" />
-				<span class="label">Профиль</span>
+				<span class="label">{{ t('nav.leaderboard') }}</span>
 			</a>
 		</nav>
 
@@ -262,10 +258,6 @@ const onTouchEnd = (e: TouchEvent) => {
 						<a class="drawer-link" :class="{ active: currentPath === '/leaderboard' }" @click.prevent="navigate('/leaderboard'); isMenuOpen = false">
 							<span class="link-icon"><Trophy :size="24" /></span>
 							{{ t('nav.leaderboard') }}
-						</a>
-						<a class="drawer-link" :class="{ active: currentPath === '/museum' }" @click.prevent="navigate('/museum'); isMenuOpen = false">
-							<span class="link-icon"><Sparkles :size="24" /></span>
-							Музей
 						</a>
 					</div>
 
@@ -332,8 +324,8 @@ const onTouchEnd = (e: TouchEvent) => {
 	padding-top: env(safe-area-inset-top, 0px);
 
 	@media (max-width: 768px) {
-		padding-left: 8px;
-		padding-right: 8px;
+		padding-left: var(--spacing-md);
+		padding-right: var(--spacing-md);
 	}
 
 	.nav-container {
@@ -741,8 +733,8 @@ const onTouchEnd = (e: TouchEvent) => {
 	width: 100%;
 
 	@media (max-width: 768px) {
-		padding: 0;
-		padding-bottom: 72px; // Space for bottom nav
+		padding: var(--spacing-md);
+		padding-bottom: 80px; // Extra space for bottom nav
 	}
 }
 
@@ -758,12 +750,14 @@ const onTouchEnd = (e: TouchEvent) => {
 		height: 64px;
 		height: calc(64px + env(safe-area-inset-bottom, 0px));
 		background: var(--color-surface-translucent);
-		backdrop-filter: blur(12px);
+		backdrop-filter: blur(20px) saturate(180%);
 		border-top: 1px solid var(--color-border);
 		z-index: 1000;
 		padding-bottom: env(safe-area-inset-bottom, 0px);
 		justify-content: space-around;
 		align-items: center;
+		padding-left: 8px;
+		padding-right: 8px;
 	}
 
 	.nav-item {
@@ -774,78 +768,103 @@ const onTouchEnd = (e: TouchEvent) => {
 		color: var(--color-text-tertiary);
 		text-decoration: none;
 		flex: 1;
-		gap: 4px;
+		gap: 2px;
 		cursor: pointer;
-		transition: all 0.2s;
+		transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 		position: relative;
+		height: 100%;
+		padding-top: 4px;
 
 		.icon {
 			font-size: 20px;
+			transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 		}
 
 		.label {
 			font-size: 10px;
 			font-weight: 500;
-			letter-spacing: 0.02em;
+			letter-spacing: 0.01em;
+			transition: all 0.3s ease;
 		}
 
 		&.active {
-			color: var(--color-on-primary);
+			color: var(--color-primary);
 
 			&::before {
 				content: '';
 				position: absolute;
-				width: 44px;
-				height: 44px;
-				top: -6px;
+				width: 52px;
+				height: 32px;
+				top: 8px;
 				left: 50%;
 				transform: translateX(-50%);
-				background: linear-gradient(150deg, var(--color-primary), var(--color-primary-variant));
-				border-radius: 18px;
+				background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+				border-radius: 16px;
 				z-index: -1;
-				box-shadow: 0 10px 22px color-mix(in srgb, var(--color-primary) 35%, transparent);
-				pointer-events: none;
+				transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+				animation: pill-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 			}
 
 			.icon {
-				transform: translateY(-2px);
-				filter: drop-shadow(0 2px 6px color-mix(in srgb, var(--color-text-primary) 40%, transparent));
+				transform: translateY(-2px) scale(1.1);
+				color: var(--color-primary);
 			}
 
 			.label {
-				font-weight: 800;
-				letter-spacing: 0.05em;
-				color: var(--color-on-primary);
+				font-weight: 700;
+				color: var(--color-primary);
+				transform: translateY(1px);
 			}
+		}
+
+		&:active:not(.active) {
+			transform: scale(0.92);
+			opacity: 0.7;
 		}
 
 		&.action {
 			position: relative;
-			top: -12px;
+			top: -14px;
+			overflow: visible;
 
 			.plus-btn {
-				width: 48px;
-				height: 48px;
-				background: var(--color-primary);
+				width: 52px;
+				height: 52px;
+				background: linear-gradient(135deg, var(--color-primary), var(--color-primary-variant));
 				color: var(--color-on-primary);
-				border-radius: 50%;
+				border-radius: 20px;
 				display: flex;
 				align-items: center;
 				justify-content: center;
-				box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary) 30%, transparent);
-				margin-bottom: 2px;
-				transition: all 0.2s;
+				box-shadow: 0 8px 20px color-mix(in srgb, var(--color-primary) 40%, transparent);
+				margin-bottom: 4px;
+				transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+				transform: rotate(0deg);
 
 				&.active {
 					box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 20%, transparent);
 				}
 			}
 
+			.label {
+				position: absolute;
+				bottom: -16px;
+				width: 100%;
+				text-align: center;
+				opacity: 0.8;
+			}
+
 			&:active .plus-btn {
-				transform: scale(0.9);
+				transform: scale(0.85) rotate(90deg);
+				box-shadow: 0 4px 10px color-mix(in srgb, var(--color-primary) 20%, transparent);
 			}
 		}
 	}
+}
+
+@keyframes pill-pop {
+	0% { transform: translateX(-50%) scale(0.8); opacity: 0; }
+	100% { transform: translateX(-50%) scale(1); opacity: 1; }
 }
 
 .swipe-indicator-edge {

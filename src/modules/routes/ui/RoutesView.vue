@@ -160,7 +160,7 @@ const handleWheel = (e: WheelEvent) => {
 
 .routes-header {
   flex-shrink: 0;
-  padding: 16px 20px 8px;
+  padding: 16px 0 8px;
   background: var(--color-background);
   border-bottom: 1px solid var(--color-border);
   display: flex;
@@ -340,7 +340,7 @@ const handleWheel = (e: WheelEvent) => {
 }
 
 .routes-grid {
-  padding: 16px 20px 24px;
+  padding: 16px 0 24px;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 20px;

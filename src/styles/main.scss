@@ -182,17 +182,31 @@ h4 {
 
 .page-title-row {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
-    // margin-bottom: var(--spacing-lg);
     margin-top: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
 
     .page-title {
         margin: 0;
+        font-size: 22px;
+        font-weight: 800;
     }
 }
 
+.page-subtitle {
+    font-size: 13px;
+    color: var(--color-text-tertiary);
+    margin: 2px 0 0;
+}
+
 .title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.title-with-back {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);

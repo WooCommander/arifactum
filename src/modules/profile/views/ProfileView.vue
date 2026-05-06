@@ -145,6 +145,13 @@ onMounted(async () => {
 
 <template>
   <div class="profile-view">
+    <div class="page-title-row">
+      <div class="title-group">
+        <h1 class="page-title">Мой профиль</h1>
+        <p class="page-subtitle">Твой путь и достижения</p>
+      </div>
+    </div>
+
     <!-- Header -->
     <section class="profile-header">
       <div class="avatar-container" @click="triggerAvatarUpload">
@@ -170,7 +177,7 @@ onMounted(async () => {
 
       <div class="user-info">
         <div v-if="!isEditingProfile" class="display-name-row">
-          <h1>{{ displayName || user.email.split('@')[0] }}</h1>
+          <span class="user-name-text">{{ displayName || user.email.split('@')[0] }}</span>
         </div>
         <div v-else class="display-name-edit">
           <input 
@@ -274,7 +281,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  padding: 20px;
+  padding: 20px 0;
   width: 100%;
 }
 
@@ -358,8 +365,7 @@ onMounted(async () => {
     flex: 1;
     min-width: 0;
 
-    h1 {
-      margin: 0;
+    .user-name-text {
       font-size: 20px;
       font-weight: 800;
       color: var(--color-text-primary);

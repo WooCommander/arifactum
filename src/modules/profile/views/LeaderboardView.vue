@@ -45,7 +45,10 @@ onMounted(load)
 <template>
     <div class="leaderboard-view">
         <div class="page-title-row">
-            <h1 class="page-title">Рейтинг</h1>
+            <div class="title-group">
+                <h1 class="page-title">Рейтинг</h1>
+                <p class="page-subtitle">Соревнуйся с лучшими</p>
+            </div>
         </div>
 
         <div class="category-tabs">
@@ -87,14 +90,15 @@ onMounted(load)
 
                 <!-- Avatar -->
                 <div class="entry-avatar">
-                  <img v-if="entry.avatarUrl" :src="entry.avatarUrl" class="avatar-img" />
-                  <div v-else class="avatar-placeholder">{{ entry.displayName.charAt(0).toUpperCase() }}</div>
+                    <img v-if="entry.avatarUrl" :src="entry.avatarUrl" class="avatar-img" />
+                    <div v-else class="avatar-placeholder">{{ entry.displayName.charAt(0).toUpperCase() }}</div>
                 </div>
 
                 <!-- Info -->
                 <div class="entry-info">
                     <div class="entry-name-row">
-                        <span class="entry-name" :class="{ 'me-label': entry.isCurrentUser }" :title="entry.displayName">
+                        <span class="entry-name" :class="{ 'me-label': entry.isCurrentUser }"
+                            :title="entry.displayName">
                             {{ entry.displayName }}
                         </span>
                         <span class="level-badge" :style="{ color: LEVEL_COLORS[Math.min(entry.level, 5)] }">
@@ -119,7 +123,11 @@ onMounted(load)
 
 <style scoped lang="scss">
 .leaderboard-view {
-    padding: 0 var(--spacing-sm);
+    padding: 0;
+}
+
+.page-title-row {
+    padding-bottom: var(--spacing-sm);
 }
 
 .category-tabs {
@@ -257,6 +265,7 @@ onMounted(load)
         color: var(--color-text-secondary);
     }
 }
+
 .entry-avatar {
     width: 40px;
     height: 40px;

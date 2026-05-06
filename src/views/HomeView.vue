@@ -55,10 +55,10 @@ onMounted(loadData)
     <FpPullToRefresh @refresh="handleRefresh">
       <!-- Dashboard Hero: Personalized Profile -->
       <header class="dashboard-hero">
-        <div class="hero-top">
-          <div class="hero-content">
-            <h1 class="welcome-text">{{ greeting }}, <span class="accent">{{ userName }}</span></h1>
-            <p class="hero-subtitle">Твой прогресс в Artifactum</p>
+        <div class="page-title-row">
+          <div class="title-group">
+            <h1 class="page-title">{{ greeting }}, <span class="accent">{{ userName }}</span></h1>
+            <p class="page-subtitle">Твой прогресс в Artifactum</p>
           </div>
         </div>
 
@@ -91,14 +91,16 @@ onMounted(loadData)
             <h2 class="section-title">Маршруты и квесты 🗺️</h2>
             <FpButton variant="text" size="sm" @click="router.push('/routes')">Все</FpButton>
           </div>
-          
+
           <FpCard class="promo-card route-card" @click="router.push('/routes')">
             <div class="promo-content">
               <div class="promo-text">
                 <h3>Начни свое приключение</h3>
                 <p>Исследуй город, находи скрытые точки и получай артефакты.</p>
               </div>
-              <div class="promo-icon"><Navigation :size="48" /></div>
+              <div class="promo-icon">
+                <Navigation :size="48" />
+              </div>
             </div>
           </FpCard>
 
@@ -108,23 +110,26 @@ onMounted(loadData)
                 <h3>Твои команды</h3>
                 <p>Проходи маршруты вместе с друзьями и соревнуйся с другими.</p>
               </div>
-              <div class="promo-icon"><Users :size="48" /></div>
+              <div class="promo-icon">
+                <Users :size="48" />
+              </div>
             </div>
           </FpCard>
         </section>
 
         <!-- Placeholder for active quest if exists -->
         <section v-if="userStats?.activeRoute" class="active-quest">
-           <div class="section-header">
-             <h2 class="section-title">Текущий квест 🏃</h2>
-           </div>
-           <FpCard class="active-card" @click="router.push(`/route/${userStats.activeRoute.id}`)">
-              <div class="active-info">
-                <h4>{{ userStats.activeRoute.title }}</h4>
-                <p>Выполнено {{ userStats.activeRoute.completedCount }} из {{ userStats.activeRoute.totalCount }} точек</p>
-              </div>
-              <div class="active-arrow">→</div>
-           </FpCard>
+          <div class="section-header">
+            <h2 class="section-title">Текущий квест 🏃</h2>
+          </div>
+          <FpCard class="active-card" @click="router.push(`/route/${userStats.activeRoute.id}`)">
+            <div class="active-info">
+              <h4>{{ userStats.activeRoute.title }}</h4>
+              <p>Выполнено {{ userStats.activeRoute.completedCount }} из {{ userStats.activeRoute.totalCount }} точек
+              </p>
+            </div>
+            <div class="active-arrow">→</div>
+          </FpCard>
         </section>
       </div>
     </FpPullToRefresh>
@@ -138,28 +143,13 @@ onMounted(loadData)
 }
 
 .dashboard-hero {
-  padding: 24px 20px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 10%, transparent) 0%, transparent 100%);
+  padding-top: var(--spacing-sm);
   display: flex;
   flex-direction: column;
   gap: 20px;
 
-  .welcome-text {
-    font-size: 26px;
-    font-weight: 800;
-    margin: 0;
-    letter-spacing: -0.5px;
-    color: var(--color-text-primary);
-
-    .accent {
-      color: var(--color-primary);
-    }
-  }
-
-  .hero-subtitle {
-    font-size: 14px;
-    color: var(--color-text-secondary);
-    margin: 4px 0 0;
+  .accent {
+    color: var(--color-primary);
   }
 }
 
@@ -233,7 +223,7 @@ onMounted(loadData)
 }
 
 .dashboard-content {
-  padding: 0 20px 40px;
+  padding: 0 0 40px;
   display: flex;
   flex-direction: column;
   gap: 32px;
@@ -263,7 +253,7 @@ onMounted(loadData)
   border: none;
   overflow: hidden;
   position: relative;
-  
+
   &::before {
     content: '';
     position: absolute;
@@ -309,7 +299,7 @@ onMounted(loadData)
 
 .promo-icon {
   opacity: 0.8;
-  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
 }
 
 .active-card {
