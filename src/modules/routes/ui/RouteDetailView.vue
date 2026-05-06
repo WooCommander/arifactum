@@ -2,7 +2,7 @@
 import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRoutesStore } from '../state/useRoutesStore'
-import { FpSpinner, FpBackButton, FpConfirmationModal, FpPullToRefresh, FpButton, FpCard } from '@/design-system'
+import { FpSpinner, FpBackButton, FpConfirmationModal, FpPullToRefresh, FpButton, FpCard, FpInput } from '@/design-system'
 import ArtMap from '@/shared/ui/ArtMap.vue'
 import { useNotify } from '@/composables/useNotify'
 import { useSocialStore } from '@/modules/social/state/useSocialStore'
@@ -12,6 +12,7 @@ import ArOverlay from '@/modules/ar/ui/ArOverlay.vue'
 import { LocationService, type LocationCoords } from '@/shared/lib/LocationService'
 import { Haptics, ImpactStyle } from '@capacitor/haptics'
 import { RewardsService } from '@/modules/rewards/services/RewardsService'
+import { ReportsService } from '@/modules/admin/services/ReportsService'
 import {
   Heart,
   Bookmark,
@@ -29,7 +30,9 @@ import {
   Trophy,
   Tag,
   X,
-  QrCode
+  QrCode,
+  AlertTriangle,
+  ChevronDown
 } from 'lucide-vue-next'
 
 const route = useRoute()
@@ -58,6 +61,26 @@ const isLiked = ref(false)
 const isFavorite = ref(false)
 const commentText = ref('')
 const isSubmittingComment = ref(false)
+
+// Reporting
+const showReportModal = ref(false)
+const reportReason = ref('')
+const isReporting = ref(false)
+
+async function handleReport() {
+  if (!reportReason.value.trim()) return
+  isReporting.value = true
+  try {
+    await ReportsService.createReport(routeId, reportReason.value)
+    notify('Жалоба отправлена. Мы проверим этот маршрут.', 'success')
+    showReportModal.value = false
+    reportReason.value = ''
+  } catch (e) {
+    notify('Ошибка при отправке жалобы', 'error')
+  } finally {
+    isReporting.value = false
+  }
+}
 const showQrCode = ref(false)
 const qrUrl = computed(() => {
   const url = window.location.href
@@ -464,6 +487,10 @@ onUnmounted(() => {
               <QrCode :size="24" />
               <span>QR-код</span>
             </div>
+            <div class="social-action report-action" @click="showReportModal = true">
+              <AlertTriangle :size="24" />
+              <span>Пожаловаться</span>
+            </div>
           </div>
 
           <div class="route-stats">
@@ -803,6 +830,25 @@ onUnmounted(() => {
     <FpConfirmationModal v-model:visible="showPublishConfirm" title="Публикация"
       message="Отправить маршрут на модерацию? После этого вы не сможете его редактировать до проверки."
       confirmText="Отправить" @confirm="handlePublish" />
+
+    <!-- Report Modal -->
+    <FpConfirmationModal
+      v-model:visible="showReportModal"
+      title="Пожаловаться на маршрут"
+      message="Опишите, что не так с этим маршрутом (ошибки, спам, неприемлемый контент)"
+      confirmText="Отправить"
+      variant="danger"
+      :confirmDisabled="!reportReason.trim() || isReporting"
+      @confirm="handleReport"
+    >
+      <div style="margin-top: 16px;">
+        <FpInput 
+          v-model="reportReason" 
+          placeholder="Причина жалобы..." 
+          autofocus
+        />
+      </div>
+    </FpConfirmationModal>
   </div>
 </template>
 
@@ -979,6 +1025,15 @@ onUnmounted(() => {
     
     svg {
       transform: scale(1.1);
+    }
+  }
+
+  &.report-action {
+    &:active {
+      color: var(--color-error);
+    }
+    svg {
+      color: color-mix(in srgb, var(--color-error) 70%, transparent);
     }
   }
 }

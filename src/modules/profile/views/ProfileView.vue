@@ -10,11 +10,14 @@ import { useI18n } from 'vue-i18n'
 import { useRewardsStore } from '@/modules/rewards'
 import { authStore } from '@/modules/auth/store/authStore'
 import { Shield, Settings, LogOut, ChevronRight } from 'lucide-vue-next'
+import { changelog } from '@/data/changelog'
 
 const { t } = useI18n()
 const { totalBonuses, fetchRewards } = useRewardsStore()
 const router = useRouter()
 const { notify } = useNotify()
+
+const appVersion = computed(() => changelog[0]?.version || '0.0.0')
 
 interface UserStats {
   joinedDate: Date
@@ -291,6 +294,12 @@ onMounted(async () => {
         Выйти из аккаунта
       </FpButton>
     </section>
+
+    <!-- App Version & Info -->
+    <footer class="profile-footer">
+      <p class="app-description">Artifactum — твоя история в каждом шаге. Исследуй, собирай артефакты и создавай свои маршруты.</p>
+      <div class="version-badge">v{{ appVersion }}</div>
+    </footer>
   </div>
 </template>
 
@@ -644,6 +653,35 @@ onMounted(async () => {
     .chevron {
       color: var(--color-text-tertiary);
     }
+  }
+}
+.profile-footer {
+  margin-top: 20px;
+  padding: 24px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid var(--color-border);
+  opacity: 0.6;
+
+  .app-description {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--color-text-tertiary);
+    max-width: 280px;
+    margin: 0;
+  }
+
+  .version-badge {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--color-text-tertiary);
+    background: var(--color-background);
+    padding: 2px 8px;
+    border-radius: 6px;
+    letter-spacing: 0.05em;
   }
 }
 </style>
