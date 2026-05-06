@@ -15,6 +15,7 @@ const { routes, isLoading, error, fetchRoutes } = useRoutesStore()
 
 const searchQuery = ref('')
 const selectedCategory = ref('Все')
+const selectedAuthor = ref<{ id: string, name: string } | null>(null)
 const { categoryNames, init: initCategories } = useCategoryStore()
 
 const popularTags = computed(() => {
@@ -39,12 +40,22 @@ onMounted(() => {
 const loadRoutes = () => {
   fetchRoutes(authStore.currentUserId.value, {
     search: searchQuery.value,
-    category: selectedCategory.value
+    category: selectedCategory.value,
+    authorId: selectedAuthor.value?.id
   })
 }
 
+const handleAuthorFilter = (author: { id: string, name: string }) => {
+  selectedAuthor.value = author
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+const clearAuthorFilter = () => {
+  selectedAuthor.value = null
+}
+
 // Watch for filter changes instead of manual triggers
-watch([searchQuery, selectedCategory], () => {
+watch([searchQuery, selectedCategory, selectedAuthor], () => {
   loadRoutes()
 })
 
@@ -119,6 +130,13 @@ const handleWheel = (e: WheelEvent) => {
           </button>
         </div>
       </div>
+
+      <div class="active-filters" v-if="selectedAuthor">
+        <div class="filter-chip author" @click="clearAuthorFilter">
+          <span>Автор: {{ selectedAuthor.name }}</span>
+          <X :size="14" />
+        </div>
+      </div>
     </header>
 
     <div class="routes-content">
@@ -142,6 +160,7 @@ const handleWheel = (e: WheelEvent) => {
           :key="route.id" 
           :route="route"
           @click="navigateToDetail"
+          @author-click="handleAuthorFilter"
         />
       </div>
       </FpPullToRefresh>
@@ -369,5 +388,38 @@ const handleWheel = (e: WheelEvent) => {
   border: none;
   font-weight: 700;
   cursor: pointer;
+}
+
+.active-filters {
+  display: flex;
+  gap: 8px;
+  padding: 0 16px 8px;
+  margin-top: -4px;
+}
+
+.filter-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary) 20%, transparent);
+  animation: slide-in 0.3s ease-out;
+
+  @keyframes slide-in {
+    from { transform: translateX(-10px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  &.author {
+    background: var(--color-surface);
+    color: var(--color-primary);
+    border: 1px solid var(--color-primary);
+  }
 }
 </style>

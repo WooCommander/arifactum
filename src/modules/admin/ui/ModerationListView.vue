@@ -3,8 +3,9 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ModerationService, type ModerationRoute } from '../services/ModerationService'
 import { ReportsService, type Report } from '../services/ReportsService'
+import { AdminService, type ProjectStats } from '../services/AdminService'
 import { FpBackButton, FpCard, FpButton, FpSpinner, FpConfirmationModal, FpInput } from '@/design-system'
-import { Clock, MapPin, User, ChevronRight, Check, X, AlertTriangle, MessageSquare } from 'lucide-vue-next'
+import { Clock, MapPin, User as UserIcon, ChevronRight, Check, X, AlertTriangle, MessageSquare, Activity, Users, ShieldAlert, Search } from 'lucide-vue-next'
 
 const router = useRouter()
 const routes = ref<ModerationRoute[]>([])
@@ -18,23 +19,74 @@ const selectedRouteId = ref<string | null>(null)
 const rejectReason = ref('')
 
 // Tabs state
-const activeTab = ref<'routes' | 'reports'>('routes')
+const activeTab = ref<'stats' | 'routes' | 'reports' | 'users'>('stats')
 const reports = ref<Report[]>([])
+const stats = ref<ProjectStats | null>(null)
+
+// Users management
+const userSearchQuery = ref('')
+const foundUsers = ref<any[]>([])
+const isSearchingUsers = ref(false)
+const showUserBlockModal = ref(false)
+const selectedUser = ref<any>(null)
+const userBlockReason = ref('')
 
 async function load() {
     isLoading.value = true
     try {
-        const [routesData, reportsData] = await Promise.all([
+        const [routesData, reportsData, statsData] = await Promise.all([
             ModerationService.getPendingRoutes(),
-            ReportsService.getActiveReports()
+            ReportsService.getActiveReports(),
+            AdminService.getProjectStats()
         ])
         routes.value = routesData
         reports.value = reportsData
+        stats.value = statsData
     } catch (e: any) {
         error.value = 'Ошибка загрузки данных'
         console.error(e)
     } finally {
         isLoading.value = false
+    }
+}
+
+async function handleSearchUsers() {
+    if (!userSearchQuery.value.trim()) return
+    isSearchingUsers.value = true
+    try {
+        foundUsers.value = await AdminService.searchUsers(userSearchQuery.value)
+    } catch (e) {
+        alert('Ошибка поиска')
+    } finally {
+        isSearchingUsers.value = false
+    }
+}
+
+async function handleBlockUser() {
+    if (!selectedUser.value || !userBlockReason.value.trim()) return
+    isProcessing.value = true
+    try {
+        await AdminService.blockUser(selectedUser.value.id, userBlockReason.value)
+        selectedUser.value.is_blocked = true
+        showUserBlockModal.value = false
+        userBlockReason.value = ''
+    } catch (e) {
+        alert('Ошибка блокировки')
+    } finally {
+        isProcessing.value = false
+    }
+}
+
+async function handleUnblockUser(userId: string) {
+    isProcessing.value = true
+    try {
+        await AdminService.unblockUser(userId)
+        const user = foundUsers.value.find(u => u.id === userId)
+        if (user) user.is_blocked = false
+    } catch (e) {
+        alert('Ошибка разблокировки')
+    } finally {
+        isProcessing.value = false
     }
 }
 
@@ -45,6 +97,21 @@ async function handleResolveReport(id: string, action: 'resolved' | 'ignored') {
         reports.value = reports.value.filter(r => r.id !== id)
     } catch (e) {
         alert('Ошибка при обработке жалобы')
+    } finally {
+        isProcessing.value = false
+    }
+}
+
+async function handleBlockRoute(report: Report) {
+    if (!confirm(`Вы действительно хотите заблокировать маршрут "${report.route_title}"?`)) return
+    isProcessing.value = true
+    try {
+        await AdminService.toggleRouteBlock(report.route_id, true)
+        await ReportsService.resolveReport(report.id, 'resolved')
+        reports.value = reports.value.filter(r => r.id !== report.id)
+        alert('Маршрут заблокирован')
+    } catch (e) {
+        alert('Ошибка блокировки маршрута')
     } finally {
         isProcessing.value = false
     }
@@ -110,10 +177,17 @@ onMounted(load)
         <div class="tabs-row">
             <button 
                 class="tab-btn" 
+                :class="{ active: activeTab === 'stats' }"
+                @click="activeTab = 'stats'"
+            >
+                <Activity :size="18" /> Статистика
+            </button>
+            <button 
+                class="tab-btn" 
                 :class="{ active: activeTab === 'routes' }"
                 @click="activeTab = 'routes'"
             >
-                Маршруты
+                <Check :size="18" /> Маршруты
                 <span class="badge" v-if="routes.length">{{ routes.length }}</span>
             </button>
             <button 
@@ -121,14 +195,104 @@ onMounted(load)
                 :class="{ active: activeTab === 'reports' }"
                 @click="activeTab = 'reports'"
             >
-                Жалобы
+                <AlertTriangle :size="18" /> Жалобы
                 <span class="badge danger" v-if="reports.length">{{ reports.length }}</span>
+            </button>
+            <button 
+                class="tab-btn" 
+                :class="{ active: activeTab === 'users' }"
+                @click="activeTab = 'users'"
+            >
+                <Users :size="18" /> Юзеры
             </button>
         </div>
 
         <div v-if="isLoading" class="loading-state">
             <FpSpinner />
-            <p>Загрузка очереди...</p>
+            <p>Загрузка данных...</p>
+        </div>
+
+        <!-- Stats Tab -->
+        <div v-else-if="activeTab === 'stats' && stats" class="stats-tab">
+            <div class="stats-grid">
+                <FpCard class="stat-card">
+                    <div class="stat-icon users"><Users :size="24" /></div>
+                    <div class="stat-info">
+                        <div class="stat-value">{{ stats.totalUsers }}</div>
+                        <div class="stat-label">Всего игроков</div>
+                    </div>
+                </FpCard>
+                <FpCard class="stat-card">
+                    <div class="stat-icon routes"><MapPin :size="24" /></div>
+                    <div class="stat-info">
+                        <div class="stat-value">{{ stats.totalRoutes }}</div>
+                        <div class="stat-label">Маршрутов</div>
+                    </div>
+                </FpCard>
+                <FpCard class="stat-card">
+                    <div class="stat-icon success"><Check :size="24" /></div>
+                    <div class="stat-info">
+                        <div class="stat-value">{{ stats.totalCompletions }}</div>
+                        <div class="stat-label">Завершений</div>
+                    </div>
+                </FpCard>
+                <FpCard class="stat-card">
+                    <div class="stat-icon warning"><Activity :size="24" /></div>
+                    <div class="stat-info">
+                        <div class="stat-value">{{ stats.activeToday }}</div>
+                        <div class="stat-label">Активность сегодня</div>
+                    </div>
+                </FpCard>
+            </div>
+        </div>
+
+        <!-- Users Tab -->
+        <div v-else-if="activeTab === 'users'" class="users-tab">
+            <div class="search-bar">
+                <FpInput 
+                    v-model="userSearchQuery" 
+                    placeholder="Поиск по имени или email..." 
+                    @keyup.enter="handleSearchUsers"
+                />
+                <FpButton variant="primary" :disabled="isSearchingUsers" @click="handleSearchUsers">
+                    <Search :size="18" />
+                </FpButton>
+            </div>
+
+            <div v-if="foundUsers.length === 0 && !isSearchingUsers" class="empty-state">
+                <div class="empty-icon">🔍</div>
+                <p>Найдите пользователя для управления</p>
+            </div>
+
+            <div v-else class="users-list">
+                <div v-for="u in foundUsers" :key="u.id" class="user-card-item">
+                    <FpCard :class="{ 'blocked': u.is_blocked }">
+                        <div class="user-row">
+                            <div class="user-main">
+                                <div class="user-avatar-mini" :style="u.avatar_url ? `background-image: url(${u.avatar_url})` : ''">
+                                    {{ !u.avatar_url ? (u.display_name?.[0] || '?') : '' }}
+                                </div>
+                                <div class="user-details">
+                                    <h3>{{ u.display_name }}</h3>
+                                    <span class="role">{{ u.role }}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="user-actions">
+                                <FpButton v-if="!u.is_blocked" variant="danger" size="sm" @click="selectedUser = u; showUserBlockModal = true">
+                                    Блокировать
+                                </FpButton>
+                                <FpButton v-else variant="primary" size="sm" @click="handleUnblockUser(u.id)">
+                                    Разблокировать
+                                </FpButton>
+                            </div>
+                        </div>
+                        <div v-if="u.is_blocked" class="block-info">
+                            <ShieldAlert :size="14" /> Заблокирован: {{ u.block_reason }}
+                        </div>
+                    </FpCard>
+                </div>
+            </div>
         </div>
 
         <div v-else-if="error" class="empty-state">
@@ -151,7 +315,7 @@ onMounted(load)
                             <div class="route-info">
                                 <h3>{{ route.title }}</h3>
                                 <div class="meta">
-                                    <span class="author"><User :size="14" /> {{ route.author_name }}</span>
+                                    <span class="author"><UserIcon :size="14" /> {{ route.author_name }}</span>
                                     <span class="date"><Clock :size="14" /> {{ formatDate(route.created_at) }}</span>
                                 </div>
                             </div>
@@ -202,7 +366,7 @@ onMounted(load)
                                 <h3 @click="router.push(`/routes/${report.route_id}`)">{{ report.route_title }} <ChevronRight :size="16" /></h3>
                             </div>
                             <div class="report-meta">
-                                <span class="reporter"><User :size="14" /> от {{ report.reporter_name }}</span>
+                                <span class="reporter"><UserIcon :size="14" /> от {{ report.reporter_name }}</span>
                                 <span class="date">{{ formatDate(report.created_at) }}</span>
                             </div>
                         </div>
@@ -216,7 +380,10 @@ onMounted(load)
                             <FpButton variant="text" class="action-btn" @click="handleResolveReport(report.id, 'ignored')">
                                 Игнорировать
                             </FpButton>
-                            <FpButton variant="danger" class="action-btn" @click="handleResolveReport(report.id, 'resolved')">
+                            <FpButton variant="danger" class="action-btn" @click="handleBlockRoute(report)">
+                                <ShieldAlert :size="18" /> Заблокировать
+                            </FpButton>
+                            <FpButton variant="primary" class="action-btn" @click="handleResolveReport(report.id, 'resolved')">
                                 <Check :size="20" /> Исправлено
                             </FpButton>
                         </div>
@@ -244,6 +411,27 @@ onMounted(load)
                 </div>
             </template>
         </FpConfirmationModal>
+
+        <!-- User Block Modal -->
+        <FpConfirmationModal
+            v-model:visible="showUserBlockModal"
+            title="Блокировка пользователя"
+            message="Укажите причину блокировки. Пользователь увидит её при входе."
+            confirmText="Заблокировать"
+            variant="danger"
+            :confirmDisabled="!userBlockReason.trim() || isProcessing"
+            @confirm="handleBlockUser"
+        >
+            <template #default>
+                <div style="margin-top: 16px;">
+                    <FpInput 
+                        v-model="userBlockReason" 
+                        placeholder="Например: Нарушение правил сообщества" 
+                        autofocus
+                    />
+                </div>
+            </template>
+        </FpConfirmationModal>
     </div>
 </template>
 
@@ -261,14 +449,18 @@ onMounted(load)
     background: rgba(255, 255, 255, 0.03);
     border-radius: 12px;
     border: 1px solid rgba(255, 255, 255, 0.05);
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    &::-webkit-scrollbar { display: none; }
 
     .tab-btn {
-        flex: 1;
+        flex-shrink: 0;
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 8px;
-        padding: 12px;
+        padding: 12px 16px;
         border-radius: 8px;
         border: none;
         background: transparent;
@@ -277,6 +469,7 @@ onMounted(load)
         font-size: 14px;
         transition: all 0.2s ease;
         cursor: pointer;
+        white-space: nowrap;
 
         &.active {
             background: var(--color-surface);
@@ -295,6 +488,115 @@ onMounted(load)
                 background: var(--color-error);
             }
         }
+    }
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.stat-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px;
+
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        
+        &.users { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+        &.routes { background: rgba(168, 85, 247, 0.1); color: #a855f7; }
+        &.success { background: rgba(34, 197, 94, 0.1); color: #22c55e; }
+        &.warning { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+    }
+
+    .stat-value {
+        font-size: 24px;
+        font-weight: 900;
+        line-height: 1;
+    }
+
+    .stat-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--color-text-tertiary);
+        margin-top: 4px;
+    }
+}
+
+.search-bar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+
+    & > * {
+        &:first-child { flex: 1; }
+    }
+}
+
+.user-card-item {
+    margin-bottom: 12px;
+    
+    .blocked {
+        border: 1px solid rgba(var(--color-error-rgb), 0.3);
+        background: rgba(var(--color-error-rgb), 0.02);
+    }
+
+    .user-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .user-main {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .user-avatar-mini {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        background: var(--color-background);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        background-size: cover;
+    }
+
+    .user-details {
+        h3 {
+            margin: 0;
+            font-size: 15px;
+            font-weight: 700;
+        }
+        .role {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--color-text-tertiary);
+        }
+    }
+
+    .block-info {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--color-border);
+        font-size: 12px;
+        color: var(--color-error);
+        display: flex;
+        align-items: center;
+        gap: 6px;
     }
 }
 
@@ -399,7 +701,7 @@ onMounted(load)
 
     .card-actions {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr 1fr 1fr;
         gap: 12px;
 
         .action-btn {

@@ -4,10 +4,11 @@ import { OfflineService } from '@/modules/offline/services/OfflineService'
 import { DbService } from '@/modules/offline/services/DbService'
 
 export const routeService = {
-    async getRoutes(userId?: string, options?: { search?: string, category?: string }): Promise<RouteDTO[]> {
+    async getRoutes(userId?: string, options?: { search?: string, category?: string, authorId?: string }): Promise<RouteDTO[]> {
         let query = supabase
             .from('routes')
-            .select('*, checkpoints_count:checkpoints(count)')
+            .select('*, profiles(display_name, avatar_url), checkpoints_count:checkpoints(count)')
+            .eq('is_blocked', false)
             .order('created_at', { ascending: false })
 
         if (userId) {
@@ -27,6 +28,10 @@ export const routeService = {
             query = query.or(`title.ilike.%${options.search}%,tags.cs.{"${options.search}"}`)
         }
 
+        if (options?.authorId) {
+            query = query.eq('author_id', options.authorId)
+        }
+
         const { data, error } = await query
 
         if (error) throw error
@@ -42,7 +47,7 @@ export const routeService = {
 
         const { data, error } = await supabase
             .from('routes')
-            .select('*, checkpoints_count:checkpoints(count)')
+            .select('*, profiles(display_name, avatar_url), checkpoints_count:checkpoints(count)')
             .eq('id', id)
             .single()
 
@@ -143,5 +148,22 @@ export const routeService = {
 
         if (error && error.code !== 'PGRST116') throw error
         return data
+    },
+
+    async incrementCompletionsCount(id: string): Promise<void> {
+        // We can use a simple update with a fetch, but for high concurrency RPC is better.
+        // For now, let's use a straightforward approach.
+        const { data } = await supabase
+            .from('routes')
+            .select('completions_count')
+            .eq('id', id)
+            .single()
+        
+        const currentCount = data?.completions_count || 0
+        
+        await supabase
+            .from('routes')
+            .update({ completions_count: currentCount + 1 })
+            .eq('id', id)
     }
 }

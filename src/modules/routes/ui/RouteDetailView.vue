@@ -250,6 +250,15 @@ async function fetchRouteDetails() {
   }
 }
 
+function formatDate(dateStr: string) {
+  if (!dateStr) return ''
+  return new Date(dateStr).toLocaleDateString('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  })
+}
+
 async function handleToggleLike() {
   if (!authStore.currentUserId.value) return
   try {
@@ -344,6 +353,13 @@ async function handleCheckIn() {
 async function finishRoute() {
   isActiveMode.value = false
   clearInterval(timerInterval)
+
+  // Increment completions count
+  try {
+    await routeService.incrementCompletionsCount(routeId)
+  } catch (e) {
+    console.error('Failed to increment completions count', e)
+  }
 
   // Unlock Artifact logic
   try {
@@ -468,6 +484,17 @@ onUnmounted(() => {
               </div>
             </div>
             <h1 class="route-title">{{ currentRoute.title }}</h1>
+
+            <div class="author-meta-row">
+              <div class="author-info-link" @click="router.push(`/profile/${currentRoute.authorId}`)">
+                <div class="author-avatar-mini" :style="currentRoute.authorAvatar ? `background-image: url(${currentRoute.authorAvatar})` : ''">
+                  {{ !currentRoute.authorAvatar ? (currentRoute.authorName?.[0] || '?') : '' }}
+                </div>
+                <span class="author-name">{{ currentRoute.authorName }}</span>
+              </div>
+              <div class="meta-divider"></div>
+              <span class="created-date">{{ formatDate(currentRoute.createdAt) }}</span>
+            </div>
           </div>
 
           <div class="social-summary-bar">
@@ -500,6 +527,10 @@ onUnmounted(() => {
               <div class="stat">
                 <MapPin :size="20" />
                 <span>{{ currentCheckpoints.length }} точек</span>
+              </div>
+              <div class="stat">
+                <Trophy :size="20" class="completions-icon" />
+                <span>{{ currentRoute.completionsCount || 0 }} прохождений</span>
               </div>
               <div class="stat">
                 <Info :size="20" />
@@ -983,7 +1014,60 @@ onUnmounted(() => {
   font-weight: 900;
   color: var(--color-text-primary);
   line-height: 1.2;
-  margin: 0;
+  margin: 0 0 12px 0;
+}
+
+.author-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+
+  .author-info-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+
+    &:active {
+      opacity: 0.7;
+    }
+
+    .author-avatar-mini {
+      width: 24px;
+      height: 24px;
+      border-radius: 8px;
+      background: var(--color-primary);
+      color: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 800;
+      background-size: cover;
+      background-position: center;
+    }
+
+    .author-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--color-primary);
+    }
+  }
+
+  .meta-divider {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--color-text-tertiary);
+    opacity: 0.3;
+  }
+
+  .created-date {
+    font-size: 13px;
+    color: var(--color-text-tertiary);
+    font-weight: 500;
+  }
 }
 
 .social-summary-bar {
@@ -1039,10 +1123,10 @@ onUnmounted(() => {
 }
 
 .detail-stats {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 20px;
+  padding: 24px 0;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   margin-bottom: 32px;
@@ -1051,20 +1135,26 @@ onUnmounted(() => {
 .stat {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--color-text-primary);
-
+  gap: 12px;
+  
   svg {
     color: var(--color-primary);
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    opacity: 0.8;
   }
 
-  .stat-label {
-    color: var(--color-text-secondary);
-    font-weight: 500;
+  span {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    line-height: 1.2;
+  }
+
+  .completions-icon {
+    color: #FFD700 !important;
+    opacity: 1 !important;
   }
 }
 

@@ -18,7 +18,11 @@ export const routeAdapter = {
             isPublic: dto.is_public,
             category: dto.category || 'Прочее',
             tags: dto.tags || [],
-            likesCount: dto.likes_count || 0
+            likesCount: dto.likes_count || 0,
+            completionsCount: dto.completions_count || 0,
+            authorName: dto.profiles?.display_name || 'Неизвестный автор',
+            authorAvatar: dto.profiles?.avatar_url,
+            createdAt: dto.created_at
         }
     },
 

@@ -16,7 +16,15 @@ const isDownloaded = computed(() => OfflineService.isDownloaded(props.route.id))
 
 const emit = defineEmits<{
   (e: 'click', id: string): void
+  (e: 'author-click', author: { id: string, name: string }): void
 }>()
+
+const onAuthorClick = (e: Event) => {
+  e.stopPropagation()
+  if (props.route.authorId && props.route.authorName) {
+    emit('author-click', { id: props.route.authorId, name: props.route.authorName })
+  }
+}
 </script>
 
 <template>
@@ -43,6 +51,12 @@ const emit = defineEmits<{
     </div>
 
     <div class="route-content">
+      <div class="author-mini" v-if="props.route.authorName" @click="onAuthorClick">
+        <div class="mini-avatar" :style="props.route.authorAvatar ? `background-image: url(${props.route.authorAvatar})` : ''">
+          {{ !props.route.authorAvatar ? (props.route.authorName[0] || '?') : '' }}
+        </div>
+        <span class="mini-name">{{ props.route.authorName }}</span>
+      </div>
       <h3 class="route-title">{{ props.route.title }}</h3>
       <p class="route-description">{{ props.route.description }}</p>
       
@@ -172,9 +186,38 @@ const emit = defineEmits<{
 
 .route-title {
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--color-text-primary);
   margin-bottom: 4px;
+}
+
+.author-mini {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+
+  .mini-avatar {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    background: var(--color-primary);
+    color: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 800;
+    background-size: cover;
+    background-position: center;
+    flex-shrink: 0;
+  }
+
+  .mini-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--color-text-secondary);
+  }
 }
 
 .route-description {

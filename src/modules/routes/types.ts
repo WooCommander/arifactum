@@ -15,6 +15,11 @@ export interface RouteDTO {
     category?: string
     tags?: string[]
     likes_count?: number
+    completions_count?: number
+    profiles?: {
+        display_name: string
+        avatar_url: string | null
+    }
 }
 
 export interface Route {
@@ -32,6 +37,10 @@ export interface Route {
     category: string
     tags: readonly string[]
     likesCount: number
+    completionsCount?: number
+    authorName?: string
+    authorAvatar?: string | null
+    createdAt: string
     isLiked?: boolean
     isFavorite?: boolean
 }

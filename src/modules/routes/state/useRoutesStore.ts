@@ -11,7 +11,7 @@ const isLoading = ref(false)
 const error = ref<string | null>(null)
 
 export const useRoutesStore = () => {
-    const fetchRoutes = async (userId?: string, options?: { search?: string, category?: string }) => {
+    const fetchRoutes = async (userId?: string, options?: { search?: string, category?: string, authorId?: string }) => {
         isLoading.value = true
         error.value = null
         try {
