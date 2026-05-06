@@ -113,8 +113,13 @@ onMounted(load)
 
                 <!-- Score -->
                 <div class="entry-score">
-                    <span class="score-value">{{ Math.floor(entry.score).toLocaleString('ru-RU') }}</span>
-                    <span class="score-unit">{{categories.find(c => c.key === activeCategory)?.unit}}</span>
+                    <span class="score-value">
+                        {{ activeCategory === 'distance' 
+                           ? entry.score.toFixed(1).toLocaleString() 
+                           : Math.floor(entry.score).toLocaleString('ru-RU') 
+                        }}
+                    </span>
+                    <span class="score-unit">{{ categories.find(c => c.key === activeCategory)?.unit }}</span>
                 </div>
             </FpCard>
         </div>

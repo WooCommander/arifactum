@@ -11,6 +11,7 @@ import { authStore } from '@/modules/auth/store/authStore'
 import ArOverlay from '@/modules/ar/ui/ArOverlay.vue'
 import { LocationService, type LocationCoords } from '@/shared/lib/LocationService'
 import { Haptics, ImpactStyle } from '@capacitor/haptics'
+import { RewardsService } from '@/modules/rewards/services/RewardsService'
 import {
   Heart,
   Bookmark,
@@ -87,6 +88,7 @@ const mapPoints = computed(() => {
 const userLocation = ref<LocationCoords | null>(null)
 const completedCheckpointIds = ref(new Set<string>())
 const elapsedTime = ref('00:00')
+const totalSeconds = ref(0)
 let timerInterval: any = null
 let locationWatchId: string | null = null
 const selectedCheckpoint = ref<any | null>(null)
@@ -332,12 +334,26 @@ async function finishRoute() {
     console.error('Artifact unlock failed', e)
   }
 
-  // Set stats
-  routeStats.value = {
-    distanceMeters: Math.round(Math.random() * 5000 + 1000), // Mock
-    avgSpeedKmh: (Math.random() * 2 + 4).toFixed(1),
-    xpGained: 250,
-    levelGained: Math.random() > 0.7
+  // Calculate real stats and update profile
+  try {
+    if (authStore.currentUserId.value) {
+      const stats = await RewardsService.finishRoute(
+        authStore.currentUserId.value,
+        routeId,
+        totalSeconds.value,
+        sortedCheckpoints.value
+      )
+      routeStats.value = stats
+    }
+  } catch (e) {
+    console.error('Failed to update rewards', e)
+    // Fallback if update fails
+    routeStats.value = {
+      distanceMeters: 0,
+      avgSpeedKmh: 0,
+      xpGained: 0,
+      levelGained: false
+    }
   }
 
   showVictoryModal.value = true
@@ -348,12 +364,11 @@ onMounted(async () => {
   await fetchRouteDetails()
 
   // Timer
-  let seconds = 0
   timerInterval = setInterval(() => {
     if (isActiveMode.value) {
-      seconds++
-      const m = Math.floor(seconds / 60).toString().padStart(2, '0')
-      const s = (seconds % 60).toString().padStart(2, '0')
+      totalSeconds.value++
+      const m = Math.floor(totalSeconds.value / 60).toString().padStart(2, '0')
+      const s = (totalSeconds.value % 60).toString().padStart(2, '0')
       elapsedTime.value = `${m}:${s}`
     }
   }, 1000)

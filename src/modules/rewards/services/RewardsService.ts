@@ -39,10 +39,19 @@ export const RewardsService = {
         .eq('id', userId)
         .single()
 
+    // Check if this is the first completion of this route for unique count
+    const { count: completionCount } = await supabase
+        .from('route_completions')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('route_id', routeId)
+
+    const isUniqueCompletion = (completionCount || 0) === 0
+
     const newXp = (profile?.xp || 0) + xpGained
     const newDistance = (profile?.total_distance_meters || 0) + totalDistance
     const newSeconds = (profile?.total_seconds_spent || 0) + durationSeconds
-    const newCount = (profile?.routes_completed_count || 0) + 1
+    const newCount = (profile?.routes_completed_count || 0) + (isUniqueCompletion ? 1 : 0)
 
     // Simple leveling: Level up every 1000 XP for now
     const newLevel = Math.floor(newXp / 1000) + 1
