@@ -5,7 +5,7 @@ import { ModerationService, type ModerationRoute } from '../services/ModerationS
 import { ReportsService, type Report } from '../services/ReportsService'
 import { AdminService, type ProjectStats } from '../services/AdminService'
 import { FpBackButton, FpCard, FpButton, FpSpinner, FpConfirmationModal, FpInput } from '@/design-system'
-import { Clock, MapPin, User as UserIcon, ChevronRight, Check, X, AlertTriangle, MessageSquare, Activity, Users, ShieldAlert, Search } from 'lucide-vue-next'
+import { Clock, MapPin, User as UserIcon, ChevronRight, Check, X, AlertTriangle, Activity, Users, ShieldAlert, Search } from 'lucide-vue-next'
 
 const router = useRouter()
 const routes = ref<ModerationRoute[]>([])

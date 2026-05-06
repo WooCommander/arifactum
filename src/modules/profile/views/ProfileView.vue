@@ -9,7 +9,7 @@ import { useNotify } from '@/composables/useNotify'
 import { useI18n } from 'vue-i18n'
 import { useRewardsStore } from '@/modules/rewards'
 import { authStore } from '@/modules/auth/store/authStore'
-import { Shield, Settings, LogOut, ChevronRight } from 'lucide-vue-next'
+import { Shield, ChevronRight } from 'lucide-vue-next'
 import { changelog } from '@/data/changelog'
 
 const { t } = useI18n()

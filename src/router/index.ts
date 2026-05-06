@@ -82,7 +82,7 @@ const router = createRouter({
 
 // Guard placeholder
 router.beforeEach(async (to, _from, next) => {
-    const { isAuthenticated, isAdmin, isLoading } = authStore
+    const { isAuthenticated, isAdmin } = authStore
 
     const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
     const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin)

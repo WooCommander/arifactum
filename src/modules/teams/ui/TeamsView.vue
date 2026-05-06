@@ -1,12 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { useTeamsStore } from '../state/useTeamsStore'
 import TeamCard from './TeamCard.vue'
-import { FpBackButton, FpButton, FpInput, FpSpinner } from '@/design-system'
+import { FpButton, FpInput, FpSpinner } from '@/design-system'
 import { Plus, PersonStanding, LogIn } from 'lucide-vue-next'
-
-const router = useRouter()
 const { myTeams, isLoading, error, fetchMyTeams, createTeam, joinTeam, leaveTeam } = useTeamsStore()
 
 const showCreateModal = ref(false)
