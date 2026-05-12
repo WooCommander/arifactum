@@ -163,7 +163,7 @@ const mapPoints = computed(() =>
       lat: cp.lat,
       lng: cp.lng,
       id: cp.id,
-      title: cp.title || `Точка ${index + 1}`
+      title: cp.title || `Точка ${cp.order_index || (checkpoints.value.length - index)}`
     }))
 )
 
@@ -231,16 +231,19 @@ onMounted(async () => {
       tags.value = [...(routeData.tags || [])]
 
       if (checkpointData.length > 0) {
-        checkpoints.value = checkpointData.map(cp => ({
-          id: cp.id || Math.random().toString(36).substr(2, 9),
-          title: cp.title,
-          description: cp.description,
-          lat: cp.lat,
-          lng: cp.lng,
-          order_index: cp.order_index,
-          photo_url: cp.photo_url,
-          images: [...(cp.images || [])]
-        }))
+        // Сортируем в обратном порядке для редактора (новые сверху)
+        checkpoints.value = checkpointData
+          .sort((a, b) => b.order_index - a.order_index)
+          .map(cp => ({
+            id: cp.id || Math.random().toString(36).substr(2, 9),
+            title: cp.title,
+            description: cp.description,
+            lat: cp.lat,
+            lng: cp.lng,
+            order_index: cp.order_index,
+            photo_url: cp.photo_url,
+            images: [...(cp.images || [])]
+          }))
 
         // Центрируем на первой точке при редактировании
         if (checkpoints.value[0].lat !== 0) {
@@ -289,6 +292,7 @@ const handleMapClick = async (lat: number, lng: number) => {
       targetIndex = 0
       firstCp.lat = Number(lat.toFixed(6))
       firstCp.lng = Number(lng.toFixed(6))
+      firstCp.order_index = 1
       activeMarkerIndex.value = 0
     } else {
       targetIndex = 0
@@ -302,6 +306,8 @@ const handleMapClick = async (lat: number, lng: number) => {
         photo_url: null,
         images: [] as string[]
       })
+      // Пересчитываем индексы для визуальной согласованности
+      checkpoints.value.forEach((cp, i) => cp.order_index = checkpoints.value.length - i)
       activeMarkerIndex.value = 0
     }
   }
@@ -348,11 +354,11 @@ const addCheckpoint = () => {
     description: '',
     lat: 0,
     lng: 0,
-    order_index: 0,
+    order_index: checkpoints.value.length + 1,
     photo_url: null,
     images: [] as string[]
   })
-  checkpoints.value.forEach((cp, i) => cp.order_index = i)
+  checkpoints.value.forEach((cp, i) => cp.order_index = checkpoints.value.length - i)
   activeMarkerIndex.value = 0
 }
 
@@ -383,6 +389,8 @@ const requestDeleteCheckpoint = (index: number) => {
 const confirmDeleteCheckpoint = () => {
   if (indexToDelete.value !== null) {
     checkpoints.value.splice(indexToDelete.value, 1)
+    // Пересчитываем индексы после удаления
+    checkpoints.value.forEach((cp, i) => cp.order_index = checkpoints.value.length - i)
     indexToDelete.value = null
   }
   showDeleteConfirm.value = false
@@ -396,6 +404,8 @@ const onDrop = (index: number) => {
   if (draggedIndex.value === null) return
   const item = checkpoints.value.splice(draggedIndex.value, 1)[0]
   checkpoints.value.splice(index, 0, item)
+  // Пересчитываем индексы после перетаскивания
+  checkpoints.value.forEach((cp, i) => cp.order_index = checkpoints.value.length - i)
   draggedIndex.value = null
 }
 
