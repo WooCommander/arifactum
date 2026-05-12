@@ -163,7 +163,9 @@ const mapPoints = computed(() =>
       lat: cp.lat,
       lng: cp.lng,
       id: cp.id,
-      title: cp.title || `Точка ${cp.order_index || (checkpoints.value.length - index)}`
+      title: cp.title || `Точка ${cp.order_index || (checkpoints.value.length - index)}`,
+      order: cp.order_index || (checkpoints.value.length - index),
+      isActive: activeMarkerIndex.value === index
     }))
 )
 
@@ -336,6 +338,13 @@ const handleMarkerDragEnd = async (id: string, lat: number, lng: number) => {
     } finally {
       geocodingIndices.value.delete(index)
     }
+  }
+}
+
+const handleMarkerContextmenu = (id: string) => {
+  const index = checkpoints.value.findIndex(cp => cp.id === id)
+  if (index !== -1) {
+    requestDeleteCheckpoint(index)
   }
 }
 
@@ -593,7 +602,8 @@ const handleSave = async () => {
       <section v-if="currentStep === 2" class="route-map-step">
         <div class="map-container-sticky">
           <ArtMap class="creation-map" :points="mapPoints" :center="mapCenter" :user-location="userLocation" show-path
-            draggable-markers @map-click="handleMapClick" @marker-drag-end="handleMarkerDragEnd" />
+            draggable-markers @map-click="handleMapClick" @marker-drag-end="handleMarkerDragEnd"
+            @marker-contextmenu="handleMarkerContextmenu" />
           <div class="map-hint">
             <MapPin :size="14" />
             <span>Нажмите на карту, чтобы добавить точку</span>

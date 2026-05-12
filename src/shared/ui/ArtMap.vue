@@ -93,6 +93,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   (e: 'markerClick', id: string): void
+  (e: 'markerContextmenu', id: string): void
   (e: 'mapClick', lat: number, lng: number): void
   (e: 'update:followUser', value: boolean): void
   (e: 'toggleCompass'): void
@@ -222,6 +223,9 @@ const refreshMarkersLayer = () => {
     })
 
     if (props.draggableMarkers && p.id) {
+      marker.on('dragstart', (e) => {
+        L.DomEvent.stopPropagation(e)
+      })
       marker.on('dragend', (e) => {
         const newLatLng = e.target.getLatLng()
         emit('markerDragEnd', String(p.id), newLatLng.lat, newLatLng.lng)
@@ -229,6 +233,14 @@ const refreshMarkersLayer = () => {
     }
 
     if (p.id) {
+      marker.on('mousedown', (e) => {
+        L.DomEvent.stopPropagation(e)
+      })
+
+      marker.on('dblclick', (e) => {
+        L.DomEvent.stopPropagation(e)
+      })
+
       marker.on('click', (e) => {
         // Жестко останавливаем событие, чтобы оно не дошло до карты
         if (e.originalEvent) {
@@ -241,6 +253,43 @@ const refreshMarkersLayer = () => {
           (window as any).artSelectCheckpoint(String(p.id))
         }
         emit('markerClick', String(p.id))
+      })
+
+      marker.on('contextmenu', (e) => {
+        L.DomEvent.stopPropagation(e)
+        if (e.originalEvent) {
+          e.originalEvent.preventDefault()
+          e.originalEvent.stopPropagation()
+        }
+        emit('markerContextmenu', String(p.id))
+      })
+    }
+
+    if (p.title) {
+      marker.bindTooltip(p.title, {
+        direction: 'top',
+        offset: [0, -32],
+        className: 'art-marker-tooltip',
+        permanent: false,
+        sticky: false,
+        opacity: 0 // Скрываем стандартное поведение
+      })
+
+      let tooltipTimer: any = null
+
+      marker.on('mouseover', () => {
+        clearTimeout(tooltipTimer)
+        tooltipTimer = setTimeout(() => {
+          marker.getTooltip()?.setOpacity(1)
+          marker.openTooltip()
+        }, 300) // Задержка появления
+      })
+
+      marker.on('mouseout', () => {
+        clearTimeout(tooltipTimer)
+        tooltipTimer = setTimeout(() => {
+          marker.closeTooltip()
+        }, 200) // Задержка исчезновения
       })
     }
 
@@ -690,6 +739,25 @@ onUnmounted(() => {
 @keyframes cluster-pulse {
   0% { transform: scale(1); opacity: 0.3; }
   100% { transform: scale(1.5); opacity: 0; }
+}
+
+.art-marker-tooltip {
+  background: rgba(0, 0, 0, 0.85) !important;
+  backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 8px !important;
+  padding: 6px 12px !important;
+  color: white !important;
+  font-family: inherit !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5) !important;
+  pointer-events: none !important;
+  transition: opacity 0.3s ease !important;
+
+  &::before {
+    border-top-color: rgba(0, 0, 0, 0.85) !important;
+  }
 }
 </style>
 
