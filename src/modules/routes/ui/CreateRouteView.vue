@@ -280,23 +280,16 @@ onUnmounted(() => {
 const handleMapClick = async (lat: number, lng: number) => {
   let targetIndex = -1
 
-  if (activeMarkerIndex.value !== null) {
-    targetIndex = activeMarkerIndex.value
-    const cp = checkpoints.value[targetIndex]
-    cp.lat = Number(lat.toFixed(6))
-    cp.lng = Number(lng.toFixed(6))
-    activeMarkerIndex.value = null
+  const firstCp = checkpoints.value[0]
+  if (checkpoints.value.length === 1 && !firstCp.title && firstCp.lat === 0) {
+    targetIndex = 0
+    firstCp.lat = Number(lat.toFixed(6))
+    firstCp.lng = Number(lng.toFixed(6))
+    firstCp.order_index = 1
+    activeMarkerIndex.value = 0
   } else {
-    const firstCp = checkpoints.value[0]
-    if (checkpoints.value.length === 1 && !firstCp.title && firstCp.lat === 0) {
-      targetIndex = 0
-      firstCp.lat = Number(lat.toFixed(6))
-      firstCp.lng = Number(lng.toFixed(6))
-      firstCp.order_index = 1
-      activeMarkerIndex.value = 0
-    } else {
-      targetIndex = 0
-      checkpoints.value.unshift({
+    targetIndex = 0
+    checkpoints.value.unshift({
         id: Math.random().toString(36).substr(2, 9),
         title: '',
         description: '',
@@ -306,10 +299,9 @@ const handleMapClick = async (lat: number, lng: number) => {
         photo_url: null,
         images: [] as string[]
       })
-      // Пересчитываем индексы для визуальной согласованности
-      checkpoints.value.forEach((cp, i) => cp.order_index = checkpoints.value.length - i)
-      activeMarkerIndex.value = 0
-    }
+    // Пересчитываем индексы для визуальной согласованности
+    checkpoints.value.forEach((cp, i) => cp.order_index = checkpoints.value.length - i)
+    activeMarkerIndex.value = 0
   }
 
   // Автоматическое получение адреса
