@@ -165,7 +165,9 @@ const mapPoints = computed(() =>
       id: cp.id,
       title: cp.title || `Точка ${cp.order_index || (checkpoints.value.length - index)}`,
       order: cp.order_index || (checkpoints.value.length - index),
-      isActive: activeMarkerIndex.value === index
+      isActive: activeMarkerIndex.value === index,
+      imageUrl: cp.photo_url || cp.images?.[0] || null,
+      hasDescription: !!cp.description && cp.description.trim().length > 0
     }))
 )
 
@@ -337,6 +339,18 @@ const handleMarkerDragEnd = async (id: string, lat: number, lng: number) => {
       }
     } finally {
       geocodingIndices.value.delete(index)
+    }
+  }
+}
+
+const handleMarkerClick = (id: string) => {
+  const index = checkpoints.value.findIndex(cp => cp.id === id)
+  if (index !== -1) {
+    activeMarkerIndex.value = index
+    // Опционально: скроллим к карточке в списке
+    const el = document.getElementById(`cp-${id}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
   }
 }
@@ -603,7 +617,7 @@ const handleSave = async () => {
         <div class="map-container-sticky">
           <ArtMap class="creation-map" :points="mapPoints" :center="mapCenter" :user-location="userLocation" show-path
             draggable-markers @map-click="handleMapClick" @marker-drag-end="handleMarkerDragEnd"
-            @marker-contextmenu="handleMarkerContextmenu" />
+            @marker-contextmenu="handleMarkerContextmenu" @marker-click="handleMarkerClick" />
           <div class="map-hint">
             <MapPin :size="14" />
             <span>Нажмите на карту, чтобы добавить точку</span>
@@ -619,7 +633,7 @@ const handleSave = async () => {
           </div>
 
           <TransitionGroup name="list" tag="div" class="cp-list">
-            <div v-for="(cp, index) in checkpoints" :key="cp.id" class="cp-compact-card"
+            <div v-for="(cp, index) in checkpoints" :key="cp.id" :id="'cp-' + cp.id" class="cp-compact-card"
               :class="{ active: activeMarkerIndex === index, 'is-dragging': draggedIndex === index }"
               draggable="true"
               @dragstart="onDragStart(index)"

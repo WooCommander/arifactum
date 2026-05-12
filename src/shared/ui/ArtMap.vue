@@ -51,6 +51,8 @@ interface Point {
   isCompleted?: boolean
   isActive?: boolean
   order?: number
+  imageUrl?: string | null
+  hasDescription?: boolean
 }
 
 interface Props {
@@ -266,13 +268,25 @@ const refreshMarkersLayer = () => {
     }
 
     if (p.title) {
-      marker.bindTooltip(p.title, {
+      const tooltipContent = `
+        <div class="art-tooltip-content">
+          ${p.imageUrl ? `<div class="tooltip-thumb" style="background-image: url('${p.imageUrl}')"></div>` : ''}
+          <div class="tooltip-main">
+            <span class="tooltip-text">${p.title}</span>
+            <div class="tooltip-badges">
+              ${p.imageUrl ? '<span class="badge">🖼️</span>' : ''}
+              ${p.hasDescription ? '<span class="badge">📝</span>' : ''}
+            </div>
+          </div>
+        </div>
+      `
+      marker.bindTooltip(tooltipContent, {
         direction: 'top',
         offset: [0, -32],
         className: 'art-marker-tooltip',
         permanent: false,
         sticky: false,
-        opacity: 0 // Скрываем стандартное поведение
+        opacity: 0
       })
 
       let tooltipTimer: any = null
@@ -757,6 +771,44 @@ onUnmounted(() => {
 
   &::before {
     border-top-color: rgba(0, 0, 0, 0.85) !important;
+  }
+}
+
+.art-tooltip-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 200px;
+
+  .tooltip-thumb {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    background-size: cover;
+    background-position: center;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    flex-shrink: 0;
+  }
+
+  .tooltip-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .tooltip-main {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .tooltip-badges {
+    display: flex;
+    gap: 4px;
+    font-size: 10px;
   }
 }
 </style>
