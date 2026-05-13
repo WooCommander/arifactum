@@ -9,7 +9,7 @@ export interface ReleaseNote {
 
 export const changelog: ReleaseNote[] = [
     {
-        version: '2.16.1',
+        version: '2.17.0',
         date: '2026-05-13',
         highlights: [
             'UX Optimization: Умный порядок точек в маршрутах'
