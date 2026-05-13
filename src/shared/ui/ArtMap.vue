@@ -211,7 +211,7 @@ const refreshMarkersLayer = () => {
       })
     }
 
-    clusters.forEach((pts, key) => {
+    clusters.forEach((pts) => {
       if (pts.length > 1) {
         const avgLat = pts.reduce((acc, p) => acc + p.lat, 0) / pts.length
         const avgLng = pts.reduce((acc, p) => acc + p.lng, 0) / pts.length
@@ -250,7 +250,6 @@ const refreshMarkersLayer = () => {
       } else {
         // Single point in cluster area - show as normal marker
         const p = pts[0]
-        const id = String(p.id || `${p.lat}-${p.lng}`)
         
         const iconHtml = `
           <div class="marker-pin route-marker active">
@@ -667,17 +666,6 @@ const initializeLeafletMap = () => {
     emit('update:followUser', false)
     startInactivityTimer()
   })
-}
-
-const getCategoryEmoji = (cat?: string) => {
-  switch (cat) {
-    case 'Природа': return '🌲'
-    case 'История': return '🏛️'
-    case 'Квест': return '🔎'
-    case 'Город': return '🏙️'
-    case 'Еда': return '🍴'
-    default: return '🗺️'
-  }
 }
 
 watch(() => props.targetLocation, () => {
