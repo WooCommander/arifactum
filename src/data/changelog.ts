@@ -9,6 +9,25 @@ export interface ReleaseNote {
 
 export const changelog: ReleaseNote[] = [
     {
+        version: '2.20.0',
+        date: '2026-05-14',
+        highlights: [
+            'Teams Stability & UI: Удаление команд, премиум-модалки и исправление ошибок БД'
+        ],
+        features: [
+            'Team Deletion: Лидеры команд теперь могут полностью расформировать команду и исключить всех участников.',
+            'Premium Confirmation Modals: Системные окна заменены на кастомные анимированные модалки с блюром.',
+            'Independent List Scrolling: Теперь список команд скроллится отдельно от фиксированной шапки.',
+            'RLS Blind Insert: Решена проблема "new row violates row-level security policy" при создании команд.',
+            'Infinite Recursion Fix: Исправлена критическая ошибка зацикливания прав в БД (Infinite Recursion detected).',
+            'Invite Code UI: Улучшено копирование кодов и дизайн карточек участников.'
+        ],
+        fixes: [
+            'Исправлена ошибка блокировки создания команды из-за политик SELECT.',
+            'Устранена проблема "белого экрана" при вступлении в команду по инвайт-коду.'
+        ]
+    },
+    {
         version: '2.19.0',
         date: '2026-05-14',
         highlights: [
