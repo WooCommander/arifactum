@@ -2,10 +2,11 @@
 import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { AuthService } from '@/modules/auth/services/AuthService'
-import FpCard from '@/design-system/components/FpCard.vue'
-import FpButton from '@/design-system/components/FpButton.vue'
-import { FpPullToRefresh } from '@/design-system'
-import { Users, Navigation } from 'lucide-vue-next'
+import { FpPullToRefresh, FpSpinner, FpCard, FpButton } from '@/design-system'
+import { Users, Navigation, Map as MapIcon, ChevronRight, X } from 'lucide-vue-next'
+import { useRoutesStore } from '@/modules/routes/state/useRoutesStore'
+import ArtMap from '@/shared/ui/ArtMap.vue'
+import type { Route } from '@/modules/routes/types'
 
 const router = useRouter()
 
@@ -26,12 +27,34 @@ const greeting = computed(() => {
 const userStats = ref<any>(null)
 const isLoading = ref(true)
 
+const { routes, fetchRoutes } = useRoutesStore()
+const selectedRoute = ref<Route | null>(null)
+
+const routePoints = computed(() => {
+  return routes.value
+    .filter(r => r.startLat != null && r.startLng != null)
+    .map(r => ({
+      id: r.id,
+      lat: r.startLat!,
+      lng: r.startLng!,
+      title: r.title,
+      imageUrl: r.imageUrl,
+      category: r.category
+    }))
+})
+
+const handleMarkerClick = (id: string) => {
+  const r = routes.value.find(route => route.id === id)
+  if (r) selectedRoute.value = r
+}
+
 const loadData = async () => {
   isLoading.value = true
   try {
     const [stats, profile] = await Promise.all([
       AuthService.getUserStats(),
-      AuthService.getProfile()
+      AuthService.getProfile(),
+      fetchRoutes()
     ])
     userStats.value = stats
     userProfile.value = profile
@@ -115,6 +138,45 @@ onMounted(loadData)
               </div>
             </div>
           </FpCard>
+        </section>
+
+        <!-- Global Routes Map -->
+        <section class="global-map-section">
+          <div class="section-header">
+            <h2 class="section-title">Карта приключений 🗺️</h2>
+          </div>
+          
+          <div class="map-wrapper">
+            <ArtMap 
+              class="home-map"
+              :points="routePoints"
+              :is-clustered="true"
+              @marker-click="handleMarkerClick"
+              @map-click="selectedRoute = null"
+            />
+            
+            <transition name="slide-up">
+              <div v-if="selectedRoute" class="route-mini-popup">
+                <div class="popup-content">
+                  <div class="route-thumb" :style="selectedRoute.imageUrl ? `background-image: url(${selectedRoute.imageUrl})` : ''">
+                    <Navigation v-if="!selectedRoute.imageUrl" :size="24" />
+                  </div>
+                  <div class="route-info">
+                    <h4>{{ selectedRoute.title }}</h4>
+                    <p>{{ selectedRoute.category }} • {{ selectedRoute.checkpointsCount }} точек</p>
+                  </div>
+                  <div class="popup-actions">
+                    <FpButton variant="primary" size="sm" @click="router.push(`/route/${selectedRoute.id}`)">
+                      <ChevronRight :size="18" />
+                    </FpButton>
+                  </div>
+                  <button class="close-popup" @click="selectedRoute = null">
+                    <X :size="18" />
+                  </button>
+                </div>
+              </div>
+            </transition>
+          </div>
         </section>
 
         <!-- Placeholder for active quest if exists -->
@@ -328,6 +390,111 @@ onMounted(loadData)
     color: var(--color-primary);
     font-weight: 800;
   }
+}
+
+.global-map-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.map-wrapper {
+  position: relative;
+  height: 350px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+}
+
+.home-map {
+  width: 100%;
+  height: 100%;
+}
+
+.route-mini-popup {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  right: 16px;
+  z-index: 10000;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--color-border);
+  backdrop-filter: blur(10px);
+  animation: slide-up 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  .popup-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+  }
+
+  .route-thumb {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    background: var(--color-background);
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-primary);
+    flex-shrink: 0;
+  }
+
+  .route-info {
+    flex: 1;
+    min-width: 0;
+    
+    h4 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    p {
+      margin: 2px 0 0;
+      font-size: 11px;
+      color: var(--color-text-tertiary);
+    }
+  }
+
+  .close-popup {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-secondary);
+    box-shadow: var(--shadow-sm);
+  }
+}
+
+@keyframes slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.slide-up-enter-active, .slide-up-leave-active {
+  transition: all 0.3s ease;
+}
+.slide-up-enter-from, .slide-up-leave-to {
+  transform: translateY(100%);
+  opacity: 0;
 }
 </style>
 ```

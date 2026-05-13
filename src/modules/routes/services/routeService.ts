@@ -7,7 +7,7 @@ export const routeService = {
     async getRoutes(userId?: string, options?: { search?: string, category?: string, authorId?: string }): Promise<RouteDTO[]> {
         let query = supabase
             .from('routes')
-            .select('*, profiles(display_name, avatar_url), checkpoints_count:checkpoints(count)')
+            .select('*, profiles(display_name, avatar_url), checkpoints_count:checkpoints(count), start_point:checkpoints(lat, lng)')
             .eq('is_blocked', false)
             .order('created_at', { ascending: false })
 

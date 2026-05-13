@@ -43,6 +43,8 @@ export interface Route {
     createdAt: string
     isLiked?: boolean
     isFavorite?: boolean
+    startLat?: number
+    startLng?: number
 }
 
 export interface CheckpointDTO {

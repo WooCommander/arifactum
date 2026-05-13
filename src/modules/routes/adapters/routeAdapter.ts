@@ -22,7 +22,9 @@ export const routeAdapter = {
             completionsCount: dto.completions_count || 0,
             authorName: dto.profiles?.display_name || 'Неизвестный автор',
             authorAvatar: dto.profiles?.avatar_url,
-            createdAt: dto.created_at
+            createdAt: dto.created_at,
+            startLat: (dto as any).start_point?.[0]?.lat,
+            startLng: (dto as any).start_point?.[0]?.lng
         }
     },
 

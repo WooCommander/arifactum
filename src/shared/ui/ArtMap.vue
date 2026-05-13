@@ -53,6 +53,7 @@ interface Point {
   order?: number
   imageUrl?: string | null
   hasDescription?: boolean
+  category?: string
 }
 
 interface Props {
@@ -108,7 +109,7 @@ const markersMap = new Map<string, L.Marker>()
 const markersList = ref<L.Marker[]>([]) // Для совместимости с другими частями кода, если нужно
 const userMarker = shallowRef<L.Marker | null>(null)
 const teammateMarkers = ref<Map<string, L.Marker>>(new Map())
-const clusterMarker = shallowRef<L.Marker | null>(null)
+const clusterMarkers = ref<L.Marker[]>([])
 const navLine = shallowRef<L.Polyline | null>(null)
 const routeLine = shallowRef<L.Polyline | null>(null)
 const navArrow = shallowRef<L.Marker | null>(null)
@@ -168,46 +169,95 @@ const recenter = () => {
 const refreshMarkersLayer = () => {
   if (!map.value) return
 
-  if (clusterMarker.value) {
-    clusterMarker.value.remove()
-    clusterMarker.value = null
+  markersMap.forEach(m => m.remove())
+  markersMap.clear()
+  markersList.value = []
+
+  if (clusterMarkers.value.length > 0) {
+    clusterMarkers.value.forEach(m => m.remove())
+    clusterMarkers.value = []
   }
 
   if (props.points.length === 0) {
-    markersMap.forEach(m => m.remove())
-    markersMap.clear()
-    markersList.value = []
     return
   }
 
   if (props.points.length === 0) return
 
   if (props.isClustered) {
-    const avgLat = props.points.reduce((acc, p) => acc + p.lat, 0) / props.points.length
-    const avgLng = props.points.reduce((acc, p) => acc + p.lng, 0) / props.points.length
-
-    clusterMarker.value = L.marker([avgLat, avgLng], {
-      icon: L.divIcon({
-        className: 'route-cluster-marker',
-        html: `
-                    <div class="cluster-inner">
-                        <span class="count">${props.points.length}</span>
-                        <span class="label">точек</span>
-                    </div>
-                    <div class="cluster-pulse"></div>
-                `,
-        iconSize: [64, 64],
-        iconAnchor: [32, 32]
-      })
-    }).addTo(map.value as L.Map)
-
-    clusterMarker.value.on('click', () => {
-      const group = L.featureGroup(props.points.map(p => L.marker([p.lat, p.lng])))
-      map.value?.fitBounds(group.getBounds(), { padding: [50, 50] })
+    // Simple grid-based clustering
+    const clusters = new Map<string, Point[]>()
+    props.points.forEach(p => {
+      const key = `${p.lat.toFixed(1)}_${p.lng.toFixed(1)}`
+      if (!clusters.has(key)) clusters.set(key, [])
+      clusters.get(key)!.push(p)
     })
 
-    if (!props.center) {
-      map.value.setView([avgLat, avgLng], 14)
+    clusters.forEach((pts, key) => {
+      if (pts.length > 1) {
+        const avgLat = pts.reduce((acc, p) => acc + p.lat, 0) / pts.length
+        const avgLng = pts.reduce((acc, p) => acc + p.lng, 0) / pts.length
+
+        const marker = L.marker([avgLat, avgLng], {
+          icon: L.divIcon({
+            className: 'route-cluster-marker',
+            html: `
+                        <div class="cluster-inner">
+                            <span class="count">${pts.length}</span>
+                            <span class="label">марш.</span>
+                        </div>
+                        <div class="cluster-pulse"></div>
+                    `,
+            iconSize: [64, 64],
+            iconAnchor: [32, 32]
+          })
+        }).addTo(map.value as L.Map)
+
+        marker.on('click', (e) => {
+          L.DomEvent.stopPropagation(e)
+          const bounds = L.featureGroup(pts.map(p => L.marker([p.lat, p.lng]))).getBounds()
+          const currentZoom = map.value?.getZoom() || 0
+          
+          map.value?.fitBounds(bounds, { padding: [50, 50] })
+          
+          // Если после fitBounds зум не изменился (точки слишком близко или в одной координате)
+          setTimeout(() => {
+            if (map.value && map.value.getZoom() <= currentZoom) {
+              map.value.zoomIn(2)
+            }
+          }, 100)
+        })
+
+        clusterMarkers.value.push(marker)
+      } else {
+        // Single point in cluster area - show as normal marker
+        const p = pts[0]
+        const id = String(p.id || `${p.lat}-${p.lng}`)
+        
+        const iconHtml = `
+          <div class="marker-pin route-marker active">
+            <div class="marker-icon">${getCategoryEmoji(p.category)}</div>
+            <div class="marker-dot"></div>
+          </div>
+        `
+        const icon = L.divIcon({
+          className: 'art-marker',
+          html: iconHtml,
+          iconSize: [32, 32],
+          iconAnchor: [16, 32]
+        })
+
+        const marker = L.marker([p.lat, p.lng], { icon }).addTo(map.value as L.Map)
+        setupMarkerEvents(marker, p)
+        if (p.title) updateTooltip(marker, p)
+        
+        clusterMarkers.value.push(marker)
+      }
+    })
+
+    if (!props.center && props.points.length > 0) {
+      const group = L.featureGroup(props.points.map(p => L.marker([p.lat, p.lng])))
+      map.value.fitBounds(group.getBounds(), { padding: [40, 40] })
     }
     return
   }
@@ -596,6 +646,17 @@ const initializeLeafletMap = () => {
   })
 }
 
+const getCategoryEmoji = (cat?: string) => {
+  switch (cat) {
+    case 'Природа': return '🌲'
+    case 'История': return '🏛️'
+    case 'Квест': return '🔎'
+    case 'Город': return '🏙️'
+    case 'Еда': return '🍴'
+    default: return '🗺️'
+  }
+}
+
 watch(() => props.targetLocation, () => {
   updateNavigationLine()
 })
@@ -639,6 +700,7 @@ onUnmounted(() => {
     if (navLine.value) navLine.value.remove()
     if (routeLine.value) routeLine.value.remove()
     if (navArrow.value) navArrow.value.remove()
+    clusterMarkers.value.forEach(m => m.remove())
     
     map.value.remove()
     map.value = null
@@ -714,11 +776,19 @@ onUnmounted(() => {
       opacity: 0.6;
     }
 
-    &.active {
+    &.active, &.route-marker {
       background: var(--color-primary) !important;
-      border-color: var(--color-white) !important;
-      box-shadow: 0 0 20px var(--color-primary);
-      transform: rotate(-45deg) scale(1.2);
+      border-color: #000 !important;
+      box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary) 40%, transparent);
+      
+      .marker-number, .marker-icon {
+        color: #000 !important;
+      }
+    }
+    
+    .marker-icon {
+      transform: rotate(45deg);
+      font-size: 16px;
     }
   }
 }
@@ -799,17 +869,18 @@ onUnmounted(() => {
 
 .route-cluster-marker {
   .cluster-inner {
-    width: 64px;
-    height: 64px;
-    background: var(--color-primary);
-    border: 4px solid var(--color-surface);
+    width: 48px;
+    height: 48px;
+    background: color-mix(in srgb, var(--color-primary) 90%, transparent);
+    backdrop-filter: blur(4px);
+    border: 2px solid rgba(0, 0, 0, 0.2);
     border-radius: 50%;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     color: #000;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
     position: relative;
     z-index: 2;
 
@@ -833,8 +904,8 @@ onUnmounted(() => {
     left: 50%;
     width: 100%;
     height: 100%;
-    margin-top: -32px;
-    margin-left: -32px;
+    margin-top: -24px;
+    margin-left: -24px;
     background: var(--color-primary);
     border-radius: 50%;
     opacity: 0.3;
