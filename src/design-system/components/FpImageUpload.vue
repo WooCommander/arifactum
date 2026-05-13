@@ -158,20 +158,9 @@ async function compressImage(file: File): Promise<File> {
 
 <template>
   <div class="fp-image-upload">
-    <input
-      ref="fileInput"
-      type="file"
-      accept="image/*"
-      class="hidden-input"
-      @change="handleFileChange"
-    />
+    <input ref="fileInput" type="file" accept="image/*" class="hidden-input" @change="handleFileChange" />
 
-    <FpButton
-      variant="outline"
-      class="upload-trigger"
-      :disabled="isUploading"
-      @click="triggerUpload"
-    >
+    <FpButton variant="outline" class="upload-trigger" :disabled="isUploading" @click="triggerUpload">
       <FpSpinner v-if="isUploading" size="sm" />
       <template v-else>
         <Upload :size="18" />
@@ -209,7 +198,7 @@ async function compressImage(file: File): Promise<File> {
   min-height: 48px;
   border-style: dashed;
   background: var(--color-surface);
-  
+
   &:hover {
     border-style: solid;
     background: color-mix(in srgb, var(--color-primary) 5%, transparent);
@@ -236,7 +225,7 @@ async function compressImage(file: File): Promise<File> {
     align-items: center;
     cursor: pointer;
     opacity: 0.7;
-    
+
     &:hover {
       opacity: 1;
     }

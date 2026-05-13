@@ -56,6 +56,12 @@ const classes = computed(() => [
   transition: all 0.2s ease;
   overflow: hidden;
 
+  &__content {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+
   // Sizes & Radius
   &--sm {
     height: 32px;

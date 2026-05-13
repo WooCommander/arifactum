@@ -635,6 +635,11 @@ const handleSave = async () => {
           <ArtMap class="creation-map" :points="mapPoints" :center="mapCenter" :user-location="userLocation" show-path
             draggable-markers @map-click="handleMapClick" @marker-drag-end="handleMarkerDragEnd"
             @marker-contextmenu="handleMarkerContextmenu" @marker-click="handleMarkerClick" />
+          
+          <button v-if="activeMarkerIndex !== null" class="map-deselect-btn" title="Снять выделение" @click="activeMarkerIndex = null">
+            <CloseIcon :size="20" />
+          </button>
+
           <div class="map-hint">
             <MapPin :size="14" />
             <span>Нажмите на карту, чтобы добавить точку</span>
@@ -869,6 +874,32 @@ const handleSave = async () => {
 
   :deep(.leaflet-control-zoom) {
     margin-bottom: 24px !important;
+  }
+}
+
+.map-deselect-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-md);
+  z-index: 1001;
+  transition: all 0.2s;
+
+  &:hover {
+    background: var(--color-background);
+  }
+
+  &:active {
+    transform: scale(0.95);
   }
 }
 
