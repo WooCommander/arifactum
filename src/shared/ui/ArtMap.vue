@@ -54,6 +54,7 @@ interface Point {
   imageUrl?: string | null
   hasDescription?: boolean
   category?: string
+  checkpointsCount?: number
 }
 
 interface Props {
@@ -253,8 +254,7 @@ const refreshMarkersLayer = () => {
         
         const iconHtml = `
           <div class="marker-pin route-marker active">
-            <div class="marker-icon">${getCategoryEmoji(p.category)}</div>
-            <div class="marker-dot"></div>
+            <span class="marker-count">${p.checkpointsCount || ''}</span>
           </div>
         `
         const icon = L.divIcon({
@@ -804,15 +804,16 @@ onUnmounted(() => {
       background: var(--color-primary) !important;
       border-color: #000 !important;
       box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary) 40%, transparent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
       
-      .marker-number, .marker-icon {
+      .marker-count {
+        transform: rotate(45deg);
         color: #000 !important;
+        font-size: 14px;
+        font-weight: 900;
       }
-    }
-    
-    .marker-icon {
-      transform: rotate(45deg);
-      font-size: 16px;
     }
   }
 }

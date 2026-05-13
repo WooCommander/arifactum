@@ -39,7 +39,8 @@ const routePoints = computed(() => {
       lng: r.startLng!,
       title: r.title,
       imageUrl: r.imageUrl,
-      category: r.category
+      category: r.category,
+      checkpointsCount: r.checkpointsCount
     }))
 })
 
