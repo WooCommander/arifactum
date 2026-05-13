@@ -1703,11 +1703,30 @@ onMounted(async () => {
   opacity: 0;
 }
 
+.map-section {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--color-background);
+  margin-bottom: 24px;
+  padding: 12px 0 20px;
+  border-bottom: 1px solid var(--color-border);
+  
+  h2 {
+    font-size: 16px;
+    font-weight: 800;
+    margin-bottom: 12px;
+    color: var(--color-text-tertiary);
+  }
+}
+
 .route-map {
-  height: 200px;
-  border-radius: var(--radius-md);
+  height: 40vh;
+  min-height: 240px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
   border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 
   &.full-screen {
