@@ -113,6 +113,7 @@ const clusterMarkers = ref<L.Marker[]>([])
 const navLine = shallowRef<L.Polyline | null>(null)
 const routeLine = shallowRef<L.Polyline | null>(null)
 const navArrow = shallowRef<L.Marker | null>(null)
+const hasInitialFit = ref(false)
 
 const inactivityTimer = ref<any>(null)
 const autoFollowCountdown = ref<number | null>(null)
@@ -185,13 +186,29 @@ const refreshMarkersLayer = () => {
   if (props.points.length === 0) return
 
   if (props.isClustered) {
-    // Simple grid-based clustering
+    // Dynamic clustering based on zoom level
     const clusters = new Map<string, Point[]>()
-    props.points.forEach(p => {
-      const key = `${p.lat.toFixed(1)}_${p.lng.toFixed(1)}`
-      if (!clusters.has(key)) clusters.set(key, [])
-      clusters.get(key)!.push(p)
-    })
+    const zoom = map.value?.getZoom() || 10
+    
+    // If we are zoomed in enough, don't cluster at all
+    if (zoom > 14) {
+      props.points.forEach(p => {
+        const key = String(p.id || `${p.lat}_${p.lng}`)
+        clusters.set(key, [p])
+      })
+    } else {
+      // Exponentially shrinking grid size
+      const gridSize = 0.5 / Math.pow(2, zoom - 7)
+
+      props.points.forEach(p => {
+        const latKey = Math.floor(p.lat / gridSize)
+        const lngKey = Math.floor(p.lng / gridSize)
+        const key = `${latKey}_${lngKey}`
+        
+        if (!clusters.has(key)) clusters.set(key, [])
+        clusters.get(key)!.push(p)
+      })
+    }
 
     clusters.forEach((pts, key) => {
       if (pts.length > 1) {
@@ -255,9 +272,10 @@ const refreshMarkersLayer = () => {
       }
     })
 
-    if (!props.center && props.points.length > 0) {
+    if (!props.center && props.points.length > 0 && !hasInitialFit.value) {
       const group = L.featureGroup(props.points.map(p => L.marker([p.lat, p.lng])))
       map.value.fitBounds(group.getBounds(), { padding: [40, 40] })
+      hasInitialFit.value = true
     }
     return
   }
@@ -322,8 +340,9 @@ const refreshMarkersLayer = () => {
 
   markersList.value = Array.from(markersMap.values())
 
-  if (props.points.length > 1 && !props.center && !props.followUser) {
+  if (props.points.length > 1 && !props.center && !props.followUser && !hasInitialFit.value) {
     (map.value as L.Map).fitBounds(group.getBounds(), { padding: [40, 40] })
+    hasInitialFit.value = true
   }
 }
 
@@ -635,6 +654,10 @@ const initializeLeafletMap = () => {
     emit('mapClick', e.latlng.lat, e.latlng.lng)
   })
 
+  map.value.on('zoomend', () => {
+    refreshMarkersLayer()
+  })
+
   map.value.on('dragstart', () => {
     emit('update:followUser', false)
     startInactivityTimer()
@@ -662,6 +685,7 @@ watch(() => props.targetLocation, () => {
 })
 
 watch(() => props.points, () => {
+  hasInitialFit.value = false
   refreshMarkersLayer()
   updateRouteLine()
 }, { deep: true })
