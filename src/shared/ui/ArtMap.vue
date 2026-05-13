@@ -603,11 +603,12 @@ onUnmounted(() => {
     border: 2px solid var(--color-border);
     border-radius: 50% 50% 50% 0;
     transform: rotate(-45deg);
+    transform-origin: bottom center;
     display: flex;
     align-items: center;
     justify-content: center;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-    transition: all 0.3s ease;
+    transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s, transform 0.3s;
     
     .marker-number {
       transform: rotate(45deg);

@@ -354,6 +354,12 @@ const selectAndFocusPoint = (index: number) => {
   const cp = checkpoints.value[index]
   if (!cp) return
 
+  // Если точка уже выбрана - снимаем выделение
+  if (activeMarkerIndex.value === index) {
+    activeMarkerIndex.value = null
+    return
+  }
+
   activeMarkerIndex.value = index
   if (cp.lat !== 0 && cp.lng !== 0) {
     mapCenter.value = [cp.lat, cp.lng]
