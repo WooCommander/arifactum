@@ -3,9 +3,10 @@ import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { AuthService } from '@/modules/auth/services/AuthService'
 import { FpPullToRefresh, FpCard, FpButton } from '@/design-system'
-import { Users, Navigation, ChevronRight, X } from 'lucide-vue-next'
+import { Users, Navigation, ChevronRight, X, Lightbulb, Map as MapIcon } from 'lucide-vue-next'
 import { useRoutesStore } from '@/modules/routes/state/useRoutesStore'
 import ArtMap from '@/shared/ui/ArtMap.vue'
+import { LocationService } from '@/shared/lib/LocationService'
 import type { Route } from '@/modules/routes/types'
 
 const router = useRouter()
@@ -21,6 +22,72 @@ const greeting = computed(() => {
   if (hour < 12) return 'Доброе утро'
   if (hour < 18) return 'Добрый день'
   return 'Добрый вечер'
+})
+
+// Tip of the Day
+const tips = [
+  'Исследуй новые места, чтобы повысить свой уровень и открыть редкие артефакты!',
+  'Не забывай брать с собой воду и пауэрбанк в долгие городские маршруты.',
+  'Создавай свои маршруты в редакторе и делись ими — лучшие попадают в топ!',
+  'Находи артефакты, чтобы пополнить свою коллекцию в Музее и получить бонусы.',
+  'Используй режим компаса на карте, чтобы она всегда вращалась по твоему курсу.',
+  'Кликни на кластер на карте, чтобы увидеть все маршруты в этой области.',
+  'Твой прогресс сохраняется автоматически — исследуй мир в своем темпе!'
+]
+
+const dailyTip = computed(() => {
+  const level = userStats.value?.level || 1
+  
+  const noviceTips = [
+    'Исследуй новые места, чтобы повысить свой уровень и открыть редкие артефакты!',
+    'Кликни на иконку маршрута на карте, чтобы увидеть количество точек в нем.',
+    'Твой прогресс сохраняется автоматически — исследуй мир в своем темпе!',
+    'Находи артефакты, чтобы пополнить свою коллекцию в Музее и получить бонусы.'
+  ]
+  
+  const proTips = [
+    'Создавай свои маршруты в редакторе и делись ими — лучшие попадают в топ!',
+    'Используй режим компаса на карте, чтобы она всегда вращалась по твоему курсу.',
+    'Кликни на кластер на карте, чтобы увидеть все маршруты в этой области.',
+    'Стань мастером региона, создав 5 популярных маршрутов в своем городе!'
+  ]
+
+  const relevantTips = level < 5 ? noviceTips : proTips
+  const dayOfYear = Math.floor((new Date().getTime() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000)
+  return relevantTips[dayOfYear % relevantTips.length]
+})
+
+// Location & Nearest Route
+const userLocation = ref<{ lat: number; lng: number } | null>(null)
+
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371
+  const dLat = (lat2 - lat1) * (Math.PI / 180)
+  const dLon = (lon2 - lon1) * (Math.PI / 180)
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * 
+            Math.sin(dLon/2) * Math.sin(dLon/2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+  return R * c
+}
+
+const nearestRoute = computed(() => {
+  if (!userLocation.value || !routes.value.length) return null
+  
+  const routesWithDistance = routes.value
+    .filter(r => r.startLat && r.startLng)
+    .map(r => ({
+      ...r,
+      distance: calculateDistance(
+        userLocation.value!.lat,
+        userLocation.value!.lng,
+        r.startLat!,
+        r.startLng!
+      )
+    }))
+    .sort((a, b) => a.distance - b.distance)
+    
+  return routesWithDistance[0] || null
 })
 
 // Personalized Data
@@ -52,13 +119,17 @@ const handleMarkerClick = (id: string) => {
 const loadData = async () => {
   isLoading.value = true
   try {
-    const [stats, profile] = await Promise.all([
+    const [stats, profile, loc] = await Promise.all([
       AuthService.getUserStats(),
       AuthService.getProfile(),
+      LocationService.getCurrentPosition().catch(() => null),
       fetchRoutes()
     ])
     userStats.value = stats
     userProfile.value = profile
+    if (loc) {
+      userLocation.value = { lat: loc.latitude, lng: loc.longitude }
+    }
   } catch (e) {
     console.error('Failed to load home data', e)
   } finally {
@@ -86,24 +157,13 @@ onMounted(loadData)
           </div>
         </div>
 
-        <FpCard v-if="userStats" class="profile-card">
-          <div class="profile-header">
-            <div class="level-badge">LVL {{ userStats.level }}</div>
-            <div class="profile-main">
-              <span class="level-title">{{ userStats.levelTitle }}</span>
-              <span class="points-text">{{ userStats.reputation }} очков репутации</span>
-            </div>
+        <FpCard class="tip-of-the-day" padding="md">
+          <div class="tip-icon">
+            <Lightbulb :size="24" />
           </div>
-          <div class="progress-container">
-            <div class="progress-bar">
-              <div class="progress-fill"
-                :style="{ width: Math.min(100, (userStats.reputation / userStats.nextLevelThreshold) * 100) + '%' }">
-              </div>
-            </div>
-            <div class="progress-labels">
-              <span>{{ userStats.reputation }}</span>
-              <span>{{ userStats.nextLevelThreshold }}</span>
-            </div>
+          <div class="tip-content">
+            <span class="tip-label">Совет дня</span>
+            <p class="tip-text">{{ dailyTip }}</p>
           </div>
         </FpCard>
       </header>
@@ -194,6 +254,28 @@ onMounted(loadData)
             <div class="active-arrow">→</div>
           </FpCard>
         </section>
+
+        <!-- Nearest Route -->
+        <section v-if="nearestRoute" class="nearest-route-section">
+          <div class="section-header">
+            <h2 class="section-title">Поблизости 📍</h2>
+          </div>
+          <FpCard class="nearest-card" @click="router.push(`/route/${nearestRoute.id}`)">
+             <div class="route-icon">
+                <MapIcon :size="24" />
+             </div>
+             <div class="route-details">
+                <div class="route-meta">
+                  <span class="distance">~{{ nearestRoute.distance.toFixed(1) }} км от тебя</span>
+                </div>
+                <h3>{{ nearestRoute.title }}</h3>
+                <p>{{ nearestRoute.checkpointsCount }} точек • {{ nearestRoute.category || 'Маршрут' }}</p>
+             </div>
+             <div class="action-arrow">
+                <ChevronRight :size="20" />
+             </div>
+          </FpCard>
+        </section>
       </div>
     </FpPullToRefresh>
   </div>
@@ -214,76 +296,121 @@ onMounted(loadData)
   .accent {
     color: var(--color-primary);
   }
+
+  .tip-of-the-day {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 10%, var(--color-surface)), var(--color-surface));
+    border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+    border-radius: 18px;
+    padding: 16px;
+    margin-top: 12px;
+
+    .tip-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+      color: var(--color-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .tip-content {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+
+      .tip-label {
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--color-primary);
+      }
+
+      .tip-text {
+        font-size: 14px;
+        line-height: 1.4;
+        color: var(--color-text-secondary);
+        margin: 0;
+      }
+    }
+  }
 }
 
-.profile-card {
-  background: var(--color-surface);
-  padding: 16px;
+.nearest-route-section {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  box-shadow: var(--shadow-lg);
-  border: 1px solid var(--color-border);
-}
-
-.profile-header {
-  display: flex;
-  align-items: center;
   gap: 12px;
-}
 
-.level-badge {
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-  font-size: 12px;
-  font-weight: 800;
-  padding: 4px 12px;
-  border-radius: 20px;
-  box-shadow: 0 4px 10px color-mix(in srgb, var(--color-primary) 30%, transparent);
-}
+  .nearest-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 20px;
+    cursor: pointer;
+    transition: transform 0.2s;
 
-.profile-main {
-  display: flex;
-  flex-direction: column;
+    &:active {
+      transform: scale(0.98);
+    }
 
-  .level-title {
-    font-size: 16px;
-    font-weight: 700;
+    .route-icon {
+      width: 48px;
+      height: 48px;
+      background: color-mix(in srgb, var(--color-secondary) 15%, transparent);
+      color: var(--color-secondary);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .route-details {
+      flex: 1;
+      min-width: 0;
+
+      .route-meta {
+        margin-bottom: 2px;
+        .distance {
+          font-size: 11px;
+          font-weight: 800;
+          color: var(--color-secondary);
+          text-transform: uppercase;
+        }
+      }
+
+      h3 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 800;
+        color: var(--color-text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      p {
+        margin: 2px 0 0;
+        font-size: 12px;
+        color: var(--color-text-tertiary);
+      }
+    }
+
+    .action-arrow {
+      color: var(--color-text-tertiary);
+    }
   }
-
-  .points-text {
-    font-size: 12px;
-    color: var(--color-text-tertiary);
-  }
 }
 
-.progress-container {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.progress-bar {
-  height: 6px;
-  background: var(--color-surface-hover);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-variant));
-  border-radius: 3px;
-  transition: width 1s ease;
-}
-
-.progress-labels {
-  display: flex;
-  justify-content: space-between;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--color-text-tertiary);
-}
 
 .dashboard-content {
   padding: 0 0 40px;
