@@ -160,6 +160,14 @@ function handleTouchEnd() {
   touchCurrentY.value = 0
 }
 
+// Scroll tracking for premium effects
+const scrollY = ref(0)
+const isHeaderStuck = computed(() => scrollY.value > 240)
+
+function handleScroll(e: Event) {
+  scrollY.value = (e.target as HTMLElement).scrollTop
+}
+
 async function handleMarkerClick(id: any) {
   const targetId = String(id).trim()
   const cp = currentCheckpoints.value.find(p => String(p.id).trim() === targetId)
@@ -423,17 +431,28 @@ onMounted(async () => {
         handleCheckIn()
       }
     })
-  } catch (e) {
-    console.error('Failed to start location tracking:', e)
-  }
-})
+    } catch (e) {
+      console.error('Failed to start location tracking:', e)
+    }
 
-onUnmounted(() => {
-  clearInterval(timerInterval)
-  if (locationWatchId) {
-    LocationService.clearWatch(locationWatchId)
-  }
-})
+    // Scroll listener for parallax and sticky effects
+    const scrollContainer = document.querySelector('.page-content')
+    if (scrollContainer) {
+      scrollContainer.addEventListener('scroll', handleScroll)
+    }
+  })
+
+  onUnmounted(() => {
+    clearInterval(timerInterval)
+    if (locationWatchId) {
+      LocationService.clearWatch(locationWatchId)
+    }
+
+    const scrollContainer = document.querySelector('.page-content')
+    if (scrollContainer) {
+      scrollContainer.removeEventListener('scroll', handleScroll)
+    }
+  })
 </script>
 
 <template>
@@ -450,7 +469,10 @@ onUnmounted(() => {
     <div v-else-if="currentRoute" class="route-detail-content">
       <FpPullToRefresh @refresh="fetchRouteDetails">
 
-        <div v-if="!isActiveMode" class="route-hero">
+        <div v-if="!isActiveMode" class="route-hero" :style="{ 
+          transform: `translateY(${scrollY * 0.4}px)`,
+          opacity: Math.max(0, 1 - scrollY / 320)
+        }">
           <div v-if="currentRoute.imageUrl" class="hero-image-wrap">
             <img :src="currentRoute.imageUrl" :alt="currentRoute.title" />
             <div class="hero-overlay"></div>
@@ -474,50 +496,53 @@ onUnmounted(() => {
         </div>
 
         <div v-if="!isActiveMode" class="route-info-section">
-          <div class="route-hero-meta">
-            <div class="meta-top">
-              <div class="category-tag" v-if="currentRoute.category">
-                {{ currentRoute.category }}
-              </div>
-              <div v-if="isAuthor && currentRoute.status" class="status-badge" :class="currentRoute.status">
-                <span class="status-dot"></span>
-                {{ currentRoute.status === 'draft' ? 'Черновик' : currentRoute.status === 'pending' ? 'На модерации' : 'Опубликован' }}
-              </div>
-            </div>
-            <h1 class="route-title">{{ currentRoute.title }}</h1>
-
-            <div class="author-meta-row">
-              <div class="author-info-link" @click="router.push(`/profile/${currentRoute.authorId}`)">
-                <div class="author-avatar-mini" :style="currentRoute.authorAvatar ? `background-image: url(${currentRoute.authorAvatar})` : ''">
-                  {{ !currentRoute.authorAvatar ? (currentRoute.authorName?.[0] || '?') : '' }}
+          <div class="sticky-header-wrapper" :class="{ 'is-stuck': isHeaderStuck }">
+            <FpBackButton v-if="isHeaderStuck" @click="router.back()" class="stuck-back-btn" />
+            <div class="route-hero-meta">
+              <div class="meta-top">
+                <div class="category-tag" v-if="currentRoute.category">
+                  {{ currentRoute.category }}
                 </div>
-                <span class="author-name">{{ currentRoute.authorName }}</span>
+                <div v-if="isAuthor && currentRoute.status" class="status-badge" :class="currentRoute.status">
+                  <span class="status-dot"></span>
+                  {{ currentRoute.status === 'draft' ? 'Черновик' : currentRoute.status === 'pending' ? 'На модерации' : 'Опубликован' }}
+                </div>
               </div>
-              <div class="meta-divider"></div>
-              <span class="created-date">{{ formatDate(currentRoute.createdAt) }}</span>
-            </div>
-          </div>
+              <h1 class="route-title">{{ currentRoute.title }}</h1>
 
-          <div class="social-summary-bar">
-            <div class="social-action" :class="{ active: isLiked }" @click="handleToggleLike">
-              <Heart :size="24" :fill="isLiked ? 'var(--color-error)' : 'none'" />
-              <span>Лайк</span>
+              <div class="author-meta-row">
+                <div class="author-info-link" @click="router.push(`/profile/${currentRoute.authorId}`)">
+                  <div class="author-avatar-mini" :style="currentRoute.authorAvatar ? `background-image: url(${currentRoute.authorAvatar})` : ''">
+                    {{ !currentRoute.authorAvatar ? (currentRoute.authorName?.[0] || '?') : '' }}
+                  </div>
+                  <span class="author-name">{{ currentRoute.authorName }}</span>
+                </div>
+                <div class="meta-divider"></div>
+                <span class="created-date">{{ formatDate(currentRoute.createdAt) }}</span>
+              </div>
             </div>
-            <div class="social-action" :class="{ active: isFavorite }" @click="handleToggleFavorite">
-              <Bookmark :size="24" :fill="isFavorite ? 'var(--color-primary)' : 'none'" />
-              <span>Избранное</span>
-            </div>
-            <div class="social-action" @click="handleShare">
-              <Share2 :size="24" />
-              <span>Поделиться</span>
-            </div>
-            <div class="social-action" @click="showQrCode = true">
-              <QrCode :size="24" />
-              <span>QR-код</span>
-            </div>
-            <div class="social-action report-action" @click="showReportModal = true">
-              <AlertTriangle :size="24" />
-              <span>Пожаловаться</span>
+
+            <div class="social-summary-bar">
+              <div class="social-action" :class="{ active: isLiked }" @click="handleToggleLike">
+                <Heart :size="24" :fill="isLiked ? 'var(--color-error)' : 'none'" />
+                <span>Лайк</span>
+              </div>
+              <div class="social-action" :class="{ active: isFavorite }" @click="handleToggleFavorite">
+                <Bookmark :size="24" :fill="isFavorite ? 'var(--color-primary)' : 'none'" />
+                <span>Избранное</span>
+              </div>
+              <div class="social-action" @click="handleShare">
+                <Share2 :size="24" />
+                <span>Поделиться</span>
+              </div>
+              <div class="social-action" @click="showQrCode = true">
+                <QrCode :size="24" />
+                <span>QR-код</span>
+              </div>
+              <div class="social-action report-action" @click="showReportModal = true">
+                <AlertTriangle :size="24" />
+                <span>Жалоба</span>
+              </div>
             </div>
           </div>
 
@@ -902,23 +927,32 @@ onUnmounted(() => {
 .route-hero {
   height: 280px;
   position: relative;
-  background: #f1f5f9;
+  background: var(--color-surface);
+  will-change: transform, opacity;
+  z-index: 1;
 
   .hero-image-wrap {
     width: 100%;
     height: 100%;
     position: relative;
+    overflow: hidden;
 
     img {
       width: 100%;
       height: 100%;
       object-fit: cover;
+      transition: transform 0.3s ease-out;
     }
 
     .hero-overlay {
       position: absolute;
       inset: 0;
-      background: linear-gradient(to bottom, rgba(0, 0, 0, 0.3) 0%, transparent 40%, rgba(0, 0, 0, 0.4) 100%);
+      background: linear-gradient(to bottom, 
+        rgba(0, 0, 0, 0.4) 0%, 
+        transparent 30%, 
+        transparent 70%, 
+        rgba(0, 0, 0, 0.6) 100%
+      );
     }
   }
 
@@ -944,7 +978,80 @@ onUnmounted(() => {
 }
 
 .route-info-section {
-  padding: 24px 20px;
+  padding: 0 20px 24px;
+  position: relative;
+  z-index: 2;
+  margin-top: -20px;
+  background: var(--color-background);
+  border-radius: 24px 24px 0 0;
+}
+
+.sticky-header-wrapper {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  margin: 0 -20px;
+  padding: 24px 20px 8px;
+  background: var(--color-background);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 24px 24px 0 0;
+
+  &.is-stuck {
+    padding-top: calc(12px + env(safe-area-inset-top));
+    padding-bottom: 12px;
+    background: var(--color-surface-glass);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--color-border);
+    border-radius: 0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+
+    .route-hero-meta {
+      margin-bottom: 8px;
+      
+      .meta-top, .author-meta-row {
+        height: 0;
+        margin: 0;
+        opacity: 0;
+        overflow: hidden;
+        pointer-events: none;
+      }
+
+      .route-title {
+        font-size: 20px;
+        margin: 0;
+        text-align: center;
+      }
+    }
+
+    .social-summary-bar {
+      margin-bottom: 0;
+      background: none;
+      border: none;
+      padding: 0;
+      
+      .social-action {
+        flex-direction: row;
+        gap: 4px;
+        padding: 4px;
+        
+        span {
+          display: none; // Скрываем текст в липком режиме для компактности
+        }
+        
+        svg {
+          width: 20px;
+          height: 20px;
+        }
+      }
+    }
+  }
+
+  .stuck-back-btn {
+    position: absolute;
+    left: 12px;
+    top: calc(8px + env(safe-area-inset-top));
+    z-index: 10;
+  }
 }
 
 .route-hero-meta {
@@ -1016,6 +1123,7 @@ onUnmounted(() => {
   color: var(--color-text-primary);
   line-height: 1.2;
   margin: 0 0 12px 0;
+  transition: all 0.3s ease;
 }
 
 .author-meta-row {
@@ -1075,11 +1183,12 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   padding: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 20px;
   margin-bottom: 24px;
   width: 100%;
+  transition: all 0.3s ease;
 }
 
 .social-action {
