@@ -346,12 +346,23 @@ const handleMarkerDragEnd = async (id: string, lat: number, lng: number) => {
 const handleMarkerClick = (id: string) => {
   const index = checkpoints.value.findIndex(cp => cp.id === id)
   if (index !== -1) {
-    activeMarkerIndex.value = index
-    // Опционально: скроллим к карточке в списке
-    const el = document.getElementById(`cp-${id}`)
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    }
+    selectAndFocusPoint(index)
+  }
+}
+
+const selectAndFocusPoint = (index: number) => {
+  const cp = checkpoints.value[index]
+  if (!cp) return
+
+  activeMarkerIndex.value = index
+  if (cp.lat !== 0 && cp.lng !== 0) {
+    mapCenter.value = [cp.lat, cp.lng]
+  }
+
+  // Скроллим к карточке в списке
+  const el = document.getElementById(`cp-${cp.id}`)
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }
 }
 
@@ -639,7 +650,7 @@ const handleSave = async () => {
               @dragstart="onDragStart(index)"
               @dragover.prevent
               @drop="onDrop(index)">
-              <div class="cp-main-row" @click="activeMarkerIndex = activeMarkerIndex === index ? null : index">
+              <div class="cp-main-row" @click="selectAndFocusPoint(index)">
                 <span class="cp-number">{{ cp.order_index }}</span>
                 <div class="cp-info">
                   <span class="cp-title">{{ cp.title || 'Без названия' }}</span>
@@ -832,18 +843,27 @@ const handleSave = async () => {
 
 .map-container-sticky {
   position: sticky;
-  top: 80px;
+  top: 70px;
   z-index: 10;
   margin-bottom: 24px;
+  background: var(--color-background);
 }
 
 .creation-map {
-  height: 30vh;
-  min-height: 240px;
+  height: 60vh;
+  min-height: 320px;
   border-radius: var(--radius-lg);
   overflow: hidden;
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-sm);
+
+  :deep(.map-custom-controls) {
+    bottom: 24px !important;
+  }
+
+  :deep(.leaflet-control-zoom) {
+    margin-bottom: 24px !important;
+  }
 }
 
 .map-hint {
