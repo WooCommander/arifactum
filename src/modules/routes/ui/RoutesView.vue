@@ -25,7 +25,7 @@ const popularTags = computed(() => {
     acc[tag] = (acc[tag] || 0) + 1
     return acc
   }, {} as Record<string, number>)
-  
+
   return Object.entries(counts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 12)
@@ -91,12 +91,7 @@ const handleWheel = (e: WheelEvent) => {
       <div class="search-container">
         <div class="search-wrapper">
           <Search class="search-icon" :size="18" />
-          <input 
-            v-model="searchQuery" 
-            type="text" 
-            placeholder="Найти приключение..." 
-            class="search-input"
-          />
+          <input v-model="searchQuery" type="text" placeholder="Найти приключение..." class="search-input" />
           <button v-if="searchQuery" class="clear-search" @click="searchQuery = ''">
             <X :size="16" />
           </button>
@@ -105,27 +100,17 @@ const handleWheel = (e: WheelEvent) => {
 
       <div class="tags-cloud" v-if="popularTags.length > 0">
         <div class="tags-scroll" @wheel.passive="handleWheel" @wheel.prevent="handleWheel">
-          <button 
-            v-for="tag in popularTags" 
-            :key="tag"
-            class="tag-pill"
-            :class="{ active: searchQuery === tag }"
-            @click="searchQuery = searchQuery === tag ? '' : tag"
-          >
+          <button v-for="tag in popularTags" :key="tag" class="tag-pill" :class="{ active: searchQuery === tag }"
+            @click="searchQuery = searchQuery === tag ? '' : tag">
             #{{ tag }}
           </button>
         </div>
       </div>
 
-        <div class="categories-bar">
+      <div class="categories-bar">
         <div class="categories-scroll" @wheel.passive="handleWheel" @wheel.prevent="handleWheel">
-          <button 
-            v-for="cat in ['Все', ...categoryNames]" 
-            :key="cat"
-            class="category-chip"
-            :class="{ active: selectedCategory === cat }"
-            @click="selectedCategory = cat"
-          >
+          <button v-for="cat in ['Все', ...categoryNames]" :key="cat" class="category-chip"
+            :class="{ active: selectedCategory === cat }" @click="selectedCategory = cat">
             {{ cat }}
           </button>
         </div>
@@ -141,28 +126,23 @@ const handleWheel = (e: WheelEvent) => {
 
     <div class="routes-content">
       <FpPullToRefresh @refresh="handleRefresh">
-      <div v-if="isLoading && routes.length === 0" class="loader">
-        <FpSpinner />
-      </div>
+        <div v-if="isLoading && routes.length === 0" class="loader">
+          <FpSpinner />
+        </div>
 
-      <div v-else-if="error" class="error-state">
-        <p>{{ error }}</p>
-        <button @click="() => fetchRoutes(authStore.currentUserId.value)" class="retry-btn">Попробовать снова</button>
-      </div>
+        <div v-else-if="error" class="error-state">
+          <p>{{ error }}</p>
+          <button @click="() => fetchRoutes(authStore.currentUserId.value)" class="retry-btn">Попробовать снова</button>
+        </div>
 
-      <div v-else-if="routes.length === 0" class="empty-state">
-        <p>Маршрутов пока нет. Будь первым, кто создаст!</p>
-      </div>
+        <div v-else-if="routes.length === 0" class="empty-state">
+          <p>Маршрутов пока нет. Будь первым, кто создаст!</p>
+        </div>
 
-      <div v-else class="routes-grid">
-        <RouteCard 
-          v-for="route in routes" 
-          :key="route.id" 
-          :route="route"
-          @click="navigateToDetail"
-          @author-click="handleAuthorFilter"
-        />
-      </div>
+        <div v-else class="routes-grid">
+          <RouteCard v-for="route in routes" :key="route.id" :route="route" @click="navigateToDetail"
+            @author-click="handleAuthorFilter" />
+        </div>
       </FpPullToRefresh>
     </div>
   </div>
@@ -170,7 +150,7 @@ const handleWheel = (e: WheelEvent) => {
 
 <style scoped lang="scss">
 .routes-view {
-  height: 100vh;
+  height: calc(100vh - 3rem);
   display: flex;
   flex-direction: column;
   background: var(--color-background);
@@ -247,7 +227,7 @@ const handleWheel = (e: WheelEvent) => {
     outline: none;
     font-size: 14px;
     color: var(--color-text-primary);
-    
+
     &::placeholder {
       color: var(--color-text-tertiary);
     }
@@ -272,11 +252,14 @@ const handleWheel = (e: WheelEvent) => {
   overflow-x: auto;
   padding: 4px 0 16px;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
-  
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE/Edge */
+
   &::-webkit-scrollbar {
-    display: none; /* Chrome/Safari/Opera */
+    display: none;
+    /* Chrome/Safari/Opera */
   }
 }
 
@@ -312,11 +295,14 @@ const handleWheel = (e: WheelEvent) => {
   padding: 4px 0 12px;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
-  
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE/Edge */
+
   &::-webkit-scrollbar {
-    display: none; /* Chrome/Safari/Opera */
+    display: none;
+    /* Chrome/Safari/Opera */
   }
 }
 
@@ -365,7 +351,9 @@ const handleWheel = (e: WheelEvent) => {
   gap: 20px;
 }
 
-.loader, .error-state, .empty-state {
+.loader,
+.error-state,
+.empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -374,7 +362,8 @@ const handleWheel = (e: WheelEvent) => {
   text-align: center;
 }
 
-.error-state p, .empty-state p {
+.error-state p,
+.empty-state p {
   color: var(--color-text-secondary);
   font-size: 16px;
   margin-bottom: 16px;
@@ -412,8 +401,15 @@ const handleWheel = (e: WheelEvent) => {
   animation: slide-in 0.3s ease-out;
 
   @keyframes slide-in {
-    from { transform: translateX(-10px); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
+    from {
+      transform: translateX(-10px);
+      opacity: 0;
+    }
+
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
   }
 
   &.author {
