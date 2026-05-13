@@ -541,17 +541,17 @@ const handleSave = async () => {
   <div class="create-route-view">
     <div class="page-title-row">
       <div class="title-with-back">
-        <FpBackButton @click="currentStep === 1 ? router.back() : prevStep()" />
+        <FpBackButton @click="currentStep === 1 ? router.back() : prevStep()" size="sm" />
         <div class="title-group">
-          <h1 class="page-title">{{ isEditMode ? 'Редактировать маршрут' : 'Новый маршрут' }}</h1>
-          <p class="page-subtitle">Шаг {{ currentStep }} из 3: {{ steps[currentStep - 1].title }}</p>
+          <h1 class="page-title">{{ isEditMode ? 'Редактировать' : 'Новый маршрут' }}</h1>
+          <p class="page-subtitle">Шаг {{ currentStep }} / 3: {{ steps[currentStep - 1].title }}</p>
         </div>
       </div>
-    </div>
-
-    <div class="step-indicator">
-      <div v-for="s in steps" :key="s.id" class="step-dot"
-        :class="{ active: currentStep === s.id, completed: currentStep > s.id }"></div>
+      
+      <div class="step-indicator">
+        <div v-for="s in steps" :key="s.id" class="step-dot"
+          :class="{ active: currentStep === s.id, completed: currentStep > s.id }"></div>
+      </div>
     </div>
 
     <div v-if="isLoading" class="loader-overlay">
@@ -622,8 +622,9 @@ const handleSave = async () => {
 
       <!-- STEP 2: ROUTE & MAP -->
       <section v-if="currentStep === 2" class="route-map-step">
-        <div class="map-container-sticky">
-          <ArtMap class="creation-map" :points="mapPoints" :center="mapCenter" :user-location="userLocation" show-path
+        <div class="map-container-sticky" :class="{ 'is-compact': activeMarkerIndex !== null }">
+          <ArtMap class="creation-map" :class="{ 'compact': activeMarkerIndex !== null }"
+            :points="mapPoints" :center="mapCenter" :user-location="userLocation" show-path
             draggable-markers @map-click="handleMapClick" @marker-drag-end="handleMarkerDragEnd"
             @marker-contextmenu="handleMarkerContextmenu" @marker-click="handleMarkerClick" />
           
@@ -786,22 +787,43 @@ const handleSave = async () => {
 .page-title-row {
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 1000;
   background: var(--color-background);
-  padding-bottom: var(--spacing-sm);
+  padding: 12px 20px 8px;
   border-bottom: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.title-with-back {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  .page-title {
+    font-size: 18px;
+    font-weight: 800;
+    margin: 0;
+  }
+
+  .page-subtitle {
+    font-size: 11px;
+    color: var(--color-text-tertiary);
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
 }
 
 .step-indicator {
   display: flex;
-  gap: 8px;
-  padding: 12px 0;
-  background: var(--color-background);
-  border-bottom: 1px solid var(--color-border);
+  gap: 4px;
+  padding: 0;
 
   .step-dot {
     flex: 1;
-    height: 4px;
+    height: 3px;
     background: var(--color-border);
     border-radius: 2px;
     transition: all 0.3s ease;
@@ -823,13 +845,13 @@ const handleSave = async () => {
 
 .section-card {
   background: var(--color-surface);
-  padding: 20px;
+  padding: 16px;
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .section-label {
@@ -847,26 +869,25 @@ const handleSave = async () => {
 
 .map-container-sticky {
   position: sticky;
-  top: 70px;
+  top: 60px; // Adjusted for compact header
   z-index: 10;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   background: var(--color-background);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .creation-map {
-  height: 60vh;
-  min-height: 320px;
+  height: 45vh;
+  min-height: 240px;
   border-radius: var(--radius-lg);
   overflow: hidden;
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-sm);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 
-  :deep(.map-custom-controls) {
-    bottom: 24px !important;
-  }
-
-  :deep(.leaflet-control-zoom) {
-    margin-bottom: 24px !important;
+  &.compact {
+    height: 25vh;
+    min-height: 180px;
   }
 }
 
@@ -979,15 +1000,15 @@ const handleSave = async () => {
 .category-picker {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 
   button {
-    padding: 8px 16px;
+    padding: 6px 12px;
     border-radius: var(--radius-pill);
     border: 1.5px solid var(--color-border);
     background: var(--color-background);
     color: var(--color-text-secondary);
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     transition: all 0.2s;
 
@@ -999,8 +1020,8 @@ const handleSave = async () => {
   }
 
   .add-cat-btn {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     padding: 0;
     display: flex;
     align-items: center;
@@ -1066,23 +1087,24 @@ const handleSave = async () => {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   overflow: hidden;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
   &.active {
     border-color: var(--color-primary);
     box-shadow: var(--shadow-md);
+    margin: 8px 0;
   }
 
   .cp-main-row {
-    padding: 12px 16px;
+    padding: 8px 12px;
     display: flex;
     align-items: center;
     gap: 12px;
     cursor: pointer;
 
     .cp-number {
-      width: 28px;
-      height: 28px;
+      width: 24px;
+      height: 24px;
       background: var(--color-background);
       color: var(--color-text-secondary);
       border-radius: 50%;
@@ -1090,23 +1112,28 @@ const handleSave = async () => {
       align-items: center;
       justify-content: center;
       font-weight: 900;
-      font-size: 13px;
+      font-size: 11px;
       border: 1px solid var(--color-border);
+      flex-shrink: 0;
     }
 
     .cp-info {
       flex: 1;
       display: flex;
       flex-direction: column;
+      min-width: 0;
 
       .cp-title {
         font-weight: 700;
-        font-size: 14px;
+        font-size: 13px;
         color: var(--color-text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       .cp-coords {
-        font-size: 11px;
+        font-size: 10px;
         color: var(--color-text-tertiary);
         font-family: monospace;
       }
@@ -1114,10 +1141,10 @@ const handleSave = async () => {
 
     .delete-cp {
       color: var(--color-error);
-      opacity: 0.6;
+      opacity: 0.5;
       background: none;
       border: none;
-      padding: 8px;
+      padding: 6px;
 
       &:hover {
         opacity: 1;
@@ -1126,12 +1153,12 @@ const handleSave = async () => {
   }
 
   .cp-details-form {
-    padding: 16px;
+    padding: 12px;
     border-top: 1px solid var(--color-border);
-    background: color-mix(in srgb, var(--color-background) 50%, transparent);
+    background: color-mix(in srgb, var(--color-background) 30%, transparent);
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
   }
 }
 
@@ -1143,8 +1170,13 @@ const handleSave = async () => {
 
 .cp-actions-row {
   display: flex;
-  flex-direction: column;
-  gap: 16px;
+  flex-direction: row; // Change to horizontal
+  align-items: flex-start;
+  gap: 12px;
+
+  & > * {
+    flex: 1;
+  }
 }
 
 .cp-mini-gallery {
