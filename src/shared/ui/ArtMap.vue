@@ -104,7 +104,8 @@ const emit = defineEmits<{
 
 const mapContainer = ref<HTMLElement | null>(null)
 const map = shallowRef<L.Map | null>(null)
-const markers = ref<L.Marker[]>([])
+const markersMap = new Map<string, L.Marker>()
+const markersList = ref<L.Marker[]>([]) // Для совместимости с другими частями кода, если нужно
 const userMarker = shallowRef<L.Marker | null>(null)
 const teammateMarkers = ref<Map<string, L.Marker>>(new Map())
 const clusterMarker = shallowRef<L.Marker | null>(null)
@@ -167,12 +168,16 @@ const recenter = () => {
 const refreshMarkersLayer = () => {
   if (!map.value) return
 
-  markers.value.forEach(m => m.remove())
-  markers.value = []
-
   if (clusterMarker.value) {
     clusterMarker.value.remove()
     clusterMarker.value = null
+  }
+
+  if (props.points.length === 0) {
+    markersMap.forEach(m => m.remove())
+    markersMap.clear()
+    markersList.value = []
+    return
   }
 
   if (props.points.length === 0) return
@@ -207,113 +212,151 @@ const refreshMarkersLayer = () => {
     return
   }
 
+  const currentIds = new Set<string>()
   const group = L.featureGroup()
 
   props.points.forEach(p => {
-    const marker = L.marker([p.lat, p.lng], {
-      draggable: props.draggableMarkers,
-      icon: L.divIcon({
-        className: 'art-marker',
-        html: `
-                    <div class="marker-pin ${p.isCompleted ? 'completed' : ''} ${p.isActive ? 'active' : ''}">
-                        <span class="marker-number">${p.order || '?'}</span>
-                    </div>
-                `,
-        iconSize: [32, 32],
-        iconAnchor: [16, 32]
-      })
+    const id = String(p.id || `${p.lat}-${p.lng}`)
+    currentIds.add(id)
+
+    const iconHtml = `
+      <div class="marker-pin ${p.isCompleted ? 'completed' : ''} ${p.isActive ? 'active' : ''}">
+        <span class="marker-number">${p.order || '?'}</span>
+      </div>
+    `
+    const icon = L.divIcon({
+      className: 'art-marker',
+      html: iconHtml,
+      iconSize: [32, 32],
+      iconAnchor: [16, 32]
     })
 
-    if (props.draggableMarkers && p.id) {
-      marker.on('dragstart', (e) => {
-        L.DomEvent.stopPropagation(e)
+    let marker = markersMap.get(id)
+
+    if (marker) {
+      // Обновляем существующий маркер
+      marker.setLatLng([p.lat, p.lng])
+      marker.setIcon(icon)
+      
+      // Обновляем тултип если есть
+      if (p.title) {
+        updateTooltip(marker, p)
+      }
+    } else {
+      // Создаем новый
+      marker = L.marker([p.lat, p.lng], {
+        draggable: props.draggableMarkers,
+        icon: icon
       })
-      marker.on('dragend', (e) => {
-        const newLatLng = e.target.getLatLng()
-        emit('markerDragEnd', String(p.id), newLatLng.lat, newLatLng.lng)
-      })
+
+      setupMarkerEvents(marker, p)
+      if (p.title) {
+        updateTooltip(marker, p)
+      }
+
+      marker.addTo(map.value as L.Map)
+      markersMap.set(id, marker)
     }
-
-    if (p.id) {
-      marker.on('mousedown', (e) => {
-        L.DomEvent.stopPropagation(e)
-      })
-
-      marker.on('dblclick', (e) => {
-        L.DomEvent.stopPropagation(e)
-      })
-
-      marker.on('click', (e) => {
-        // Жестко останавливаем событие, чтобы оно не дошло до карты
-        if (e.originalEvent) {
-          e.originalEvent.stopPropagation();
-          e.originalEvent.preventDefault();
-        }
-        L.DomEvent.stopPropagation(e);
-        
-        if ((window as any).artSelectCheckpoint) {
-          (window as any).artSelectCheckpoint(String(p.id))
-        }
-        emit('markerClick', String(p.id))
-      })
-
-      marker.on('contextmenu', (e) => {
-        L.DomEvent.stopPropagation(e)
-        if (e.originalEvent) {
-          e.originalEvent.preventDefault()
-          e.originalEvent.stopPropagation()
-        }
-        emit('markerContextmenu', String(p.id))
-      })
-    }
-
-    if (p.title) {
-      const tooltipContent = `
-        <div class="art-tooltip-content">
-          ${p.imageUrl ? `<div class="tooltip-thumb" style="background-image: url('${p.imageUrl}')"></div>` : ''}
-          <div class="tooltip-main">
-            <span class="tooltip-text">${p.title}</span>
-            <div class="tooltip-badges">
-              ${p.imageUrl ? '<span class="badge">🖼️</span>' : ''}
-              ${p.hasDescription ? '<span class="badge">📝</span>' : ''}
-            </div>
-          </div>
-        </div>
-      `
-      marker.bindTooltip(tooltipContent, {
-        direction: 'top',
-        offset: [0, -32],
-        className: 'art-marker-tooltip',
-        permanent: false,
-        sticky: false,
-        opacity: 0
-      })
-
-      let tooltipTimer: any = null
-
-      marker.on('mouseover', () => {
-        clearTimeout(tooltipTimer)
-        tooltipTimer = setTimeout(() => {
-          marker.getTooltip()?.setOpacity(1)
-          marker.openTooltip()
-        }, 300) // Задержка появления
-      })
-
-      marker.on('mouseout', () => {
-        clearTimeout(tooltipTimer)
-        tooltipTimer = setTimeout(() => {
-          marker.closeTooltip()
-        }, 200) // Задержка исчезновения
-      })
-    }
-
-    marker.addTo(map.value as L.Map)
-    markers.value.push(marker)
+    
     group.addLayer(marker)
   })
 
+  // Удаляем те, которых больше нет
+  for (const [id, marker] of markersMap.entries()) {
+    if (!currentIds.has(id)) {
+      marker.unbindTooltip()
+      marker.remove()
+      markersMap.delete(id)
+    }
+  }
+
+  markersList.value = Array.from(markersMap.values())
+
   if (props.points.length > 1 && !props.center && !props.followUser) {
     (map.value as L.Map).fitBounds(group.getBounds(), { padding: [40, 40] })
+  }
+}
+
+// Выносим вспомогательные функции для чистоты
+function updateTooltip(marker: L.Marker, p: Point) {
+  const tooltipContent = `
+    <div class="art-tooltip-content">
+      ${p.imageUrl ? `<div class="tooltip-thumb" style="background-image: url('${p.imageUrl}')"></div>` : ''}
+      <div class="tooltip-main">
+        <span class="tooltip-text">${p.title}</span>
+        <div class="tooltip-badges">
+          ${p.imageUrl ? '<span class="badge">🖼️</span>' : ''}
+          ${p.hasDescription ? '<span class="badge">📝</span>' : ''}
+        </div>
+      </div>
+    </div>
+  `
+  marker.bindTooltip(tooltipContent, {
+    direction: 'top',
+    offset: [0, -32],
+    className: 'art-marker-tooltip',
+    permanent: false,
+    sticky: false,
+    opacity: 0
+  })
+
+  // Очищаем старые обработчики чтобы не плодить их
+  marker.off('mouseover mouseout')
+
+  let tooltipTimer: any = null
+  marker.on('mouseover', () => {
+    clearTimeout(tooltipTimer)
+    tooltipTimer = setTimeout(() => {
+      marker.getTooltip()?.setOpacity(1)
+      marker.openTooltip()
+    }, 300)
+  })
+
+  marker.on('mouseout', () => {
+    clearTimeout(tooltipTimer)
+    tooltipTimer = setTimeout(() => {
+      marker.closeTooltip()
+    }, 200)
+  })
+}
+
+function setupMarkerEvents(marker: L.Marker, p: Point) {
+  if (props.draggableMarkers && p.id) {
+    marker.on('dragstart', (e) => {
+      L.DomEvent.stopPropagation(e)
+    })
+    marker.on('dragend', (e) => {
+      const newLatLng = e.target.getLatLng()
+      emit('markerDragEnd', String(p.id), newLatLng.lat, newLatLng.lng)
+    })
+  }
+
+  if (p.id) {
+    marker.on('mousedown dblclick', (e) => {
+      L.DomEvent.stopPropagation(e)
+    })
+
+    marker.on('click', (e) => {
+      if (e.originalEvent) {
+        e.originalEvent.stopPropagation()
+        e.originalEvent.preventDefault()
+      }
+      L.DomEvent.stopPropagation(e)
+      
+      if ((window as any).artSelectCheckpoint) {
+        (window as any).artSelectCheckpoint(String(p.id))
+      }
+      emit('markerClick', String(p.id))
+    })
+
+    marker.on('contextmenu', (e) => {
+      L.DomEvent.stopPropagation(e)
+      if (e.originalEvent) {
+        e.originalEvent.preventDefault()
+        e.originalEvent.stopPropagation()
+      }
+      emit('markerContextmenu', String(p.id))
+    })
   }
 }
 
@@ -549,7 +592,20 @@ onMounted(() => {
 onUnmounted(() => {
   clearTimers()
   if (map.value) {
+    // Явно очищаем слои перед удалением карты
+    markersMap.forEach(m => {
+      m.unbindTooltip()
+      m.remove()
+    })
+    markersMap.clear()
+    
+    if (userMarker.value) userMarker.value.remove()
+    if (navLine.value) navLine.value.remove()
+    if (routeLine.value) routeLine.value.remove()
+    if (navArrow.value) navArrow.value.remove()
+    
     map.value.remove()
+    map.value = null
   }
 })
 </script>
