@@ -463,7 +463,7 @@ onMounted(async () => {
 
     <div v-else-if="error" class="error-state">
       <p>{{ error }}</p>
-      <FpBackButton @click="router.back()" />
+      <FpBackButton @click="router.push('/routes')" />
     </div>
 
     <div v-else-if="currentRoute" class="route-detail-content">
@@ -482,7 +482,7 @@ onMounted(async () => {
           </div>
 
           <div class="hero-header">
-            <FpBackButton @click="router.back()" class="back-btn" />
+            <FpBackButton @click="router.push('/routes')" class="back-btn" />
 
             <div v-if="isAuthor" class="author-actions">
               <button class="action-icon edit" @click="router.push(`/edit-route/${currentRoute.id}`)">
@@ -497,7 +497,7 @@ onMounted(async () => {
 
         <div v-if="!isActiveMode" class="route-info-section">
           <div class="sticky-header-wrapper" :class="{ 'is-stuck': isHeaderStuck }">
-            <FpBackButton v-if="isHeaderStuck" @click="router.back()" class="stuck-back-btn" />
+            <FpBackButton v-if="isHeaderStuck" @click="router.push('/routes')" class="stuck-back-btn" />
             <div class="route-hero-meta">
               <div class="meta-top">
                 <div class="category-tag" v-if="currentRoute.category">
@@ -740,7 +740,7 @@ onMounted(async () => {
           </div>
 
           <div class="active-actions-bottom">
-            <FpButton variant="glass" class="exit-action-btn" @click="isActiveMode = false">
+            <FpButton variant="glass" class="exit-action-btn" @click="router.push('/routes')">
               Выход
             </FpButton>
 
