@@ -4,7 +4,7 @@ import { useTeamsStore } from '../state/useTeamsStore'
 import TeamCard from './TeamCard.vue'
 import { FpButton, FpInput, FpSpinner } from '@/design-system'
 import { Plus, PersonStanding, LogIn } from 'lucide-vue-next'
-const { myTeams, isLoading, error, fetchMyTeams, createTeam, joinTeam, leaveTeam } = useTeamsStore()
+const { myTeams, isLoading, error, fetchMyTeams, createTeam, joinTeam, leaveTeam, deleteTeam } = useTeamsStore()
 
 const showCreateModal = ref(false)
 const showJoinModal = ref(false)
@@ -43,6 +43,12 @@ const handleJoinTeam = async () => {
 const onLeave = async (id: string) => {
   if (confirm('Вы уверены, что хотите выйти из команды?')) {
     await leaveTeam(id)
+  }
+}
+
+const onDelete = async (id: string) => {
+  if (confirm('Вы уверены, что хотите УДАЛИТЬ команду? Все участники будут исключены.')) {
+    await deleteTeam(id)
   }
 }
 </script>
@@ -97,7 +103,7 @@ const onLeave = async (id: string) => {
           </FpButton>
         </div>
 
-        <TeamCard v-for="team in myTeams" :key="team.id" :team="team" @leave="onLeave" />
+        <TeamCard v-for="team in myTeams" :key="team.id" :team="team" @leave="onLeave" @delete="onDelete" />
       </div>
     </div>
 

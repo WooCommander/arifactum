@@ -49,6 +49,16 @@ export const useTeamsStore = () => {
         }
     }
 
+    async function deleteTeam(teamId: string) {
+        try {
+            await teamService.deleteTeam(teamId)
+            await fetchMyTeams()
+        } catch (e: any) {
+            error.value = e.message
+            throw e
+        }
+    }
+
     return {
         myTeams,
         isLoading,
@@ -56,6 +66,7 @@ export const useTeamsStore = () => {
         fetchMyTeams,
         createTeam,
         joinTeam,
-        leaveTeam
+        leaveTeam,
+        deleteTeam
     }
 }

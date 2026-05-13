@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { TeamWithMembers } from '../types'
 import { FpCard, FpButton } from '@/design-system'
-import { Users, LogOut, Copy } from 'lucide-vue-next'
+import { Users, LogOut, Copy, Trash2 } from 'lucide-vue-next'
 
 import { useNotify } from '@/composables/useNotify'
 
@@ -12,6 +12,7 @@ interface Props {
 const props = defineProps<Props>()
 const emit = defineEmits<{
   (e: 'leave', id: string): void
+  (e: 'delete', id: string): void
 }>()
 
 const { notify } = useNotify()
@@ -55,6 +56,16 @@ const copyInviteCode = () => {
         @click="emit('leave', team.id)"
       >
         <LogOut :size="18" />
+      </FpButton>
+
+      <FpButton 
+        v-else 
+        variant="text" 
+        size="sm" 
+        class="delete-btn"
+        @click="emit('delete', team.id)"
+      >
+        <Trash2 :size="18" />
       </FpButton>
     </div>
   </FpCard>
@@ -152,7 +163,13 @@ const copyInviteCode = () => {
   letter-spacing: 1px;
 }
 
-.leave-btn {
+.leave-btn, .delete-btn {
   color: var(--color-error);
+  opacity: 0.7;
+  transition: opacity 0.2s;
+
+  &:hover {
+    opacity: 1;
+  }
 }
 </style>
