@@ -361,15 +361,6 @@ const selectAndFocusPoint = (index: number) => {
   }
 
   activeMarkerIndex.value = index
-  if (cp.lat !== 0 && cp.lng !== 0) {
-    mapCenter.value = [cp.lat, cp.lng]
-  }
-
-  // Скроллим к карточке в списке
-  const el = document.getElementById(`cp-${cp.id}`)
-  if (el) {
-    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-  }
 }
 
 const handleMarkerContextmenu = (id: string) => {
@@ -655,12 +646,13 @@ const handleSave = async () => {
           </div>
 
           <TransitionGroup name="list" tag="div" class="cp-list">
-            <div v-for="(cp, index) in checkpoints" :key="cp.id" :id="'cp-' + cp.id" class="cp-compact-card"
-              :class="{ active: activeMarkerIndex === index, 'is-dragging': draggedIndex === index }"
-              draggable="true"
-              @dragstart="onDragStart(index)"
-              @dragover.prevent
-              @drop="onDrop(index)">
+            <template v-for="(cp, index) in checkpoints" :key="cp.id">
+              <div v-if="activeMarkerIndex === null || activeMarkerIndex === index" :id="'cp-' + cp.id" class="cp-compact-card"
+                :class="{ active: activeMarkerIndex === index, 'is-dragging': draggedIndex === index }"
+                draggable="true"
+                @dragstart="onDragStart(index)"
+                @dragover.prevent
+                @drop="onDrop(index)">
               <div class="cp-main-row" @click="selectAndFocusPoint(index)">
                 <span class="cp-number">{{ cp.order_index }}</span>
                 <div class="cp-info">
@@ -702,7 +694,8 @@ const handleSave = async () => {
                   </div>
                 </div>
               </div>
-            </div>
+              </div>
+            </template>
           </TransitionGroup>
         </div>
       </section>
