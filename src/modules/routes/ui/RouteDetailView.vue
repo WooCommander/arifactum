@@ -85,7 +85,8 @@ async function handleReport() {
 const showQrCode = ref(false)
 const qrUrl = computed(() => {
   const url = window.location.href
-  return `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(url)}&bgcolor=ffffff&color=000000&margin=10`
+  // Переходим на более надежный Google Charts API
+  return `https://chart.googleapis.com/chart?cht=qr&chs=300x300&chl=${encodeURIComponent(url)}&choe=UTF-8`
 })
 
 const { currentRoute, currentCheckpoints, isLoading, error } = routesStore
@@ -2032,15 +2033,36 @@ onMounted(async () => {
     opacity: 1;
   }
 }
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5000;
+  padding: 24px;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
 .qr-modal-container {
   width: 90%;
-  max-width: 320px;
-  animation: slideUp 0.3s ease-out;
+  max-width: 340px;
+  animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .qr-card {
   text-align: center;
-  padding: 24px;
+  padding: 32px 24px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 28px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
 }
 
 .qr-header {
@@ -2063,17 +2085,23 @@ onMounted(async () => {
 }
 
 .qr-image-wrap {
-  background: white;
-  padding: 12px;
-  border-radius: 16px;
-  display: inline-block;
-  margin-bottom: 16px;
-  box-shadow: var(--shadow-1);
+  background: #FFFFFF;
+  padding: 16px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.05);
   
   img {
     display: block;
-    width: 200px;
-    height: 200px;
+    width: 220px;
+    height: 220px;
+    object-fit: contain;
+    // Гарантируем, что картинка не прозрачная
+    background: white; 
   }
 }
 
