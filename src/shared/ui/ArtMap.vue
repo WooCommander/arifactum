@@ -234,8 +234,8 @@ const refreshMarkersLayer = () => {
     let marker = markersMap.get(id)
 
     if (marker) {
-      // Обновляем существующий маркер
-      marker.setLatLng([p.lat, p.lng])
+      // Плавно перемещаем существующий маркер
+      animateMarkerTo(marker, [p.lat, p.lng])
       marker.setIcon(icon)
       
       // Обновляем тултип если есть
@@ -358,6 +358,42 @@ function setupMarkerEvents(marker: L.Marker, p: Point) {
       emit('markerContextmenu', String(p.id))
     })
   }
+}
+
+function animateMarkerTo(marker: L.Marker, newLatLng: [number, number]) {
+  const start = marker.getLatLng()
+  const end = L.latLng(newLatLng)
+  
+  if (start.lat === end.lat && start.lng === end.lng) return
+
+  // Если расстояние слишком большое (например, более 1км), перемещаем мгновенно
+  const dist = start.distanceTo(end)
+  if (dist > 1000) {
+    marker.setLatLng(end)
+    return
+  }
+
+  const duration = 400
+  const startTime = performance.now()
+
+  function frame(currentTime: number) {
+    const elapsed = currentTime - startTime
+    const progress = Math.min(elapsed / duration, 1)
+    
+    // Ease out quad
+    const ease = progress * (2 - progress)
+
+    const lat = start.lat + (end.lat - start.lat) * ease
+    const lng = start.lng + (end.lng - start.lng) * ease
+    
+    marker.setLatLng([lat, lng])
+
+    if (progress < 1) {
+      requestAnimationFrame(frame)
+    }
+  }
+
+  requestAnimationFrame(frame)
 }
 
 const updateUserMarker = () => {
