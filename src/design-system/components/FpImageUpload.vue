@@ -11,6 +11,7 @@ interface Props {
   bucket?: string
   maxSizeMb?: number
   compress?: boolean
+  size?: 'sm' | 'md' | 'lg'
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -18,6 +19,7 @@ const props = withDefaults(defineProps<Props>(), {
   bucket: 'routes',
   maxSizeMb: 5,
   compress: true,
+  size: 'md'
 })
 
 const emit = defineEmits<{
@@ -160,7 +162,7 @@ async function compressImage(file: File): Promise<File> {
   <div class="fp-image-upload">
     <input ref="fileInput" type="file" accept="image/*" class="hidden-input" @change="handleFileChange" />
 
-    <FpButton variant="outline" class="upload-trigger" :disabled="isUploading" @click="triggerUpload">
+    <FpButton variant="outline" :size="props.size" class="upload-trigger" :disabled="isUploading" @click="triggerUpload">
       <FpSpinner v-if="isUploading" size="sm" />
       <template v-else>
         <Upload :size="18" />
@@ -195,7 +197,7 @@ async function compressImage(file: File): Promise<File> {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 48px;
+  width: 100%;
   border-style: dashed;
   background: var(--color-surface);
 

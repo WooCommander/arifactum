@@ -294,15 +294,15 @@ const handleMapClick = async (lat: number, lng: number) => {
   } else {
     targetIndex = 0
     checkpoints.value.unshift({
-        id: Math.random().toString(36).substr(2, 9),
-        title: '',
-        description: '',
-        lat: Number(lat.toFixed(6)),
-        lng: Number(lng.toFixed(6)),
-        order_index: Math.max(0, ...checkpoints.value.map(c => c.order_index)) + 1,
-        photo_url: null,
-        images: [] as string[]
-      })
+      id: Math.random().toString(36).substr(2, 9),
+      title: '',
+      description: '',
+      lat: Number(lat.toFixed(6)),
+      lng: Number(lng.toFixed(6)),
+      order_index: Math.max(0, ...checkpoints.value.map(c => c.order_index)) + 1,
+      photo_url: null,
+      images: [] as string[]
+    })
     // Пересчитываем индексы для визуальной согласованности
     checkpoints.value.forEach((cp, i) => cp.order_index = checkpoints.value.length - i)
     activeMarkerIndex.value = 0
@@ -329,7 +329,7 @@ const handleMarkerDragEnd = async (id: string, lat: number, lng: number) => {
     const cp = checkpoints.value[index]
     cp.lat = Number(lat.toFixed(6))
     cp.lng = Number(lng.toFixed(6))
-    
+
     // При перетаскивании тоже обновляем адрес, если название не кастомное
     geocodingIndices.value.add(index)
     try {
@@ -509,7 +509,7 @@ const handleSave = async () => {
 
     // Save checkpoints
     if (!savedRouteId) throw new Error('ID маршрута не получен')
-    
+
     await Promise.all(checkpoints.value.map(cp => {
       return routeService.createCheckpoint({
         title: cp.title,
@@ -547,7 +547,7 @@ const handleSave = async () => {
           <p class="page-subtitle">Шаг {{ currentStep }} / 3: {{ steps[currentStep - 1].title }}</p>
         </div>
       </div>
-      
+
       <div class="step-indicator">
         <div v-for="s in steps" :key="s.id" class="step-dot"
           :class="{ active: currentStep === s.id, completed: currentStep > s.id }"></div>
@@ -623,12 +623,13 @@ const handleSave = async () => {
       <!-- STEP 2: ROUTE & MAP -->
       <section v-if="currentStep === 2" class="route-map-step">
         <div class="map-container-sticky" :class="{ 'is-compact': activeMarkerIndex !== null }">
-          <ArtMap class="creation-map" :class="{ 'compact': activeMarkerIndex !== null }"
-            :points="mapPoints" :center="mapCenter" :user-location="userLocation" show-path
-            draggable-markers @map-click="handleMapClick" @marker-drag-end="handleMarkerDragEnd"
-            @marker-contextmenu="handleMarkerContextmenu" @marker-click="handleMarkerClick" />
-          
-          <button v-if="activeMarkerIndex !== null" class="map-deselect-btn" title="Снять выделение" @click="activeMarkerIndex = null">
+          <ArtMap class="creation-map" :class="{ 'compact': activeMarkerIndex !== null }" :points="mapPoints"
+            :center="mapCenter" :user-location="userLocation" show-path draggable-markers @map-click="handleMapClick"
+            @marker-drag-end="handleMarkerDragEnd" @marker-contextmenu="handleMarkerContextmenu"
+            @marker-click="handleMarkerClick" />
+
+          <button v-if="activeMarkerIndex !== null" class="map-deselect-btn" title="Снять выделение"
+            @click="activeMarkerIndex = null">
             <CloseIcon :size="20" />
           </button>
 
@@ -648,53 +649,52 @@ const handleSave = async () => {
 
           <TransitionGroup name="list" tag="div" class="cp-list">
             <template v-for="(cp, index) in checkpoints" :key="cp.id">
-              <div v-if="activeMarkerIndex === null || activeMarkerIndex === index" :id="'cp-' + cp.id" class="cp-compact-card"
-                :class="{ active: activeMarkerIndex === index, 'is-dragging': draggedIndex === index }"
-                draggable="true"
-                @dragstart="onDragStart(index)"
-                @dragover.prevent
-                @drop="onDrop(index)">
-              <div class="cp-main-row" @click="selectAndFocusPoint(index)">
-                <span class="cp-number">{{ cp.order_index }}</span>
-                <div class="cp-info">
-                  <span class="cp-title">{{ cp.title || 'Без названия' }}</span>
-                  <span class="cp-coords" v-if="cp.lat">{{ cp.lat }}, {{ cp.lng }}</span>
+              <div v-if="activeMarkerIndex === null || activeMarkerIndex === index" :id="'cp-' + cp.id"
+                class="cp-compact-card"
+                :class="{ active: activeMarkerIndex === index, 'is-dragging': draggedIndex === index }" draggable="true"
+                @dragstart="onDragStart(index)" @dragover.prevent @drop="onDrop(index)">
+                <div class="cp-main-row" @click="selectAndFocusPoint(index)">
+                  <span class="cp-number">{{ cp.order_index }}</span>
+                  <div class="cp-info">
+                    <span class="cp-title">{{ cp.title || 'Без названия' }}</span>
+                    <span class="cp-coords" v-if="cp.lat">{{ cp.lat }}, {{ cp.lng }}</span>
+                  </div>
+                  <div class="cp-actions">
+                    <button class="delete-cp" @click.stop="requestDeleteCheckpoint(index)">
+                      <Trash2 :size="18" />
+                    </button>
+                  </div>
                 </div>
-                <div class="cp-actions">
-                  <button class="delete-cp" @click.stop="requestDeleteCheckpoint(index)">
-                    <Trash2 :size="18" />
-                  </button>
+
+                <!-- Distance info -->
+                <div v-if="checkpointDistances[index]" class="cp-distance-line">
+                  <div class="line-dot"></div>
+                  <span>{{ formatDistance(checkpointDistances[index]!) }} до следующей</span>
                 </div>
-              </div>
 
-              <!-- Distance info -->
-              <div v-if="checkpointDistances[index]" class="cp-distance-line">
-                <div class="line-dot"></div>
-                <span>{{ formatDistance(checkpointDistances[index]!) }} до следующей</span>
-              </div>
+                <div v-if="activeMarkerIndex === index" class="cp-details-form">
+                  <FpInput v-model="cp.title" label="Название точки" :loading="geocodingIndices.has(index)" />
+                  <FpInput v-model="cp.description" label="Задание/Описание" />
 
-              <div v-if="activeMarkerIndex === index" class="cp-details-form">
-                <FpInput v-model="cp.title" label="Название точки" :loading="geocodingIndices.has(index)" />
-                <FpInput v-model="cp.description" label="Задание/Описание" />
+                  <div class="cp-actions-row">
+                    <FpButton variant="outline" size="sm" class="capture-gps-btn-small" :disabled="isLocating !== null"
+                      @click="captureCurrentLocation(index)">
+                      <FpSpinner v-if="isLocating === index" size="sm" />
+                      <span v-else class="btn-content">
+                        <MapPinOff :size="16" />
+                        <span>Я здесь!</span>
+                      </span>
+                    </FpButton>
 
-                <div class="cp-actions-row">
-                  <FpButton variant="outline" size="sm" class="capture-gps-btn-small" :disabled="isLocating !== null"
-                    @click="captureCurrentLocation(index)">
-                    <FpSpinner v-if="isLocating === index" size="sm" />
-                    <span v-else class="btn-content">
-                      <MapPinOff :size="16" />
-                      <span>Я здесь!</span>
-                    </span>
-                  </FpButton>
-
-                  <div class="cp-mini-gallery">
-                    <FpImageUpload label="Фото точки" size="sm" @uploaded="addImage(cp, $event)" />
-                    <div class="cp-previews">
-                      <img v-for="(img, idx) in cp.images" :key="idx" :src="img" @click="removeImage(cp.images, idx)" />
+                    <div class="cp-mini-gallery">
+                      <FpImageUpload label="Фото" size="sm" @uploaded="addImage(cp, $event)" />
+                      <div class="cp-previews">
+                        <img v-for="(img, idx) in cp.images" :key="idx" :src="img"
+                          @click="removeImage(cp.images, idx)" />
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
               </div>
             </template>
           </TransitionGroup>
@@ -755,25 +755,13 @@ const handleSave = async () => {
         </span>
       </FpButton>
     </div>
-    <FpConfirmationModal
-      v-model:visible="showLeaveConfirm"
-      title="Несохраненные изменения"
-      message="Вы уверены, что хотите покинуть страницу? Все введенные данные будут потеряны."
-      confirmText="Уйти"
-      cancelText="Остаться"
-      variant="danger"
-      @confirm="handleConfirmLeave"
-      @cancel="handleCancelLeave"
-    />
+    <FpConfirmationModal v-model:visible="showLeaveConfirm" title="Несохраненные изменения"
+      message="Вы уверены, что хотите покинуть страницу? Все введенные данные будут потеряны." confirmText="Уйти"
+      cancelText="Остаться" variant="danger" @confirm="handleConfirmLeave" @cancel="handleCancelLeave" />
 
-    <FpConfirmationModal
-      v-model:visible="showDeleteConfirm"
-      title="Удалить точку?"
-      message="Вы уверены, что хотите удалить эту точку маршрута?"
-      confirmText="Удалить"
-      variant="danger"
-      @confirm="confirmDeleteCheckpoint"
-    />
+    <FpConfirmationModal v-model:visible="showDeleteConfirm" title="Удалить точку?"
+      message="Вы уверены, что хотите удалить эту точку маршрута?" confirmText="Удалить" variant="danger"
+      @confirm="confirmDeleteCheckpoint" />
   </div>
 </template>
 
@@ -1170,32 +1158,41 @@ const handleSave = async () => {
 
 .cp-actions-row {
   display: flex;
-  flex-direction: row; // Change to horizontal
-  align-items: flex-start;
+  flex-direction: row;
+  align-items: flex-start; // Выравниваем по верхнему краю
   gap: 12px;
 
-  & > * {
+  &>* {
     flex: 1;
   }
-}
 
-.cp-mini-gallery {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  .capture-gps-btn-small {
+    height: 36px; // Высота для sm кнопки
+  }
 
-  .cp-previews {
+  .cp-mini-gallery {
     display: flex;
+    flex-direction: column;
     gap: 8px;
-    overflow-x: auto;
-    padding-bottom: 4px;
 
-    img {
-      width: 60px;
-      height: 60px;
-      object-fit: cover;
-      border-radius: 8px;
-      border: 1px solid var(--color-border);
+    :deep(.upload-trigger) {
+      height: 36px;
+      min-height: 36px;
+    }
+
+    .cp-previews {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+
+      img {
+        width: 60px;
+        height: 60px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 1px solid var(--color-border);
+      }
     }
   }
 }
@@ -1330,13 +1327,11 @@ const handleSave = async () => {
     top: -10px;
     bottom: -10px;
     width: 2px;
-    background: repeating-linear-gradient(
-      to bottom,
-      var(--color-border) 0,
-      var(--color-border) 4px,
-      transparent 4px,
-      transparent 8px
-    );
+    background: repeating-linear-gradient(to bottom,
+        var(--color-border) 0,
+        var(--color-border) 4px,
+        transparent 4px,
+        transparent 8px);
   }
 
   .line-dot {

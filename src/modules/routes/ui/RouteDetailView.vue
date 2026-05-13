@@ -82,12 +82,28 @@ async function handleReport() {
     isReporting.value = false
   }
 }
-const showQrCode = ref(false)
-const qrUrl = computed(() => {
+const showQrModal = ref(false)
+const activeQr = ref<{ url: string; title: string } | null>(null)
+
+function handleShowRouteQr() {
   const url = window.location.href
-  // Переходим на более надежный Google Charts API
-  return `https://chart.googleapis.com/chart?cht=qr&chs=300x300&chl=${encodeURIComponent(url)}&choe=UTF-8`
-})
+  activeQr.value = {
+    url: `https://chart.googleapis.com/chart?cht=qr&chs=300x300&chl=${encodeURIComponent(url)}&choe=UTF-8`,
+    title: 'QR-код маршрута'
+  }
+  showQrModal.value = true
+}
+
+function handleShowCheckpointQr(cp: any) {
+  // Формируем URL с привязкой к конкретной точке
+  const baseUrl = window.location.origin + window.location.pathname
+  const url = `${baseUrl}?point=${cp.id}`
+  activeQr.value = {
+    url: `https://chart.googleapis.com/chart?cht=qr&chs=300x300&chl=${encodeURIComponent(url)}&choe=UTF-8`,
+    title: `Точка #${cp.order}: ${cp.title}`
+  }
+  showQrModal.value = true
+}
 
 const { currentRoute, currentCheckpoints, isLoading, error } = routesStore
 const { comments, toggleCommentReaction } = socialStore
@@ -536,7 +552,7 @@ onMounted(async () => {
                 <Share2 :size="24" />
                 <span>Поделиться</span>
               </div>
-              <div class="social-action" @click="showQrCode = true">
+              <div class="social-action" @click="handleShowRouteQr">
                 <QrCode :size="24" />
                 <span>QR-код</span>
               </div>
@@ -715,6 +731,9 @@ onMounted(async () => {
                 </div>
 
                 <div class="target-actions-wrap">
+                  <button class="info-btn" @click="handleShowCheckpointQr(nextCheckpoint)">
+                    <QrCode :size="18" />
+                  </button>
                   <button class="info-btn" @click="handleMarkerClick(nextCheckpoint.id)">
                     <Info :size="18" />
                   </button>
@@ -762,24 +781,24 @@ onMounted(async () => {
     <!-- QR Code Modal -->
     <Teleport to="body">
       <transition name="fade">
-        <div v-if="showQrCode" class="modal-overlay" @click.self="showQrCode = false">
+        <div v-if="showQrModal && activeQr" class="modal-overlay" @click.self="showQrModal = false">
           <div class="qr-modal-container">
             <FpCard class="qr-card">
               <div class="qr-header">
-                <h3>QR-код маршрута</h3>
-                <button class="close-qr" @click="showQrCode = false">
+                <h3>{{ activeQr.title }}</h3>
+                <button class="close-qr" @click="showQrModal = false">
                   <X :size="20" />
                 </button>
               </div>
               
               <div class="qr-content">
                 <div class="qr-image-wrap">
-                  <img :src="qrUrl" alt="Route QR Code" />
+                  <img :src="activeQr.url" alt="QR Code" />
                 </div>
-                <p class="qr-hint">Покажите этот код другу, чтобы он мог отсканировать его своей камерой</p>
+                <p class="qr-hint">Отсканируйте этот код, чтобы мгновенно перейти к этой локации или поделиться ей.</p>
               </div>
 
-              <FpButton variant="primary" class="qr-done-btn" @click="showQrCode = false">
+              <FpButton variant="primary" class="qr-done-btn" @click="showQrModal = false">
                 Готово
               </FpButton>
             </FpCard>
@@ -800,7 +819,12 @@ onMounted(async () => {
           <div class="panel-handle"></div>
 
           <div class="panel-header">
-            <div class="point-badge">Точка #{{ selectedCheckpoint.order }}</div>
+            <div class="header-left">
+              <div class="point-badge">Точка #{{ selectedCheckpoint.order }}</div>
+              <button class="qr-mini-btn" @click="handleShowCheckpointQr(selectedCheckpoint)">
+                <QrCode :size="16" />
+              </button>
+            </div>
             <button class="close-panel" @click="selectedCheckpoint = null">
               <X :size="20" color="white" />
             </button>
@@ -1645,6 +1669,31 @@ onMounted(async () => {
     padding: 4px 12px;
     border-radius: 100px;
     text-transform: uppercase;
+  }
+
+  .qr-mini-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: var(--color-primary);
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:active {
+      transform: scale(0.9);
+      background: rgba(var(--color-primary-rgb), 0.2);
+    }
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
   .close-panel {
