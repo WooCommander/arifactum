@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { ModerationService, type ModerationRoute } from '../services/ModerationService'
 import { ReportsService, type Report } from '../services/ReportsService'
 import { AdminService, type ProjectStats } from '../services/AdminService'
-import { FpBackButton, FpCard, FpButton, FpSpinner, FpConfirmationModal, FpInput } from '@/design-system'
+import { FpBackButton, FpCard, FpButton, FpSpinner, FpConfirmationModal, FpInput, FpPageHeader } from '@/design-system'
 import { Clock, MapPin, User as UserIcon, ChevronRight, Check, X, AlertTriangle, Activity, Users, ShieldAlert, Search } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -164,15 +164,11 @@ onMounted(load)
 
 <template>
     <div class="moderation-view">
-        <div class="page-title-row">
-            <div class="title-with-back">
-                <FpBackButton to="/profile" />
-                <div class="title-group">
-                    <h1 class="page-title">Модерация</h1>
-                    <p class="page-subtitle">Проверка новых маршрутов</p>
-                </div>
-            </div>
-        </div>
+        <FpPageHeader 
+            title="Модерация" 
+            subtitle="Проверка новых маршрутов" 
+            back-to="/profile"
+        />
 
         <div class="tabs-row">
             <button 

@@ -2,7 +2,7 @@
 import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { AuthService } from '@/modules/auth/services/AuthService'
-import { FpPullToRefresh, FpCard, FpButton } from '@/design-system'
+import { FpPullToRefresh, FpCard, FpButton, FpPageHeader } from '@/design-system'
 import { Users, Navigation, ChevronRight, X, Lightbulb, Map as MapIcon } from 'lucide-vue-next'
 import { useRoutesStore } from '@/modules/routes/state/useRoutesStore'
 import ArtMap from '@/shared/ui/ArtMap.vue'
@@ -141,12 +141,11 @@ onMounted(loadData)
     <FpPullToRefresh @refresh="handleRefresh">
       <!-- Dashboard Hero: Personalized Profile -->
       <header class="dashboard-hero">
-        <div class="page-title-row">
-          <div class="title-group">
-            <h1 class="page-title">{{ greeting }}, <span class="accent">{{ userName }}</span></h1>
-            <p class="page-subtitle">Твой прогресс в Artifactum</p>
-          </div>
-        </div>
+        <FpPageHeader subtitle="Твой прогресс в Artifactum">
+          <template #title>
+            {{ greeting }}, <span class="accent">{{ userName }}</span>
+          </template>
+        </FpPageHeader>
 
         <FpCard class="tip-of-the-day" padding="md">
           <div class="tip-icon">

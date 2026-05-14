@@ -5,7 +5,7 @@ import { useRoutesStore } from '../state/useRoutesStore'
 import { routeService } from '../services/routeService'
 import { authStore } from '@/modules/auth/store/authStore'
 import { useCategoryStore } from '../state/useCategoryStore'
-import { FpBackButton, FpInput, FpButton, FpSpinner, FpImageUpload, FpConfirmationModal } from '@/design-system'
+import { FpBackButton, FpInput, FpButton, FpSpinner, FpImageUpload, FpConfirmationModal, FpPageHeader } from '@/design-system'
 import ArtMap from '@/shared/ui/ArtMap.vue'
 import { Save, Plus, Trash2, MapPin, Star, X as CloseIcon, MapPinOff } from 'lucide-vue-next'
 import { Haptics } from '@capacitor/haptics'
@@ -539,20 +539,23 @@ const handleSave = async () => {
 
 <template>
   <div class="create-route-view">
-    <div class="page-title-row">
-      <div class="title-with-back">
-        <FpBackButton @click="currentStep === 1 ? router.back() : prevStep()" size="sm" />
-        <div class="title-group">
-          <h1 class="page-title">{{ isEditMode ? 'Редактировать' : 'Новый маршрут' }}</h1>
-          <p class="page-subtitle">Шаг {{ currentStep }} / 3: {{ steps[currentStep - 1].title }}</p>
+    <FpPageHeader>
+      <template #left>
+        <FpBackButton @click="currentStep === 1 ? router.back() : prevStep()" />
+      </template>
+      <template #title>
+        {{ isEditMode ? 'Редактировать' : 'Новый маршрут' }}
+      </template>
+      <template #subtitle>
+        Шаг {{ currentStep }} / 3: {{ steps[currentStep - 1].title }}
+      </template>
+      <template #actions>
+        <div class="step-indicator">
+          <div v-for="s in steps" :key="s.id" class="step-dot"
+            :class="{ active: currentStep === s.id, completed: currentStep > s.id }"></div>
         </div>
-      </div>
-
-      <div class="step-indicator">
-        <div v-for="s in steps" :key="s.id" class="step-dot"
-          :class="{ active: currentStep === s.id, completed: currentStep > s.id }"></div>
-      </div>
-    </div>
+      </template>
+    </FpPageHeader>
 
     <div v-if="isLoading" class="loader-overlay">
       <FpSpinner />

@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useTeamsStore } from '../state/useTeamsStore'
 import TeamCard from './TeamCard.vue'
-import { FpButton, FpInput, FpSpinner, FpConfirmationModal } from '@/design-system'
+import { FpButton, FpInput, FpSpinner, FpConfirmationModal, FpPageHeader } from '@/design-system'
 import { Plus, PersonStanding, LogIn } from 'lucide-vue-next'
 const { myTeams, isLoading, error, fetchMyTeams, createTeam, joinTeam, leaveTeam, deleteTeam } = useTeamsStore()
 
@@ -71,15 +71,10 @@ const confirmDelete = async () => {
 
 <template>
   <div class="teams-view">
-    <div class="page-title-row">
-      <div class="title-with-back">
-
-        <div class="title-group">
-          <h1 class="page-title">Мои команды</h1>
-          <p class="page-subtitle">Твои друзья и соратники</p>
-        </div>
-      </div>
-    </div>
+    <FpPageHeader 
+      title="Мои команды" 
+      subtitle="Твои друзья и соратники" 
+    />
 
     <div class="content">
       <div v-if="error" class="error-banner">
@@ -179,27 +174,10 @@ const confirmDelete = async () => {
 
 .page-title-row {
   padding: var(--spacing-lg) var(--spacing-md) var(--spacing-md);
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
 }
 
-.title-group {
-  .page-title {
-    font-size: 24px;
-    font-weight: 900;
-    margin: 0;
-    background: linear-gradient(135deg, var(--color-primary), #8e44ad);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
 
-  .page-subtitle {
-    font-size: 14px;
-    color: var(--color-text-secondary);
-    margin: 4px 0 0;
-  }
-}
 
 .content {
   flex: 1;

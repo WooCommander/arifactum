@@ -12,6 +12,7 @@ import FpSkeleton from './components/FpSkeleton.vue'
 import FpSwipeable from './components/FpSwipeable.vue'
 import FpPullToRefresh from './components/FpPullToRefresh.vue'
 import FpImageUpload from './components/FpImageUpload.vue'
+import FpPageHeader from './components/FpPageHeader.vue'
 
 export {
     FpBackButton,
@@ -27,5 +28,6 @@ export {
     FpSkeleton,
     FpSwipeable,
     FpPullToRefresh,
-    FpImageUpload
+    FpImageUpload,
+    FpPageHeader
 }

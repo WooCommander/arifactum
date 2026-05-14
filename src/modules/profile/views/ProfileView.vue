@@ -11,6 +11,7 @@ import { useRewardsStore } from '@/modules/rewards'
 import { authStore } from '@/modules/auth/store/authStore'
 import { Shield, ChevronRight } from 'lucide-vue-next'
 import { changelog } from '@/data/changelog'
+import { FpPageHeader } from '@/design-system'
 
 const { t } = useI18n()
 const { totalBonuses, fetchRewards } = useRewardsStore()
@@ -150,12 +151,10 @@ onMounted(async () => {
 
 <template>
   <div class="profile-view">
-    <div class="page-title-row">
-      <div class="title-group">
-        <h1 class="page-title">Мой профиль</h1>
-        <p class="page-subtitle">Твой путь и достижения</p>
-      </div>
-    </div>
+    <FpPageHeader 
+      title="Мой профиль" 
+      subtitle="Твой путь и достижения" 
+    />
 
     <!-- Header -->
     <section class="profile-header">
