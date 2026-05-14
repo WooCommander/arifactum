@@ -780,7 +780,7 @@ const handleSave = async () => {
   top: 0;
   z-index: 1000;
   background: var(--color-background);
-  padding: 12px 20px 8px;
+
   border-bottom: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;

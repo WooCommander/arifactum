@@ -49,10 +49,10 @@ const showVictoryModal = ref(false)
 const unlockedArtifact = ref<any>(null)
 const routeStats = ref<any>(null)
 
-// Регистрируем глобальный обработчик для гарантированной связи
-;(window as any).artSelectCheckpoint = (id: string) => {
-  handleMarkerClick(id)
-}
+  // Регистрируем глобальный обработчик для гарантированной связи
+  ; (window as any).artSelectCheckpoint = (id: string) => {
+    handleMarkerClick(id)
+  }
 
 // AR State
 const isArMode = ref(false)
@@ -188,11 +188,11 @@ function handleScroll(e: Event) {
 async function handleMarkerClick(id: any) {
   const targetId = String(id).trim()
   const cp = currentCheckpoints.value.find(p => String(p.id).trim() === targetId)
-  
+
   if (cp) {
     selectedCheckpoint.value = cp
     // Вибрация отдельно, не блокируя UI
-    Haptics.impact({ style: ImpactStyle.Light }).catch(() => {})
+    Haptics.impact({ style: ImpactStyle.Light }).catch(() => { })
   } else {
     console.warn('Checkpoint not found by ID:', targetId)
   }
@@ -442,34 +442,34 @@ onMounted(async () => {
   try {
     locationWatchId = await LocationService.watchPosition((coords) => {
       userLocation.value = coords
-      
+
       // Check for completion
       if (nextCheckpoint.value && distanceToNext.value < 20) {
         handleCheckIn()
       }
     })
-    } catch (e) {
-      console.error('Failed to start location tracking:', e)
-    }
+  } catch (e) {
+    console.error('Failed to start location tracking:', e)
+  }
 
-    // Scroll listener for parallax and sticky effects
-    const scrollContainer = document.querySelector('.page-content')
-    if (scrollContainer) {
-      scrollContainer.addEventListener('scroll', handleScroll)
-    }
-  })
+  // Scroll listener for parallax and sticky effects
+  const scrollContainer = document.querySelector('.page-content')
+  if (scrollContainer) {
+    scrollContainer.addEventListener('scroll', handleScroll)
+  }
+})
 
-  onUnmounted(() => {
-    clearInterval(timerInterval)
-    if (locationWatchId) {
-      LocationService.clearWatch(locationWatchId)
-    }
+onUnmounted(() => {
+  clearInterval(timerInterval)
+  if (locationWatchId) {
+    LocationService.clearWatch(locationWatchId)
+  }
 
-    const scrollContainer = document.querySelector('.page-content')
-    if (scrollContainer) {
-      scrollContainer.removeEventListener('scroll', handleScroll)
-    }
-  })
+  const scrollContainer = document.querySelector('.page-content')
+  if (scrollContainer) {
+    scrollContainer.removeEventListener('scroll', handleScroll)
+  }
+})
 </script>
 
 <template>
@@ -486,7 +486,7 @@ onMounted(async () => {
     <div v-else-if="currentRoute" class="route-detail-content">
       <FpPullToRefresh @refresh="fetchRouteDetails">
 
-        <div v-if="!isActiveMode" class="route-hero" :style="{ 
+        <div v-if="!isActiveMode" class="route-hero" :style="{
           transform: `translateY(${scrollY * 0.4}px)`,
           opacity: Math.max(0, 1 - scrollY / 320)
         }">
@@ -522,14 +522,16 @@ onMounted(async () => {
                 </div>
                 <div v-if="isAuthor && currentRoute.status" class="status-badge" :class="currentRoute.status">
                   <span class="status-dot"></span>
-                  {{ currentRoute.status === 'draft' ? 'Черновик' : currentRoute.status === 'pending' ? 'На модерации' : 'Опубликован' }}
+                  {{ currentRoute.status === 'draft' ? 'Черновик' : currentRoute.status === 'pending' ? 'На модерации' :
+                  'Опубликован' }}
                 </div>
               </div>
               <h1 class="route-title">{{ currentRoute.title }}</h1>
 
               <div class="author-meta-row">
                 <div class="author-info-link" @click="router.push(`/profile/${currentRoute.authorId}`)">
-                  <div class="author-avatar-mini" :style="currentRoute.authorAvatar ? `background-image: url(${currentRoute.authorAvatar})` : ''">
+                  <div class="author-avatar-mini"
+                    :style="currentRoute.authorAvatar ? `background-image: url(${currentRoute.authorAvatar})` : ''">
                     {{ !currentRoute.authorAvatar ? (currentRoute.authorName?.[0] || '?') : '' }}
                   </div>
                   <span class="author-name">{{ currentRoute.authorName }}</span>
@@ -623,15 +625,11 @@ onMounted(async () => {
                       </div>
                     </div>
                     <div class="comment-content">{{ comment.content }}</div>
-                    
+
                     <div class="comment-reactions">
-                      <button 
-                        v-for="emoji in ['👍', '❤️', '🔥']" 
-                        :key="emoji"
-                        class="reaction-btn"
+                      <button v-for="emoji in ['👍', '❤️', '🔥']" :key="emoji" class="reaction-btn"
                         :class="{ active: comment.userReaction === emoji }"
-                        @click="toggleCommentReaction(comment.id, emoji)"
-                      >
+                        @click="toggleCommentReaction(comment.id, emoji)">
                         <span class="emoji">{{ emoji }}</span>
                         <span v-if="comment.reactions[emoji] > 0" class="count">{{ comment.reactions[emoji] }}</span>
                       </button>
@@ -640,7 +638,8 @@ onMounted(async () => {
                 </div>
               </transition>
 
-              <button v-if="comments.length > 3" class="expand-comments-btn" @click="isCommentsExpanded = !isCommentsExpanded">
+              <button v-if="comments.length > 3" class="expand-comments-btn"
+                @click="isCommentsExpanded = !isCommentsExpanded">
                 {{ isCommentsExpanded ? 'Скрыть' : `Показать все (${comments.length})` }}
                 <ChevronDown :class="{ rotated: isCommentsExpanded }" :size="18" />
               </button>
@@ -664,7 +663,7 @@ onMounted(async () => {
 
           <div v-if="!isActiveMode" class="map-section">
             <h2>Карта маршрута</h2>
-            <ArtMap class="route-map" :points="mapPoints" :interactive="true" 
+            <ArtMap class="route-map" :points="mapPoints" :interactive="true"
               :user-location="userLocation ? [userLocation.latitude, userLocation.longitude] : null"
               :is-clustered="false" @marker-click="handleMarkerClick" @map-click="selectedCheckpoint = null" />
           </div>
@@ -747,15 +746,11 @@ onMounted(async () => {
           </div>
 
           <div class="map-section active-map-section">
-            <ArtMap class="route-map full-screen" :points="mapPoints" 
-              :center="initialActiveCenter"
-              :interactive="true" :user-location="userLocation ? [userLocation.latitude, userLocation.longitude] : null" 
-              v-model:follow-user="isFollowMode" :is-clustered="false"
-              auto-resume-follow
-              :bearing="isCompassMode ? (userLocation?.heading || 0) : 0"
-              :target-location="nextCheckpointLocation" 
-              @marker-click="handleMarkerClick" 
-              @map-click="selectedCheckpoint = null"
+            <ArtMap class="route-map full-screen" :points="mapPoints" :center="initialActiveCenter" :interactive="true"
+              :user-location="userLocation ? [userLocation.latitude, userLocation.longitude] : null"
+              v-model:follow-user="isFollowMode" :is-clustered="false" auto-resume-follow
+              :bearing="isCompassMode ? (userLocation?.heading || 0) : 0" :target-location="nextCheckpointLocation"
+              @marker-click="handleMarkerClick" @map-click="selectedCheckpoint = null"
               @toggle-compass="isCompassMode = !isCompassMode" />
           </div>
 
@@ -764,13 +759,12 @@ onMounted(async () => {
               Выход
             </FpButton>
 
-            <FpButton v-if="isNearNext && !isArMode" variant="primary" class="ar-action-btn"
-              @click="startArSession">
+            <FpButton v-if="isNearNext && !isArMode" variant="primary" class="ar-action-btn" @click="startArSession">
               <Navigation :size="20" /> AR
             </FpButton>
 
-            <FpButton variant="primary" class="target-action-btn"
-              :disabled="!isNearNext || !nextCheckpoint || isArMode" @click="handleCheckIn">
+            <FpButton variant="primary" class="target-action-btn" :disabled="!isNearNext || !nextCheckpoint || isArMode"
+              @click="handleCheckIn">
               {{ isLastPoint ? 'Финиш' : 'Забрать' }}
             </FpButton>
           </div>
@@ -790,7 +784,7 @@ onMounted(async () => {
                   <X :size="20" />
                 </button>
               </div>
-              
+
               <div class="qr-content">
                 <div class="qr-image-wrap">
                   <img :src="activeQr.url" alt="QR Code" />
@@ -810,12 +804,10 @@ onMounted(async () => {
     <!-- Глобальная плашка информации о точке -->
     <Teleport to="body">
       <transition name="slide-up">
-        <div v-if="selectedCheckpoint" class="checkpoint-detail-panel floating-panel" 
-          :style="{ transform: `translateY(${panelTranslateY}px)` }"
-          @touchstart="handleTouchStart"
-          @touchmove="handleTouchMove"
-          @touchend="handleTouchEnd">
-          
+        <div v-if="selectedCheckpoint" class="checkpoint-detail-panel floating-panel"
+          :style="{ transform: `translateY(${panelTranslateY}px)` }" @touchstart="handleTouchStart"
+          @touchmove="handleTouchMove" @touchend="handleTouchEnd">
+
           <div class="panel-handle"></div>
 
           <div class="panel-header">
@@ -914,21 +906,11 @@ onMounted(async () => {
       confirmText="Отправить" @confirm="handlePublish" />
 
     <!-- Report Modal -->
-    <FpConfirmationModal
-      v-model:visible="showReportModal"
-      title="Пожаловаться на маршрут"
-      message="Опишите, что не так с этим маршрутом (ошибки, спам, неприемлемый контент)"
-      confirmText="Отправить"
-      variant="danger"
-      :confirmDisabled="!reportReason.trim() || isReporting"
-      @confirm="handleReport"
-    >
+    <FpConfirmationModal v-model:visible="showReportModal" title="Пожаловаться на маршрут"
+      message="Опишите, что не так с этим маршрутом (ошибки, спам, неприемлемый контент)" confirmText="Отправить"
+      variant="danger" :confirmDisabled="!reportReason.trim() || isReporting" @confirm="handleReport">
       <div style="margin-top: 16px;">
-        <FpInput 
-          v-model="reportReason" 
-          placeholder="Причина жалобы..." 
-          autofocus
-        />
+        <FpInput v-model="reportReason" placeholder="Причина жалобы..." autofocus />
       </div>
     </FpConfirmationModal>
   </div>
@@ -972,12 +954,11 @@ onMounted(async () => {
     .hero-overlay {
       position: absolute;
       inset: 0;
-      background: linear-gradient(to bottom, 
-        rgba(0, 0, 0, 0.4) 0%, 
-        transparent 30%, 
-        transparent 70%, 
-        rgba(0, 0, 0, 0.6) 100%
-      );
+      background: linear-gradient(to bottom,
+          rgba(0, 0, 0, 0.4) 0%,
+          transparent 30%,
+          transparent 70%,
+          rgba(0, 0, 0, 0.6) 100%);
     }
   }
 
@@ -1032,8 +1013,9 @@ onMounted(async () => {
 
     .route-hero-meta {
       margin-bottom: 8px;
-      
-      .meta-top, .author-meta-row {
+
+      .meta-top,
+      .author-meta-row {
         height: 0;
         margin: 0;
         opacity: 0;
@@ -1053,16 +1035,16 @@ onMounted(async () => {
       background: none;
       border: none;
       padding: 0;
-      
+
       .social-action {
         flex-direction: row;
         gap: 4px;
         padding: 4px;
-        
+
         span {
           display: none; // Скрываем текст в липком режиме для компактности
         }
-        
+
         svg {
           width: 20px;
           height: 20px;
@@ -1107,26 +1089,33 @@ onMounted(async () => {
   font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
-  
+
   &.draft {
     background: rgba(255, 255, 255, 0.1);
     color: var(--color-text-secondary);
-    .status-dot { background: var(--color-text-tertiary); }
+
+    .status-dot {
+      background: var(--color-text-tertiary);
+    }
   }
-  
+
   &.pending {
     background: rgba(255, 193, 7, 0.15);
     color: #ffc107;
-    .status-dot { 
+
+    .status-dot {
       background: #ffc107;
       animation: status-pulse 1.5s infinite;
     }
   }
-  
+
   &.published {
     background: rgba(var(--color-success-rgb), 0.15);
     color: var(--color-success);
-    .status-dot { background: var(--color-success); }
+
+    .status-dot {
+      background: var(--color-success);
+    }
   }
 
   .status-dot {
@@ -1137,9 +1126,20 @@ onMounted(async () => {
 }
 
 @keyframes status-pulse {
-  0% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.5); opacity: 0.5; }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.5);
+    opacity: 0.5;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .route-title {
@@ -1241,7 +1241,7 @@ onMounted(async () => {
 
   &.active {
     color: var(--color-primary);
-    
+
     svg {
       transform: scale(1.1);
     }
@@ -1251,6 +1251,7 @@ onMounted(async () => {
     &:active {
       color: var(--color-error);
     }
+
     svg {
       color: color-mix(in srgb, var(--color-error) 70%, transparent);
     }
@@ -1271,7 +1272,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 12px;
-  
+
   svg {
     color: var(--color-primary);
     width: 20px;
@@ -1761,7 +1762,7 @@ onMounted(async () => {
   margin-bottom: 24px;
   padding: 12px 0 20px;
   border-bottom: 1px solid var(--color-border);
-  
+
   h2 {
     font-size: 16px;
     font-weight: 800;
@@ -1939,6 +1940,10 @@ onMounted(async () => {
   color: white;
   font-weight: 800;
   border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
 }
 
 .active-actions {
@@ -2058,15 +2063,15 @@ onMounted(async () => {
   right: 0;
   z-index: 2100; // ПОВЫШАЕМ
   pointer-events: none; // Чтобы можно было кликнуть на карту сквозь пустые места
-  
-  & > * {
+
+  &>* {
     pointer-events: auto; // Но на сами плашки нажимать можно
   }
 }
 
 .hud-top-panel {
   padding: calc(20px + env(safe-area-inset-top)) 20px 20px;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, transparent 100%);
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.8) 0%, transparent 100%);
 }
 
 @keyframes pulse {
@@ -2082,6 +2087,7 @@ onMounted(async () => {
     opacity: 1;
   }
 }
+
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -2095,8 +2101,15 @@ onMounted(async () => {
 }
 
 @keyframes slideUp {
-  from { transform: translateY(30px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .qr-modal-container {
@@ -2119,7 +2132,7 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
-  
+
   h3 {
     margin: 0;
     font-size: 18px;
@@ -2143,14 +2156,14 @@ onMounted(async () => {
   margin-bottom: 20px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   border: 1px solid rgba(0, 0, 0, 0.05);
-  
+
   img {
     display: block;
     width: 220px;
     height: 220px;
     object-fit: contain;
     // Гарантируем, что картинка не прозрачная
-    background: white; 
+    background: white;
   }
 }
 
@@ -2184,11 +2197,11 @@ onMounted(async () => {
   border: 1px solid rgba(255, 255, 255, 0.08);
   cursor: pointer;
   transition: all 0.2s;
-  
+
   .emoji {
     font-size: 14px;
   }
-  
+
   .count {
     font-size: 11px;
     font-weight: 700;
@@ -2203,12 +2216,13 @@ onMounted(async () => {
   &.active {
     background: color-mix(in srgb, var(--color-primary) 15%, transparent);
     border-color: var(--color-primary);
-    
+
     .count {
       color: var(--color-primary);
     }
   }
 }
+
 .publish-block {
   margin: 32px 0;
 
@@ -2241,6 +2255,7 @@ onMounted(async () => {
         font-weight: 800;
         color: var(--color-text-primary);
       }
+
       p {
         margin: 0;
         font-size: 14px;
