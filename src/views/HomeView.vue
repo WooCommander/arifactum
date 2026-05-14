@@ -3,7 +3,9 @@ import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { AuthService } from '@/modules/auth/services/AuthService'
 import { FpPullToRefresh, FpCard, FpButton, FpPageHeader } from '@/design-system'
-import { Users, Navigation, ChevronRight, X, Lightbulb, Map as MapIcon } from 'lucide-vue-next'
+import { Users, Navigation, ChevronRight, X, Lightbulb, Map as MapIcon, Plus } from 'lucide-vue-next'
+import { teamService } from '@/modules/teams/services/teamService'
+import { authStore } from '@/modules/auth/store/authStore'
 import { useRoutesStore } from '@/modules/routes/state/useRoutesStore'
 import ArtMap from '@/shared/ui/ArtMap.vue'
 import { LocationService } from '@/shared/lib/LocationService'
@@ -22,6 +24,24 @@ const greeting = computed(() => {
   if (hour < 12) return 'Доброе утро'
   if (hour < 18) return 'Добрый день'
   return 'Добрый вечер'
+})
+
+const dynamicSubtitle = computed(() => {
+  const stats = userStats.value
+  const hour = new Date().getHours()
+
+  if (hour >= 23 || hour < 5) return 'Звезды указывают путь к новым тайнам'
+  if (!stats) return 'Твой путь в мире Artifactum'
+
+  if (stats.routesCompleted > 0) {
+    return `Пройдено ${stats.routesCompleted} маршрутов. Что выберем сегодня?`
+  }
+
+  if (stats.xp > 0) {
+    return `У тебя уже ${stats.xp} XP! Вперед к новым вершинам`
+  }
+
+  return 'Твое приключение начинается здесь'
 })
 
 // Tip of the Day
@@ -86,6 +106,7 @@ const userStats = ref<any>(null)
 const isLoading = ref(true)
 
 const { routes, fetchRoutes } = useRoutesStore()
+const userTeams = ref<any[]>([])
 const selectedRoute = ref<Route | null>(null)
 
 const routePoints = computed(() => {
@@ -110,14 +131,16 @@ const handleMarkerClick = (id: string) => {
 const loadData = async () => {
   isLoading.value = true
   try {
-    const [stats, profile, loc] = await Promise.all([
+    const [stats, profile, loc, teams] = await Promise.all([
       AuthService.getUserStats(),
       AuthService.getProfile(),
       LocationService.getCurrentPosition().catch(() => null),
-      fetchRoutes()
+      fetchRoutes(),
+      authStore.currentUserId.value ? teamService.getUserTeams(authStore.currentUserId.value) : Promise.resolve([])
     ])
     userStats.value = stats
     userProfile.value = profile
+    userTeams.value = Array.isArray(teams) ? teams : []
     if (loc) {
       userLocation.value = { lat: loc.latitude, lng: loc.longitude }
     }
@@ -141,7 +164,7 @@ onMounted(loadData)
     <FpPullToRefresh @refresh="handleRefresh" class="page-container">
       <!-- Dashboard Hero: Personalized Profile -->
       <header class="dashboard-hero">
-        <FpPageHeader subtitle="Твой прогресс в Artifactum">
+        <FpPageHeader :subtitle="dynamicSubtitle">
           <template #title>
             {{ greeting }}, <span class="accent">{{ userName }}</span>
           </template>
@@ -179,13 +202,24 @@ onMounted(loadData)
           </FpCard>
 
           <FpCard class="promo-card team-card" @click="router.push('/teams')">
+            <div class="team-avatars" v-if="userTeams.length > 0">
+              <div v-for="team in userTeams.slice(0, 3)" :key="team.id" class="team-avatar">
+                {{ team.name[0] }}
+              </div>
+              <div v-if="userTeams.length > 3" class="team-avatar more">
+                +{{ userTeams.length - 3 }}
+              </div>
+            </div>
             <div class="promo-content">
               <div class="promo-text">
                 <h3>Твои команды</h3>
-                <p>Проходи маршруты вместе с друзьями и соревнуйся с другими.</p>
+                <p v-if="userTeams.length > 0">
+                  У тебя уже {{ userTeams.length }} {{ userTeams.length === 1 ? 'команда' : 'команды' }}. Исследуй мир вместе!
+                </p>
+                <p v-else>Найди единомышленников и проходи маршруты вместе.</p>
               </div>
               <div class="promo-icon">
-                <Users :size="48" />
+                <Users :size="32" />
               </div>
             </div>
           </FpCard>
@@ -277,6 +311,7 @@ onMounted(loadData)
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
 
   .accent {
     color: var(--color-primary);
@@ -447,8 +482,41 @@ onMounted(loadData)
   }
 
   &.team-card {
-    background: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-secondary-variant) 100%);
-    color: var(--color-on-primary);
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    color: white;
+    box-shadow: 0 10px 25px rgba(99, 102, 241, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+
+    .team-avatars {
+      display: flex;
+      margin-bottom: 12px;
+      padding-left: 4px;
+
+      .team-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(4px);
+        border: 2px solid #6366f1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 800;
+        margin-left: -8px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+
+        &:first-child {
+          margin-left: 0;
+        }
+
+        &.more {
+          background: rgba(0, 0, 0, 0.2);
+          border-color: rgba(255, 255, 255, 0.4);
+        }
+      }
+    }
   }
 
   h3 {
@@ -621,4 +689,3 @@ onMounted(loadData)
   opacity: 0;
 }
 </style>
-```
