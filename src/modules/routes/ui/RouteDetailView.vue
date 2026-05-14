@@ -48,6 +48,7 @@ const showPublishConfirm = ref(false)
 const showVictoryModal = ref(false)
 const unlockedArtifact = ref<any>(null)
 const routeStats = ref<any>(null)
+const showExitConfirm = ref(false)
 
   // Регистрируем глобальный обработчик для гарантированной связи
   ; (window as any).artSelectCheckpoint = (id: string) => {
@@ -374,6 +375,15 @@ async function handleCheckIn() {
   if (completedCheckpointIds.value.size === currentCheckpoints.value.length) {
     finishRoute()
   }
+}
+
+function handleConfirmExit() {
+  isActiveMode.value = false
+  showExitConfirm.value = false
+  totalSeconds.value = 0
+  elapsedTime.value = '00:00'
+  completedCheckpointIds.value.clear()
+  router.push('/routes')
 }
 
 async function finishRoute() {
@@ -755,7 +765,7 @@ onUnmounted(() => {
           </div>
 
           <div class="active-actions-bottom">
-            <FpButton variant="glass" class="exit-action-btn" @click="router.push('/routes')">
+            <FpButton variant="glass" class="exit-action-btn" @click="showExitConfirm = true">
               Выход
             </FpButton>
 
@@ -913,6 +923,17 @@ onUnmounted(() => {
         <FpInput v-model="reportReason" placeholder="Причина жалобы..." autofocus />
       </div>
     </FpConfirmationModal>
+
+    <!-- Exit Confirmation Modal -->
+    <FpConfirmationModal
+      v-model:visible="showExitConfirm"
+      title="Завершить маршрут?"
+      message="Весь текущий прогресс (время и пройденные точки) будет сброшен."
+      confirmText="Выйти"
+      cancelText="Отмена"
+      variant="danger"
+      @confirm="handleConfirmExit"
+    />
   </div>
 </template>
 
@@ -2050,7 +2071,7 @@ onUnmounted(() => {
   position: fixed;
   inset: 0;
   background: var(--color-background);
-  z-index: 2000;
+  z-index: 5000;
   overflow: hidden; // КРИТИЧНО: запрещаем общий скролл
   display: flex;
   flex-direction: column;
@@ -2096,7 +2117,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 5000;
+  z-index: 10000;
   padding: 24px;
 }
 
