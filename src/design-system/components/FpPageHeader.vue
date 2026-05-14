@@ -26,9 +26,9 @@ const props = withDefaults(defineProps<Props>(), {
         <h1 class="page-title">
           <slot name="title">{{ title }}</slot>
         </h1>
-        <p v-if="subtitle || $slots.subtitle" class="page-subtitle">
+        <div v-if="subtitle || $slots.subtitle" class="page-subtitle">
           <slot name="subtitle">{{ subtitle }}</slot>
-        </p>
+        </div>
       </div>
     </div>
     

@@ -44,6 +44,17 @@ const dynamicSubtitle = computed(() => {
   return 'Твое приключение начинается здесь'
 })
 
+const levelProgress = computed(() => {
+  if (!userStats.value) return 0
+  const xp = userStats.value.xp || 0
+  return (xp % 1000) / 10
+})
+
+const nextLevelXp = computed(() => {
+  if (!userStats.value) return 1000
+  return 1000 - (userStats.value.xp % 1000)
+})
+
 // Tip of the Day
 
 const dailyTip = computed(() => {
@@ -136,7 +147,7 @@ const loadData = async () => {
       AuthService.getProfile(),
       LocationService.getCurrentPosition().catch(() => null),
       fetchRoutes(),
-      authStore.currentUserId.value ? teamService.getUserTeams(authStore.currentUserId.value) : Promise.resolve([])
+      authStore.currentUserId.value ? teamService.getMyTeams() : Promise.resolve([])
     ])
     userStats.value = stats
     userProfile.value = profile
@@ -164,9 +175,30 @@ onMounted(loadData)
     <FpPullToRefresh @refresh="handleRefresh" class="page-container">
       <!-- Dashboard Hero: Personalized Profile -->
       <header class="dashboard-hero">
-        <FpPageHeader :subtitle="dynamicSubtitle">
+        <FpPageHeader>
           <template #title>
             {{ greeting }}, <span class="accent">{{ userName }}</span>
+          </template>
+          <template #subtitle>
+            <div class="header-subtitle-area">
+              <span class="subtitle-text">{{ dynamicSubtitle }}</span>
+              <div class="xp-status-row" v-if="userStats">
+                <div class="lvl-tag">
+                  <span class="label">LVL</span>
+                  <span class="value">{{ userStats.level }}</span>
+                </div>
+                <div class="xp-bar-wrapper">
+                  <div class="xp-bar-track">
+                    <div class="xp-bar-fill" :style="{ width: `${levelProgress}%` }"></div>
+                  </div>
+                  <div class="xp-values">
+                    <span class="current">{{ userStats.xp % 1000 }}</span>
+                    <span class="separator">/</span>
+                    <span class="total">1000 XP</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </template>
         </FpPageHeader>
 
@@ -214,7 +246,8 @@ onMounted(loadData)
               <div class="promo-text">
                 <h3>Твои команды</h3>
                 <p v-if="userTeams.length > 0">
-                  У тебя уже {{ userTeams.length }} {{ userTeams.length === 1 ? 'команда' : 'команды' }}. Исследуй мир вместе!
+                  У тебя уже {{ userTeams.length }} {{ userTeams.length === 1 ? 'команда' : 'команды' }}. Исследуй мир
+                  вместе!
                 </p>
                 <p v-else>Найди единомышленников и проходи маршруты вместе.</p>
               </div>
@@ -317,47 +350,138 @@ onMounted(loadData)
     color: var(--color-primary);
   }
 
-  .tip-of-the-day {
+}
+
+.header-subtitle-area {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+
+  .subtitle-text {
+    font-size: 14px;
+    color: var(--color-text-secondary);
+  }
+
+  .xp-status-row {
     display: flex;
-    gap: 16px;
     align-items: center;
-    background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 10%, var(--color-surface)), var(--color-surface));
-    border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
-    border-radius: 18px;
-    padding: 16px;
-    margin-top: 12px;
+    gap: 12px;
+    margin-top: 6px;
+    width: 100%;
+    max-width: 280px;
 
-    .tip-icon {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      background: color-mix(in srgb, var(--color-primary) 15%, transparent);
-      color: var(--color-primary);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    .tip-content {
+    .lvl-tag {
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      align-items: center;
+      justify-content: center;
+      background: var(--color-primary);
+      color: var(--color-on-primary);
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(255, 215, 0, 0.3);
 
-      .tip-label {
-        font-size: 11px;
+      .label {
+        font-size: 8px;
+        font-weight: 900;
+        line-height: 1;
+        opacity: 0.8;
+      }
+
+      .value {
+        font-size: 16px;
+        font-weight: 900;
+        line-height: 1.1;
+      }
+    }
+
+    .xp-bar-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+
+      .xp-bar-track {
+        height: 6px;
+        background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+        border-radius: 3px;
+        overflow: hidden;
+
+        .xp-bar-fill {
+          height: 100%;
+          background: linear-gradient(90deg, var(--color-primary), var(--color-primary-variant));
+          border-radius: 3px;
+          transition: width 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+      }
+
+      .xp-values {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        font-size: 10px;
         font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: var(--color-primary);
-      }
+        letter-spacing: 0.3px;
 
-      .tip-text {
-        font-size: 14px;
-        line-height: 1.4;
-        color: var(--color-text-secondary);
-        margin: 0;
+        .current {
+          color: var(--color-primary);
+        }
+
+        .separator {
+          opacity: 0.4;
+          color: var(--color-text-tertiary);
+        }
+
+        .total {
+          color: var(--color-text-tertiary);
+        }
       }
+    }
+  }
+}
+
+.tip-of-the-day {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 10%, var(--color-surface)), var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+  border-radius: 18px;
+  padding: 16px;
+  margin-top: 12px;
+
+  .tip-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+    color: var(--color-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .tip-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    .tip-label {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-primary);
+    }
+
+    .tip-text {
+      font-size: 14px;
+      line-height: 1.4;
+      color: var(--color-text-secondary);
+      margin: 0;
     }
   }
 }
