@@ -20,6 +20,11 @@ const { notify } = useNotify()
 
 const appVersion = computed(() => changelog[0]?.version || '0.0.0')
 
+const levelProgress = computed(() => {
+  if (!stats.value) return 0
+  return (stats.value.xp % 1000) / 10
+})
+
 interface UserStats {
   joinedDate: Date
   xp: number
@@ -182,9 +187,21 @@ onMounted(async () => {
             maxlength="32" />
         </div>
         <p class="email">{{ user.email }}</p>
-        <div class="badges" v-if="stats">
-          <span class="badge">⚡ {{ stats.xp }} XP</span>
-          <span class="badge level-badge">Уровень {{ stats.level }}</span>
+        <div class="xp-status-row" v-if="stats">
+          <div class="lvl-tag">
+            <span class="label">LVL</span>
+            <span class="value">{{ stats.level }}</span>
+          </div>
+          <div class="xp-bar-wrapper">
+            <div class="xp-bar-track">
+              <div class="xp-bar-fill" :style="{ width: `${levelProgress}%` }"></div>
+            </div>
+            <div class="xp-values">
+              <span class="current">{{ stats.xp % 1000 }}</span>
+              <span class="separator">/</span>
+              <span class="total">1000 XP</span>
+            </div>
+          </div>
         </div>
       </div>
       <button class="settings-toggle" @click="isEditingProfile = !isEditingProfile">
@@ -387,20 +404,82 @@ onMounted(async () => {
       margin: 4px 0 10px;
     }
 
-    .badges {
-      display: flex;
-      gap: 8px;
+  .xp-status-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 10px;
+    width: 100%;
 
-      .badge {
-        padding: 4px 10px;
-        background: var(--color-background);
-        border: 1px solid var(--color-border);
-        border-radius: 8px;
-        font-size: 11px;
-        font-weight: 700;
-        color: var(--color-text-secondary);
+    .lvl-tag {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--color-primary);
+      color: var(--color-on-primary);
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(255, 215, 0, 0.25);
+      flex-shrink: 0;
+
+      .label {
+        font-size: 7px;
+        font-weight: 900;
+        line-height: 1;
+        opacity: 0.8;
+      }
+
+      .value {
+        font-size: 14px;
+        font-weight: 900;
+        line-height: 1.1;
       }
     }
+
+    .xp-bar-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+
+      .xp-bar-track {
+        height: 5px;
+        background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+        border-radius: 3px;
+        overflow: hidden;
+
+        .xp-bar-fill {
+          height: 100%;
+          background: linear-gradient(90deg, var(--color-primary), var(--color-primary-variant));
+          border-radius: 3px;
+          transition: width 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+      }
+
+      .xp-values {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        font-size: 10px;
+        font-weight: 800;
+
+        .current {
+          color: var(--color-primary);
+        }
+
+        .separator {
+          opacity: 0.4;
+          color: var(--color-text-tertiary);
+        }
+
+        .total {
+          color: var(--color-text-tertiary);
+        }
+      }
+    }
+  }
   }
 
   .settings-toggle {
