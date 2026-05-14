@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { ModerationService, type ModerationRoute } from '../services/ModerationService'
 import { ReportsService, type Report } from '../services/ReportsService'
 import { AdminService, type ProjectStats } from '../services/AdminService'
-import { FpBackButton, FpCard, FpButton, FpSpinner, FpConfirmationModal, FpInput, FpPageHeader } from '@/design-system'
+import { FpCard, FpButton, FpSpinner, FpConfirmationModal, FpInput, FpPageHeader } from '@/design-system'
 import { Clock, MapPin, User as UserIcon, ChevronRight, Check, X, AlertTriangle, Activity, Users, ShieldAlert, Search } from 'lucide-vue-next'
 
 const router = useRouter()

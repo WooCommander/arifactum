@@ -3,7 +3,7 @@ import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { AuthService } from '@/modules/auth/services/AuthService'
 import { FpPullToRefresh, FpCard, FpButton, FpPageHeader } from '@/design-system'
-import { Users, Navigation, ChevronRight, X, Lightbulb, Map as MapIcon, Plus } from 'lucide-vue-next'
+import { Users, Navigation, ChevronRight, X, Lightbulb, Map as MapIcon } from 'lucide-vue-next'
 import { teamService } from '@/modules/teams/services/teamService'
 import { authStore } from '@/modules/auth/store/authStore'
 import { useRoutesStore } from '@/modules/routes/state/useRoutesStore'
@@ -50,10 +50,7 @@ const levelProgress = computed(() => {
   return (xp % 1000) / 10
 })
 
-const nextLevelXp = computed(() => {
-  if (!userStats.value) return 1000
-  return 1000 - (userStats.value.xp % 1000)
-})
+
 
 // Tip of the Day
 
