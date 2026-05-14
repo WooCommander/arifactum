@@ -70,7 +70,7 @@ const confirmDelete = async () => {
 </script>
 
 <template>
-  <div class="teams-view">
+  <div class="teams-view page-container">
     <FpPageHeader 
       title="Мои команды" 
       subtitle="Твои друзья и соратники" 
@@ -165,29 +165,15 @@ const confirmDelete = async () => {
 
 <style scoped lang="scss">
 .teams-view {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: var(--color-background);
-  overflow: hidden;
-}
-
-.page-title-row {
-  padding: var(--spacing-lg) var(--spacing-md) var(--spacing-md);
-  flex-shrink: 0;
+  width: 100%;
 }
 
 
 
 .content {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--spacing-md);
-  padding-bottom: 100px; // Место для навигации
-  
-  &::-webkit-scrollbar {
-    width: 0;
-  }
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .loading-state,

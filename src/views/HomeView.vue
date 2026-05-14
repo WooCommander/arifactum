@@ -28,14 +28,14 @@ const greeting = computed(() => {
 
 const dailyTip = computed(() => {
   const level = userStats.value?.level || 1
-  
+
   const noviceTips = [
     'Исследуй новые места, чтобы повысить свой уровень и открыть редкие артефакты!',
     'Кликни на иконку маршрута на карте, чтобы увидеть количество точек в нем.',
     'Твой прогресс сохраняется автоматически — исследуй мир в своем темпе!',
     'Находи артефакты, чтобы пополнить свою коллекцию в Музее и получить бонусы.'
   ]
-  
+
   const proTips = [
     'Создавай свои маршруты в редакторе и делись ими — лучшие попадают в топ!',
     'Используй режим компаса на карте, чтобы она всегда вращалась по твоему курсу.',
@@ -55,16 +55,16 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   const R = 6371
   const dLat = (lat2 - lat1) * (Math.PI / 180)
   const dLon = (lon2 - lon1) * (Math.PI / 180)
-  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * 
-            Math.sin(dLon/2) * Math.sin(dLon/2)
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
   return R * c
 }
 
 const nearestRoute = computed(() => {
   if (!userLocation.value || !routes.value.length) return null
-  
+
   const routesWithDistance = routes.value
     .filter(r => r.startLat && r.startLng)
     .map(r => ({
@@ -77,7 +77,7 @@ const nearestRoute = computed(() => {
       )
     }))
     .sort((a, b) => a.distance - b.distance)
-    
+
   return routesWithDistance[0] || null
 })
 
@@ -138,7 +138,7 @@ onMounted(loadData)
 
 <template>
   <div class="home-dashboard">
-    <FpPullToRefresh @refresh="handleRefresh">
+    <FpPullToRefresh @refresh="handleRefresh" class="page-container">
       <!-- Dashboard Hero: Personalized Profile -->
       <header class="dashboard-hero">
         <FpPageHeader subtitle="Твой прогресс в Artifactum">
@@ -196,20 +196,16 @@ onMounted(loadData)
           <div class="section-header">
             <h2 class="section-title">Карта приключений 🗺️</h2>
           </div>
-          
+
           <div class="map-wrapper">
-            <ArtMap 
-              class="home-map"
-              :points="routePoints"
-              :is-clustered="true"
-              @marker-click="handleMarkerClick"
-              @map-click="selectedRoute = null"
-            />
-            
+            <ArtMap class="home-map" :points="routePoints" :is-clustered="true" @marker-click="handleMarkerClick"
+              @map-click="selectedRoute = null" />
+
             <transition name="slide-up">
               <div v-if="selectedRoute" class="route-mini-popup">
                 <div class="popup-content">
-                  <div class="route-thumb" :style="selectedRoute.imageUrl ? `background-image: url(${selectedRoute.imageUrl})` : ''">
+                  <div class="route-thumb"
+                    :style="selectedRoute.imageUrl ? `background-image: url(${selectedRoute.imageUrl})` : ''">
                     <Navigation v-if="!selectedRoute.imageUrl" :size="24" />
                   </div>
                   <div class="route-info">
@@ -251,19 +247,19 @@ onMounted(loadData)
             <h2 class="section-title">Поблизости 📍</h2>
           </div>
           <FpCard class="nearest-card" @click="router.push(`/route/${nearestRoute.id}`)">
-             <div class="route-icon">
-                <MapIcon :size="24" />
-             </div>
-             <div class="route-details">
-                <div class="route-meta">
-                  <span class="distance">~{{ nearestRoute.distance.toFixed(1) }} км от тебя</span>
-                </div>
-                <h3>{{ nearestRoute.title }}</h3>
-                <p>{{ nearestRoute.checkpointsCount }} точек • {{ nearestRoute.category || 'Маршрут' }}</p>
-             </div>
-             <div class="action-arrow">
-                <ChevronRight :size="20" />
-             </div>
+            <div class="route-icon">
+              <MapIcon :size="24" />
+            </div>
+            <div class="route-details">
+              <div class="route-meta">
+                <span class="distance">~{{ nearestRoute.distance.toFixed(1) }} км от тебя</span>
+              </div>
+              <h3>{{ nearestRoute.title }}</h3>
+              <p>{{ nearestRoute.checkpointsCount }} точек • {{ nearestRoute.category || 'Маршрут' }}</p>
+            </div>
+            <div class="action-arrow">
+              <ChevronRight :size="20" />
+            </div>
           </FpCard>
         </section>
       </div>
@@ -278,10 +274,9 @@ onMounted(loadData)
 }
 
 .dashboard-hero {
-  padding-top: var(--spacing-sm);
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--spacing-md);
 
   .accent {
     color: var(--color-primary);
@@ -370,6 +365,7 @@ onMounted(loadData)
 
       .route-meta {
         margin-bottom: 2px;
+
         .distance {
           font-size: 11px;
           font-weight: 800;
@@ -568,7 +564,7 @@ onMounted(loadData)
   .route-info {
     flex: 1;
     min-width: 0;
-    
+
     h4 {
       margin: 0;
       font-size: 15px;
@@ -603,14 +599,24 @@ onMounted(loadData)
 }
 
 @keyframes slide-up {
-  from { transform: translateY(100%); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
-.slide-up-enter-active, .slide-up-leave-active {
+.slide-up-enter-active,
+.slide-up-leave-active {
   transition: all 0.3s ease;
 }
-.slide-up-enter-from, .slide-up-leave-to {
+
+.slide-up-enter-from,
+.slide-up-leave-to {
   transform: translateY(100%);
   opacity: 0;
 }

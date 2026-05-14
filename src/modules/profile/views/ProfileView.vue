@@ -150,7 +150,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="profile-view">
+  <div class="profile-view page-container">
     <FpPageHeader 
       title="Мой профиль" 
       subtitle="Твой путь и достижения" 
@@ -290,10 +290,6 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .profile-view {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-
   width: 100%;
 }
 

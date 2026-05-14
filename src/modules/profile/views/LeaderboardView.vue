@@ -2,7 +2,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { LeaderboardService, type LeaderboardCategory, type LeaderboardEntry } from '../services/LeaderboardService'
 import FpCard from '@/design-system/components/FpCard.vue'
-import { FpSkeleton } from '@/design-system'
+import { FpSkeleton, FpPageHeader } from '@/design-system'
 
 const categories: { key: LeaderboardCategory; label: string; unit: string; icon: string }[] = [
     { key: 'xp', label: 'Опыт', unit: 'XP', icon: '✨' },
@@ -43,13 +43,11 @@ onMounted(load)
 </script>
 
 <template>
-    <div class="leaderboard-view">
-        <div class="page-title-row">
-            <div class="title-group">
-                <h1 class="page-title">Рейтинг</h1>
-                <p class="page-subtitle">Соревнуйся с лучшими</p>
-            </div>
-        </div>
+    <div class="leaderboard-view page-container">
+        <FpPageHeader 
+            title="Рейтинг" 
+            subtitle="Соревнуйся с лучшими" 
+        />
 
         <div class="category-tabs">
             <button v-for="cat in categories" :key="cat.key" class="tab-btn"
@@ -127,13 +125,7 @@ onMounted(load)
 </template>
 
 <style scoped lang="scss">
-.leaderboard-view {
-    padding: 0;
-}
 
-.page-title-row {
-    padding-bottom: var(--spacing-sm);
-}
 
 .category-tabs {
     display: flex;

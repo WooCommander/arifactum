@@ -163,7 +163,7 @@ onMounted(load)
 </script>
 
 <template>
-    <div class="moderation-view">
+    <div class="moderation-view page-container">
         <FpPageHeader 
             title="Модерация" 
             subtitle="Проверка новых маршрутов" 

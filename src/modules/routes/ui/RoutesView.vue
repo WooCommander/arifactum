@@ -3,7 +3,7 @@ import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRoutesStore } from '../state/useRoutesStore'
 import RouteCard from './RouteCard.vue'
-import { FpSpinner, FpPullToRefresh } from '@/design-system'
+import { FpSpinner, FpPullToRefresh, FpPageHeader, FpButton } from '@/design-system'
 import { Plus, Search, X } from 'lucide-vue-next'
 import { ref, watch, computed } from 'vue'
 
@@ -76,26 +76,22 @@ const handleWheel = (e: WheelEvent) => {
 </script>
 
 <template>
-  <div class="routes-view">
-    <header class="routes-header">
-      <div class="header-top">
-        <div class="header-content">
-          <h1>Маршруты</h1>
-          <p>Исследуй новые места</p>
-        </div>
-        <button class="add-button" @click="router.push('/create-route')">
-          <Plus :size="24" />
-        </button>
-      </div>
+  <div class="routes-view page-container">
+    <FpPageHeader title="Маршруты" subtitle="Исследуй новые места">
+      <template #actions>
+        <FpButton size="sm" @click="router.push('/create-route')">
+          <Plus :size="20" />
+        </FpButton>
+      </template>
+    </FpPageHeader>
 
-      <div class="search-container">
-        <div class="search-wrapper">
-          <Search class="search-icon" :size="18" />
-          <input v-model="searchQuery" type="text" placeholder="Найти приключение..." class="search-input" />
-          <button v-if="searchQuery" class="clear-search" @click="searchQuery = ''">
-            <X :size="16" />
-          </button>
-        </div>
+    <div class="search-section">
+      <div class="search-wrapper">
+        <Search class="search-icon" :size="18" />
+        <input v-model="searchQuery" type="text" placeholder="Найти приключение..." class="search-input" />
+        <button v-if="searchQuery" class="clear-search" @click="searchQuery = ''">
+          <X :size="16" />
+        </button>
       </div>
 
       <div class="tags-cloud" v-if="popularTags.length > 0">
@@ -122,7 +118,7 @@ const handleWheel = (e: WheelEvent) => {
           <X :size="14" />
         </div>
       </div>
-    </header>
+    </div>
 
     <div class="routes-content">
       <FpPullToRefresh @refresh="handleRefresh">
@@ -149,52 +145,17 @@ const handleWheel = (e: WheelEvent) => {
 </template>
 
 <style scoped lang="scss">
-.routes-view {
-  height: calc(100vh - 3rem);
-  display: flex;
-  flex-direction: column;
-  background: var(--color-background);
-  overflow: hidden;
-}
-
-.routes-header {
-  flex-shrink: 0;
-  padding: 16px 0 8px;
-  background: var(--color-background);
-  border-bottom: 1px solid var(--color-border);
+.search-section {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  z-index: 10;
 }
 
 .routes-content {
-  flex: 1;
-  overflow-y: auto;
-  padding-bottom: 100px; // bottom nav + extra space
-  -webkit-overflow-scrolling: touch;
+  margin-top: 8px;
 }
 
-.header-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
 
-.header-content {
-  h1 {
-    font-size: 20px;
-    font-weight: 800;
-    color: var(--color-text-primary);
-  }
-
-  p {
-    font-size: 12px;
-    color: var(--color-text-tertiary);
-    margin: 2px 0 0;
-  }
-}
 
 .search-container {
   margin-bottom: 12px;
@@ -325,24 +286,7 @@ const handleWheel = (e: WheelEvent) => {
   }
 }
 
-.add-button {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: var(--shadow-2);
-  cursor: pointer;
-  transition: transform 0.2s ease;
 
-  &:active {
-    transform: scale(0.9);
-  }
-}
 
 .routes-grid {
   padding: 16px 0 24px;
