@@ -77,45 +77,47 @@ const handleWheel = (e: WheelEvent) => {
 
 <template>
   <div class="routes-view page-container">
-    <FpPageHeader title="Маршруты" subtitle="Исследуй новые места">
-      <template #actions>
-        <FpButton size="sm" @click="router.push('/create-route')">
-          <Plus :size="20" />
-        </FpButton>
-      </template>
-    </FpPageHeader>
+    <div class="sticky-header-container">
+      <FpPageHeader title="Маршруты" subtitle="Исследуй новые места">
+        <template #actions>
+          <FpButton size="sm" @click="router.push('/create-route')">
+            <Plus :size="20" />
+          </FpButton>
+        </template>
+      </FpPageHeader>
 
-    <div class="search-section">
-      <div class="search-wrapper">
-        <Search class="search-icon" :size="18" />
-        <input v-model="searchQuery" type="text" placeholder="Найти приключение..." class="search-input" />
-        <button v-if="searchQuery" class="clear-search" @click="searchQuery = ''">
-          <X :size="16" />
-        </button>
-      </div>
-
-      <div class="tags-cloud" v-if="popularTags.length > 0">
-        <div class="tags-scroll" @wheel.passive="handleWheel" @wheel.prevent="handleWheel">
-          <button v-for="tag in popularTags" :key="tag" class="tag-pill" :class="{ active: searchQuery === tag }"
-            @click="searchQuery = searchQuery === tag ? '' : tag">
-            #{{ tag }}
+      <div class="search-section">
+        <div class="search-wrapper">
+          <Search class="search-icon" :size="18" />
+          <input v-model="searchQuery" type="text" placeholder="Найти приключение..." class="search-input" />
+          <button v-if="searchQuery" class="clear-search" @click="searchQuery = ''">
+            <X :size="16" />
           </button>
         </div>
-      </div>
 
-      <div class="categories-bar">
-        <div class="categories-scroll" @wheel.passive="handleWheel" @wheel.prevent="handleWheel">
-          <button v-for="cat in ['Все', ...categoryNames]" :key="cat" class="category-chip"
-            :class="{ active: selectedCategory === cat }" @click="selectedCategory = cat">
-            {{ cat }}
-          </button>
+        <div class="tags-cloud" v-if="popularTags.length > 0">
+          <div class="tags-scroll" @wheel.passive="handleWheel" @wheel.prevent="handleWheel">
+            <button v-for="tag in popularTags" :key="tag" class="tag-pill" :class="{ active: searchQuery === tag }"
+              @click="searchQuery = searchQuery === tag ? '' : tag">
+              #{{ tag }}
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div class="active-filters" v-if="selectedAuthor">
-        <div class="filter-chip author" @click="clearAuthorFilter">
-          <span>Автор: {{ selectedAuthor.name }}</span>
-          <X :size="14" />
+        <div class="categories-bar">
+          <div class="categories-scroll" @wheel.passive="handleWheel" @wheel.prevent="handleWheel">
+            <button v-for="cat in ['Все', ...categoryNames]" :key="cat" class="category-chip"
+              :class="{ active: selectedCategory === cat }" @click="selectedCategory = cat">
+              {{ cat }}
+            </button>
+          </div>
+        </div>
+
+        <div class="active-filters" v-if="selectedAuthor">
+          <div class="filter-chip author" @click="clearAuthorFilter">
+            <span>Автор: {{ selectedAuthor.name }}</span>
+            <X :size="14" />
+          </div>
         </div>
       </div>
     </div>
@@ -145,14 +147,39 @@ const handleWheel = (e: WheelEvent) => {
 </template>
 
 <style scoped lang="scss">
+.routes-view {
+  height: calc(100vh - 64px); // Adjust based on bottom nav height if needed
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  gap: 0 !important;
+}
+
+.sticky-header-container {
+  flex-shrink: 0;
+  padding: 0 0 12px;
+  background: var(--color-background);
+  z-index: 10;
+}
+
 .search-section {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  padding-bottom: 4px;
 }
 
 .routes-content {
-  margin-top: 8px;
+  flex: 1;
+  overflow-y: auto;
+  padding-top: 4px;
+  margin-top: 0;
+  
+  /* Hide scrollbar but keep functionality */
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 
