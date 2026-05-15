@@ -6,7 +6,7 @@ import { routeService } from '../services/routeService'
 import { FpSpinner, FpBackButton, FpConfirmationModal, FpPullToRefresh, FpButton, FpCard, FpInput } from '@/design-system'
 import ArtMap from '@/shared/ui/ArtMap.vue'
 import { useNotify } from '@/composables/useNotify'
-import { useSocialStore } from '@/modules/social/state/useSocialStore'
+import { useSocialStore, RouteComments } from '@/modules/social'
 import { MuseumService } from '@/modules/profile/services/MuseumService'
 import { authStore } from '@/modules/auth/store/authStore'
 import ArOverlay from '@/modules/ar/ui/ArOverlay.vue'
@@ -26,14 +26,12 @@ import {
   Navigation,
   Pencil,
   Trash2,
-  MessageSquare,
   Send,
   Trophy,
   Tag,
   X,
   QrCode,
-  AlertTriangle,
-  ChevronDown
+  AlertTriangle
 } from 'lucide-vue-next'
 
 const route = useRoute()
@@ -61,8 +59,6 @@ const isArMode = ref(false)
 // Social state
 const isLiked = ref(false)
 const isFavorite = ref(false)
-const commentText = ref('')
-const isSubmittingComment = ref(false)
 
 // Reporting
 const showReportModal = ref(false)
@@ -107,7 +103,6 @@ function handleShowCheckpointQr(cp: any) {
 }
 
 const { currentRoute, currentCheckpoints, isLoading, error } = routesStore
-const { comments, toggleCommentReaction } = socialStore
 const isActiveMode = ref(false)
 const isAuthor = computed(() => currentRoute.value?.authorId === authStore.currentUserId.value)
 const isDraft = computed(() => currentRoute.value?.status === 'draft')
@@ -140,12 +135,6 @@ const initialActiveCenter = ref<[number, number] | undefined>(undefined)
 
 const sortedCheckpoints = computed(() => {
   return [...currentCheckpoints.value].sort((a, b) => a.order - b.order)
-})
-
-const isCommentsExpanded = ref(false)
-const visibleComments = computed(() => {
-  if (isCommentsExpanded.value) return comments.value
-  return comments.value.slice(0, 3)
 })
 
 // Gesture state for panel
@@ -264,7 +253,6 @@ function formatDistance(meters: number) {
 async function fetchRouteDetails() {
   try {
     await routesStore.fetchRouteDetails(routeId)
-    await socialStore.fetchComments(routeId)
 
     // Fetch social status for the current user
     if (authStore.currentUserId.value) {
@@ -331,16 +319,6 @@ async function handleShare() {
   }
 }
 
-async function handleSubmitComment() {
-  if (!commentText.value.trim() || !authStore.currentUserId.value) return
-  isSubmittingComment.value = true
-  try {
-    await socialStore.addComment(routeId, authStore.currentUserId.value, commentText.value)
-    commentText.value = ''
-  } finally {
-    isSubmittingComment.value = false
-  }
-}
 
 async function handleDelete() {
   await routesStore.deleteRoute(routeId)
@@ -606,54 +584,7 @@ onUnmounted(() => {
             </div>
 
             <!-- Comments Section -->
-            <div class="comments-section">
-              <div class="section-title">
-                <MessageSquare :size="20" />
-                <h2>Комментарии ({{ comments.length }})</h2>
-              </div>
-
-              <div class="comment-input-wrap">
-                <textarea v-model="commentText" placeholder="Поделитесь впечатлениями..." rows="2"
-                  class="comment-textarea"></textarea>
-                <FpButton variant="primary" size="sm" class="send-comment-btn"
-                  :disabled="!commentText.trim() || isSubmittingComment" @click="handleSubmitComment">
-                  <Send :size="18" />
-                </FpButton>
-              </div>
-
-              <transition name="fade-slide">
-                <div class="comments-list">
-                  <div v-for="comment in visibleComments" :key="comment.id" class="comment-card">
-                    <div class="comment-user">
-                      <div class="user-avatar"
-                        :style="comment.avatarUrl ? `background-image: url(${comment.avatarUrl})` : ''">
-                        {{ !comment.avatarUrl ? (comment.userName?.[0] || '?') : '' }}
-                      </div>
-                      <div class="user-info">
-                        <span class="user-name">{{ comment.userName }}</span>
-                        <span class="comment-date">{{ new Date(comment.createdAt).toLocaleDateString() }}</span>
-                      </div>
-                    </div>
-                    <div class="comment-content">{{ comment.content }}</div>
-
-                    <div class="comment-reactions">
-                      <button v-for="emoji in ['👍', '❤️', '🔥']" :key="emoji" class="reaction-btn"
-                        :class="{ active: comment.userReaction === emoji }"
-                        @click="toggleCommentReaction(comment.id, emoji)">
-                        <span class="emoji">{{ emoji }}</span>
-                        <span v-if="comment.reactions[emoji] > 0" class="count">{{ comment.reactions[emoji] }}</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </transition>
-
-              <button v-if="comments.length > 3" class="expand-comments-btn"
-                @click="isCommentsExpanded = !isCommentsExpanded">
-                {{ isCommentsExpanded ? 'Скрыть' : `Показать все (${comments.length})` }}
-                <ChevronDown :class="{ rotated: isCommentsExpanded }" :size="18" />
-              </button>
-            </div>
+            <RouteComments :route-id="routeId" />
 
             <div v-if="isAuthor && isDraft" class="publish-block">
               <FpCard class="publish-card">
@@ -1315,113 +1246,6 @@ onUnmounted(() => {
   }
 }
 
-.comments-section {
-  margin-top: 40px;
-  padding-top: 24px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-
-  .section-title {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 24px;
-
-    h2 {
-      font-size: 20px;
-      font-weight: 800;
-      margin: 0;
-    }
-  }
-}
-
-.comment-input-wrap {
-  display: flex;
-  gap: 12px;
-  background: rgba(var(--color-surface-rgb), 0.5);
-  backdrop-filter: blur(8px);
-  padding: 16px;
-  border-radius: var(--radius-lg);
-  margin-bottom: 32px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: var(--shadow-inner);
-
-  .comment-textarea {
-    flex: 1;
-    background: none;
-    border: none;
-    outline: none;
-    resize: none;
-    font-size: 15px;
-    color: var(--color-text-primary);
-
-    &::placeholder {
-      color: var(--color-text-tertiary);
-    }
-  }
-}
-
-.comments-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.comment-card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: var(--radius-lg);
-  padding: 16px;
-  transition: all 0.3s ease;
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.05);
-    transform: translateY(-2px);
-  }
-
-  .comment-user {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 12px;
-
-    .user-avatar {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: var(--color-primary);
-      background-size: cover;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 800;
-      font-size: 14px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    }
-
-    .user-info {
-      display: flex;
-      flex-direction: column;
-
-      .user-name {
-        font-weight: 700;
-        font-size: 14px;
-        color: var(--color-text-primary);
-      }
-
-      .comment-date {
-        font-size: 11px;
-        color: var(--color-text-tertiary);
-      }
-    }
-  }
-
-  .comment-content {
-    font-size: 14px;
-    line-height: 1.5;
-    color: var(--color-text-secondary);
-  }
-}
 
 .active-hud {
   position: absolute;
@@ -1822,35 +1646,6 @@ onUnmounted(() => {
   pointer-events: auto; // РАЗРЕШАЕМ КЛИКИ НА УРОВНЕ СЕКЦИИ
 }
 
-.expand-comments-btn {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  color: var(--color-primary);
-  font-weight: 700;
-  font-size: 14px;
-  margin-top: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.08);
-  }
-
-  .rotated {
-    transform: rotate(180deg);
-  }
-
-  svg {
-    transition: transform 0.3s ease;
-  }
-}
 
 .active-actions-bottom {
   position: absolute;
@@ -2199,50 +1994,6 @@ onUnmounted(() => {
   width: 100%;
 }
 
-.comment-reactions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.reaction-btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  cursor: pointer;
-  transition: all 0.2s;
-
-  .emoji {
-    font-size: 14px;
-  }
-
-  .count {
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--color-text-tertiary);
-  }
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.2);
-  }
-
-  &.active {
-    background: color-mix(in srgb, var(--color-primary) 15%, transparent);
-    border-color: var(--color-primary);
-
-    .count {
-      color: var(--color-primary);
-    }
-  }
-}
 
 .publish-block {
   margin: 32px 0;
