@@ -9,6 +9,23 @@ export interface ReleaseNote {
 
 export const changelog: ReleaseNote[] = [
     {
+        version: '2.22.0',
+        date: '2026-05-15',
+        highlights: [
+            'Code Quality & UX Refinement: ESLint и независимый скролл маршрутов'
+        ],
+        features: [
+            'Independent Routes Scroll: Список маршрутов теперь скроллится отдельно от шапки. Поиск и категории всегда остаются закрепленными сверху.',
+            'Quality Control: Внедрена система ESLint (Flat Config) для автоматической проверки качества кода и предотвращения типичных ошибок.',
+            'CI/CD Readiness: Добавлены скрипты линтинга (lint, lint:fix) в рабочий процесс для обеспечения стабильности будущих релизов.',
+            'Mobile Optimization: Улучшена работа с высотой экрана на мобильных устройствах, предотвращая перекрытие элементов нижним меню.'
+        ],
+        fixes: [
+            'Исправлены ошибки типизации (unused variables) в FpPageHeader и ModerationListView.',
+            'Устранена проблема "уплывающего" поиска при прокрутке списка приключений.'
+        ]
+    },
+    {
         version: '2.21.0',
         date: '2026-05-15',
         highlights: [
