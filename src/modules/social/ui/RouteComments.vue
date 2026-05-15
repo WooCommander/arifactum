@@ -21,6 +21,12 @@ const visibleLimit = ref(3)
 const commentInputRef = ref<HTMLInputElement | null>(null)
 
 const currentUserId = computed(() => authStore.currentUserId.value)
+const currentUser = computed(() => authStore.user.value)
+const currentUserName = computed(() => {
+  if (!currentUser.value) return ''
+  return currentUser.value.user_metadata?.full_name || currentUser.value.user_metadata?.name || currentUser.value.email?.split('@')[0] || ''
+})
+
 const comments = computed(() => socialStore.comments.value)
 const isLoading = computed(() => socialStore.isLoading.value)
 
@@ -95,6 +101,12 @@ function toggleReaction(commentId: string, emoji: string): void {
   socialStore.toggleCommentReaction(commentId, emoji)
 }
 
+function isMentioned(content: string): boolean {
+  if (!content || !currentUserName.value) return false
+  const mention = `@${currentUserName.value}`
+  return content.toLowerCase().includes(mention.toLowerCase())
+}
+
 function onReply(userName: string): void {
   if (!userName) return
   const prefix = `@${userName}, `
@@ -119,9 +131,15 @@ function formatCommentContent(text: string): string {
   if (!text) return ''
   const escaped = escapeHtml(text)
   const urlRegex = /(https?:\/\/[^\s]+)/g
-  const linked = escaped.replace(urlRegex, url => {
+  let linked = escaped.replace(urlRegex, url => {
     return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="comment-link">${url}</a>`
   })
+
+  if (currentUserName.value) {
+    const mentionRegex = new RegExp(`(@${currentUserName.value})\\b`, 'gi')
+    linked = linked.replace(mentionRegex, match => `<span class="mention-badge">${match}</span>`)
+  }
+
   return linked.replace(/\n/g, '<br>')
 }
 </script>
@@ -163,7 +181,12 @@ function formatCommentContent(text: string): string {
     <!-- Список комментариев -->
     <div class="comments-list" v-if="comments.length > 0">
       <transition-group name="comment-anim">
-        <div v-for="comment in visibleComments" :key="comment.id" class="comment-item">
+        <div
+          v-for="comment in visibleComments"
+          :key="comment.id"
+          class="comment-item"
+          :class="{ 'is-mentioned': isMentioned(comment.content) }"
+        >
           <div class="comment-header">
             <div class="user-meta">
               <div
@@ -364,6 +387,13 @@ function formatCommentContent(text: string): string {
   gap: 4px;
   transition: all 0.2s ease;
 
+  &.is-mentioned {
+    background: linear-gradient(90deg, rgba(var(--color-primary-rgb, 187, 134, 252), 0.12), transparent);
+    border-left: 3px solid var(--color-primary);
+    border-radius: 0 8px 8px 0;
+    padding-left: 8px;
+  }
+
   &:last-child {
     border-bottom: none;
   }
@@ -475,6 +505,14 @@ function formatCommentContent(text: string): string {
         color: var(--color-primary-light, #d1a5ff);
         border-bottom-style: solid;
       }
+    }
+
+    :deep(.mention-badge) {
+      color: var(--color-primary);
+      background: rgba(var(--color-primary-rgb, 187, 134, 252), 0.25);
+      padding: 0 4px;
+      border-radius: 4px;
+      font-weight: 600;
     }
   }
 
