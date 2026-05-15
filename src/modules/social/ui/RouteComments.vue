@@ -93,6 +93,25 @@ function formatDate(dateInput: Date | string | number): string {
 function toggleReaction(commentId: string, emoji: string): void {
   socialStore.toggleCommentReaction(commentId, emoji)
 }
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
+function formatCommentContent(text: string): string {
+  if (!text) return ''
+  const escaped = escapeHtml(text)
+  const urlRegex = /(https?:\/\/[^\s]+)/g
+  const linked = escaped.replace(urlRegex, url => {
+    return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="comment-link">${url}</a>`
+  })
+  return linked.replace(/\n/g, '<br>')
+}
 </script>
 
 <template>
@@ -155,9 +174,7 @@ function toggleReaction(commentId: string, emoji: string): void {
             </button>
           </div>
 
-          <div class="comment-body">
-            {{ comment.content }}
-          </div>
+          <div class="comment-body" v-html="formatCommentContent(comment.content)"></div>
 
           <div class="comment-footer">
             <div class="reactions-group">
@@ -398,6 +415,20 @@ function toggleReaction(commentId: string, emoji: string): void {
     line-height: 1.4;
     color: var(--color-text-secondary);
     padding-left: 30px;
+    word-break: break-word;
+
+    :deep(.comment-link) {
+      color: var(--color-primary);
+      text-decoration: none;
+      font-weight: 500;
+      border-bottom: 1px dashed rgba(var(--color-primary-rgb, 187, 134, 252), 0.5);
+      transition: all 0.2s ease;
+
+      &:hover {
+        color: var(--color-primary-light, #d1a5ff);
+        border-bottom-style: solid;
+      }
+    }
   }
 
   .comment-footer {
