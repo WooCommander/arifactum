@@ -17,20 +17,32 @@ const { notify } = useNotify()
 
 const commentText = ref('')
 const isSubmitting = ref(false)
-const isExpanded = ref(false)
+const visibleLimit = ref(3)
 
 const currentUserId = computed(() => authStore.currentUserId.value)
 const comments = computed(() => socialStore.comments.value)
 const isLoading = computed(() => socialStore.isLoading.value)
 
 const visibleComments = computed(() => {
-  if (isExpanded.value) return comments.value
-  return comments.value.slice(0, 3)
+  return comments.value.slice(0, visibleLimit.value)
 })
+
+const hasMoreComments = computed(() => {
+  return comments.value.length > visibleLimit.value
+})
+
+function showMore(): void {
+  visibleLimit.value += 5
+}
+
+function collapseAll(): void {
+  visibleLimit.value = 3
+}
 
 async function loadComments(): Promise<void> {
   if (!props.routeId) return
   await socialStore.fetchComments(props.routeId)
+  visibleLimit.value = 3
 }
 
 onMounted(() => {
@@ -87,7 +99,7 @@ function toggleReaction(commentId: string, emoji: string): void {
   <div class="route-comments">
     <div class="header-row">
       <div class="title-group">
-        <MessageSquare :size="20" class="title-icon" />
+        <MessageSquare :size="18" class="title-icon" />
         <h3 class="title">Комментарии <span class="count" v-if="comments.length">({{ comments.length }})</span></h3>
       </div>
       <div v-if="isLoading" class="spinner-wrap">
@@ -112,7 +124,7 @@ function toggleReaction(commentId: string, emoji: string): void {
         title="Отправить"
       >
         <FpSpinner v-if="isSubmitting" size="sm" />
-        <Send v-else :size="16" />
+        <Send v-else :size="15" />
       </button>
     </div>
 
@@ -139,7 +151,7 @@ function toggleReaction(commentId: string, emoji: string): void {
               @click="onDelete(comment.id)"
               title="Удалить комментарий"
             >
-              <Trash2 :size="14" />
+              <Trash2 :size="13" />
             </button>
           </div>
 
@@ -166,14 +178,25 @@ function toggleReaction(commentId: string, emoji: string): void {
         </div>
       </transition-group>
 
-      <button
-        v-if="comments.length > 3"
-        class="toggle-expand-btn"
-        @click="isExpanded = !isExpanded"
-      >
-        <span>{{ isExpanded ? 'Скрыть часть комментариев' : `Показать все комментарии (${comments.length})` }}</span>
-        <ChevronDown :size="16" class="chevron-icon" :class="{ 'is-rotated': isExpanded }" />
-      </button>
+      <!-- Управление пагинацией / подгрузкой -->
+      <div v-if="comments.length > 3" class="pagination-actions">
+        <button
+          v-if="hasMoreComments"
+          class="toggle-expand-btn"
+          @click="showMore"
+        >
+          <span>Показать еще 5 (осталось {{ comments.length - visibleLimit }})</span>
+          <ChevronDown :size="16" class="chevron-icon" />
+        </button>
+        <button
+          v-else
+          class="toggle-expand-btn is-collapsed"
+          @click="collapseAll"
+        >
+          <span>Свернуть список</span>
+          <ChevronDown :size="16" class="chevron-icon is-rotated" />
+        </button>
+      </div>
     </div>
 
     <!-- Состояние когда комментариев нет -->
@@ -185,12 +208,12 @@ function toggleReaction(commentId: string, emoji: string): void {
 
 <style scoped lang="scss">
 .route-comments {
-  margin-top: 32px;
-  padding-top: 24px;
+  margin-top: 28px;
+  padding-top: 20px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .header-row {
@@ -201,14 +224,14 @@ function toggleReaction(commentId: string, emoji: string): void {
   .title-group {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
 
     .title-icon {
       color: var(--color-primary);
     }
 
     .title {
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 700;
       color: var(--color-text-primary);
       margin: 0;
@@ -216,7 +239,7 @@ function toggleReaction(commentId: string, emoji: string): void {
       .count {
         font-weight: 500;
         color: var(--color-text-tertiary);
-        font-size: 16px;
+        font-size: 14px;
       }
     }
   }
@@ -230,11 +253,11 @@ function toggleReaction(commentId: string, emoji: string): void {
 .input-box {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 100px;
-  padding: 8px 12px 8px 20px;
+  padding: 6px 10px 6px 18px;
   transition: all 0.2s ease;
 
   &:focus-within {
@@ -248,7 +271,7 @@ function toggleReaction(commentId: string, emoji: string): void {
     background: transparent;
     border: none;
     outline: none;
-    font-size: 15px;
+    font-size: 14px;
     color: var(--color-text-primary);
 
     &::placeholder {
@@ -257,8 +280,8 @@ function toggleReaction(commentId: string, emoji: string): void {
   }
 
   .send-btn {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     border: none;
     background: rgba(255, 255, 255, 0.08);
@@ -276,7 +299,7 @@ function toggleReaction(commentId: string, emoji: string): void {
 
       &:hover {
         transform: scale(1.05);
-        box-shadow: 0 0 12px rgba(var(--color-primary-rgb), 0.4);
+        box-shadow: 0 0 10px rgba(var(--color-primary-rgb), 0.4);
       }
 
       &:active {
@@ -289,22 +312,22 @@ function toggleReaction(commentId: string, emoji: string): void {
 .comments-list {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
 }
 
 .comment-item {
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 16px;
-  padding: 14px 18px;
+  border-radius: 12px;
+  padding: 10px 14px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   transition: all 0.3s ease;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.04);
-    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.035);
+    border-color: rgba(255, 255, 255, 0.09);
   }
 
   .comment-header {
@@ -315,11 +338,11 @@ function toggleReaction(commentId: string, emoji: string): void {
     .user-meta {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
 
       .avatar-circle {
-        width: 26px;
-        height: 26px;
+        width: 22px;
+        height: 22px;
         border-radius: 50%;
         background: linear-gradient(135deg, var(--color-primary), var(--color-secondary, #9c27b0));
         background-size: cover;
@@ -329,12 +352,12 @@ function toggleReaction(commentId: string, emoji: string): void {
         justify-content: center;
         color: white;
         font-weight: 700;
-        font-size: 11px;
+        font-size: 10px;
       }
 
       .user-name {
         font-weight: 600;
-        font-size: 14px;
+        font-size: 13.5px;
         color: var(--color-text-primary);
       }
 
@@ -344,7 +367,7 @@ function toggleReaction(commentId: string, emoji: string): void {
       }
 
       .comment-date {
-        font-size: 12px;
+        font-size: 11.5px;
         color: var(--color-text-tertiary);
       }
     }
@@ -354,12 +377,12 @@ function toggleReaction(commentId: string, emoji: string): void {
       border: none;
       color: var(--color-text-tertiary);
       cursor: pointer;
-      padding: 4px;
+      padding: 2px;
       border-radius: 6px;
       display: flex;
       align-items: center;
       justify-content: center;
-      opacity: 0.6;
+      opacity: 0.5;
       transition: all 0.2s ease;
 
       &:hover {
@@ -371,42 +394,42 @@ function toggleReaction(commentId: string, emoji: string): void {
   }
 
   .comment-body {
-    font-size: 14px;
-    line-height: 1.5;
+    font-size: 13.5px;
+    line-height: 1.4;
     color: var(--color-text-secondary);
-    padding-left: 36px;
+    padding-left: 30px;
   }
 
   .comment-footer {
-    padding-left: 36px;
-    margin-top: 4px;
+    padding-left: 30px;
+    margin-top: 2px;
 
     .reactions-group {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 6px;
 
       .reaction-pill {
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.035);
+        border: 1px solid rgba(255, 255, 255, 0.07);
         border-radius: 100px;
-        padding: 4px 10px;
+        padding: 2px 8px;
         display: flex;
         align-items: center;
-        gap: 6px;
-        font-size: 13px;
+        gap: 5px;
+        font-size: 12px;
         cursor: pointer;
         transition: all 0.2s ease;
 
         .react-count {
           font-weight: 600;
-          font-size: 12px;
+          font-size: 11px;
           color: var(--color-text-secondary);
         }
 
         &:hover {
-          background: rgba(255, 255, 255, 0.08);
-          border-color: rgba(255, 255, 255, 0.15);
+          background: rgba(255, 255, 255, 0.07);
+          border-color: rgba(255, 255, 255, 0.14);
         }
 
         &.is-reacted {
@@ -422,15 +445,19 @@ function toggleReaction(commentId: string, emoji: string): void {
   }
 }
 
+.pagination-actions {
+  margin-top: 4px;
+}
+
 .toggle-expand-btn {
   width: 100%;
-  padding: 12px;
+  padding: 10px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 100px;
   color: var(--color-primary);
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -439,8 +466,8 @@ function toggleReaction(commentId: string, emoji: string): void {
   transition: all 0.2s ease;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.055);
+    border-color: rgba(255, 255, 255, 0.12);
   }
 
   .chevron-icon {
@@ -453,11 +480,11 @@ function toggleReaction(commentId: string, emoji: string): void {
 }
 
 .empty-comments {
-  padding: 24px 0;
+  padding: 20px 0;
   text-align: center;
 
   .empty-msg {
-    font-size: 14px;
+    font-size: 13.5px;
     color: var(--color-text-tertiary);
     margin: 0;
   }
