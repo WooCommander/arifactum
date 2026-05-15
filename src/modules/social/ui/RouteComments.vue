@@ -22,12 +22,14 @@ const commentInputRef = ref<HTMLInputElement | null>(null)
 
 const currentUserId = computed(() => authStore.currentUserId.value)
 const currentUser = computed(() => authStore.user.value)
-const currentUserName = computed(() => {
-  if (!currentUser.value) return ''
-  return currentUser.value.user_metadata?.full_name || currentUser.value.user_metadata?.name || currentUser.value.email?.split('@')[0] || ''
-})
-
 const comments = computed(() => socialStore.comments.value)
+const currentUserName = computed(() => {
+  const myComment = comments.value.find(c => Boolean(currentUserId.value) && c.userId === currentUserId.value)
+  if (myComment && myComment.userName) return myComment.userName
+
+  if (!currentUser.value) return 'Аноним'
+  return currentUser.value.user_metadata?.full_name || currentUser.value.user_metadata?.name || currentUser.value.email?.split('@')[0] || 'Аноним'
+})
 const isLoading = computed(() => socialStore.isLoading.value)
 
 const visibleComments = computed(() => {
@@ -158,21 +160,10 @@ function formatCommentContent(text: string): string {
 
     <!-- Поле ввода комментария -->
     <div class="input-box">
-      <input
-        ref="commentInputRef"
-        v-model="commentText"
-        type="text"
-        class="comment-input"
-        placeholder="Написать комментарий..."
-        @keyup.enter="onSubmit"
-      />
-      <button
-        class="send-btn"
-        :class="{ 'is-active': commentText.trim().length > 0 }"
-        :disabled="!commentText.trim() || isSubmitting"
-        @click="onSubmit"
-        title="Отправить"
-      >
+      <input ref="commentInputRef" v-model="commentText" type="text" class="comment-input"
+        placeholder="Написать комментарий..." @keyup.enter="onSubmit" />
+      <button class="send-btn" :class="{ 'is-active': commentText.trim().length > 0 }"
+        :disabled="!commentText.trim() || isSubmitting" @click="onSubmit" title="Отправить">
         <FpSpinner v-if="isSubmitting" size="sm" />
         <Send v-else :size="15" />
       </button>
@@ -181,18 +172,12 @@ function formatCommentContent(text: string): string {
     <!-- Список комментариев -->
     <div class="comments-list" v-if="comments.length > 0">
       <transition-group name="comment-anim">
-        <div
-          v-for="comment in visibleComments"
-          :key="comment.id"
-          class="comment-item"
-          :class="{ 'is-mentioned': isMentioned(comment.content) }"
-        >
+        <div v-for="comment in visibleComments" :key="comment.id" class="comment-item"
+          :class="{ 'is-mentioned': isMentioned(comment.content) }">
           <div class="comment-header">
             <div class="user-meta">
-              <div
-                class="avatar-circle"
-                :style="comment.avatarUrl ? `background-image: url(${comment.avatarUrl})` : ''"
-              >
+              <div class="avatar-circle"
+                :style="comment.avatarUrl ? `background-image: url(${comment.avatarUrl})` : ''">
                 {{ !comment.avatarUrl ? (comment.userName?.[0]?.toUpperCase() || '?') : '' }}
               </div>
               <span class="user-name" @click="onReply(comment.userName)" title="Ответить">{{ comment.userName }}</span>
@@ -201,20 +186,12 @@ function formatCommentContent(text: string): string {
             </div>
 
             <div class="actions-group">
-              <button
-                class="action-btn reply-btn"
-                @click="onReply(comment.userName)"
-                title="Ответить"
-              >
+              <button class="action-btn reply-btn" @click="onReply(comment.userName)" title="Ответить">
                 <CornerUpLeft :size="13" />
               </button>
 
-              <button
-                v-if="currentUserId === comment.userId"
-                class="action-btn delete-btn"
-                @click="onDelete(comment.id)"
-                title="Удалить комментарий"
-              >
+              <button v-if="currentUserId === comment.userId" class="action-btn delete-btn"
+                @click="onDelete(comment.id)" title="Удалить комментарий">
                 <Trash2 :size="13" />
               </button>
             </div>
@@ -224,13 +201,8 @@ function formatCommentContent(text: string): string {
 
           <div class="comment-footer">
             <div class="reactions-group">
-              <button
-                v-for="emoji in ['👍', '❤️', '🔥']"
-                :key="emoji"
-                class="reaction-pill"
-                :class="{ 'is-reacted': comment.userReaction === emoji }"
-                @click="toggleReaction(comment.id, emoji)"
-              >
+              <button v-for="emoji in ['👍', '❤️', '🔥']" :key="emoji" class="reaction-pill"
+                :class="{ 'is-reacted': comment.userReaction === emoji }" @click="toggleReaction(comment.id, emoji)">
                 <span class="emoji">{{ emoji }}</span>
                 <span v-if="comment.reactions && comment.reactions[emoji] > 0" class="react-count">
                   {{ comment.reactions[emoji] }}
@@ -243,19 +215,11 @@ function formatCommentContent(text: string): string {
 
       <!-- Управление пагинацией / подгрузкой -->
       <div v-if="comments.length > 3" class="pagination-actions">
-        <button
-          v-if="hasMoreComments"
-          class="toggle-expand-btn"
-          @click="showMore"
-        >
+        <button v-if="hasMoreComments" class="toggle-expand-btn" @click="showMore">
           <span>Показать еще 5 (осталось {{ comments.length - visibleLimit }})</span>
           <ChevronDown :size="16" class="chevron-icon" />
         </button>
-        <button
-          v-else
-          class="toggle-expand-btn is-collapsed"
-          @click="collapseAll"
-        >
+        <button v-else class="toggle-expand-btn is-collapsed" @click="collapseAll">
           <span>Свернуть список</span>
           <ChevronDown :size="16" class="chevron-icon is-rotated" />
         </button>

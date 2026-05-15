@@ -27,7 +27,7 @@ export const socialService = {
     const userIds = [...new Set(data.map((c: any) => c.user_id))]
     const { data: profiles, error: _pError } = await supabase
       .from('profiles')
-      .select('id, display_name, avatar_url')
+      .select('id, full_name, display_name, avatar_url')
       .in('id', userIds)
 
     const profileMap = Object.fromEntries(
@@ -40,7 +40,7 @@ export const socialService = {
       user_id: c.user_id,
       route_id: c.route_id,
       content: c.content,
-      user_name: profileMap[c.user_id]?.full_name || 'Аноним',
+      user_name: profileMap[c.user_id]?.full_name || profileMap[c.user_id]?.display_name || 'Аноним',
       avatar_url: profileMap[c.user_id]?.avatar_url || null
     }))
   },
@@ -57,7 +57,7 @@ export const socialService = {
     // Получаем имя автора
     const { data: profile } = await supabase
       .from('profiles')
-      .select('full_name, avatar_url')
+      .select('full_name, display_name, avatar_url')
       .eq('id', user_id)
       .single()
 
@@ -68,7 +68,7 @@ export const socialService = {
       user_id: c.user_id,
       route_id: c.route_id,
       content: c.content,
-      user_name: profile?.full_name || 'Вы',
+      user_name: profile?.full_name || profile?.display_name || 'Аноним',
       avatar_url: profile?.avatar_url || null
     }
   },
