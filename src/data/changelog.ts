@@ -9,6 +9,30 @@ export interface ReleaseNote {
 
 export const changelog: ReleaseNote[] = [
     {
+        version: '2.25.0',
+        date: '2026-06-12',
+        highlights: [
+            'Creator Rating, Артефакты чекпоинтов и архитектурная чистка'
+        ],
+        features: [
+            'Creator Rating System: Введена система рейтинга создателей. creator_score рассчитывается автоматически по лайкам, прохождениям и оценкам опубликованных маршрутов. Доверенный создатель (⭐) получает право на публикацию без модерации.',
+            'Leaderboard: Создатели: Новая вкладка 🏗️ в рейтинге с отдельным топом по creator_score и значком доверенного создателя.',
+            'Профиль: Creator Badge: В профиле появился значок «⭐ Создатель» и 4-й стат-кард «Создано» — сетка статистики стала 2×2.',
+            'Checkpoint Artifacts: Пользователи теперь могут добавлять свои фотографии к контрольным точкам маршрута. Снимки проходят модерацию (pending → approved / rejected).',
+            'Admin: Артефакты: В панели модератора добавлена вкладка «Артефакты» для просмотра, одобрения и отклонения пользовательских фото.',
+            'getNearestPoint<T>: Универсальная обобщённая утилита в geoUtils — находит ближайший объект из любого массива с координатами.',
+            'Atomic Completions Counter: Счётчик прохождений маршрута переведён на атомарный SQL RPC, исключая гонку при одновременных завершениях.'
+        ],
+        fixes: [
+            'Архитектура: Функции calculateDistance и formatDistance вынесены в единый geoUtils.ts — устранено 4 копии haversine-формулы по всему коду.',
+            'Race condition: Добавлен флаг isFinishing и дебаунс 3 с для GPS-авто-чекина — финиш маршрута теперь вызывается строго один раз.',
+            'Type Safety: Удалены все as any, @ts-ignore и window-патчи (window.artSelectCheckpoint, WeakMap вместо monkey-patch на маркерах, declare global для webkitAudioContext).',
+            'Promise.allSettled Fix: Исправлен баг в HomeView — 5 промисов с 4 переменными деструктуризации приводил к подмене teams данными fetchRoutes.',
+            'alert() / confirm(): Все нативные системные диалоги заменены на дизайнерские уведомления notify() и FpConfirmationModal.',
+            'Vue Template Fix: Устранён синтаксис if (!$event) в обработчике события Vue — заменён на метод-обработчик.'
+        ]
+    },
+    {
         version: '2.24.0',
         date: '2026-05-16',
         highlights: [
