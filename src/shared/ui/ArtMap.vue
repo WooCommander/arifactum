@@ -19,21 +19,21 @@ const OfflineTileLayer = L.TileLayer.extend({
         const url = URL.createObjectURL(blob)
         tile.src = url
         tile.onload = () => {
-          done(null, tile)
+          done(undefined, tile)
           URL.revokeObjectURL(url)
         }
       } else {
         tile.src = self.getTileUrl(coords)
-        tile.onload = () => done(null, tile)
+        tile.onload = () => done(undefined, tile)
       }
     }).catch(() => {
       tile.src = self.getTileUrl(coords)
-      tile.onload = () => done(null, tile)
+      tile.onload = () => done(undefined, tile)
     })
 
     tile.onerror = () => {
       tile.src = self.getTileUrl(coords)
-      tile.onload = () => done(null, tile)
+      tile.onload = () => done(undefined, tile)
     }
 
     return tile
@@ -106,7 +106,7 @@ const map = shallowRef<L.Map | null>(null)
 const markersMap = new Map<string, L.Marker>()
 const markersList = ref<L.Marker[]>([]) // Для совместимости с другими частями кода, если нужно
 const userMarker = shallowRef<L.Marker | null>(null)
-const teammateMarkers = ref<Map<string, L.Marker>>(new Map())
+const teammateMarkers = shallowRef<Map<string, L.Marker>>(new Map())
 const markerShowNamesState = new WeakMap<L.Marker, boolean>()
 const clusterMarkers = ref<L.Marker[]>([])
 const navLine = shallowRef<L.Polyline | null>(null)
