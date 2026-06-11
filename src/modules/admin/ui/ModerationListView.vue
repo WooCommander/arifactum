@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ModerationService, type ModerationRoute } from '../services/ModerationService'
+import { ModerationService, type ModerationRoute, type CheckpointArtifact } from '../services/ModerationService'
 import { ReportsService, type Report } from '../services/ReportsService'
 import { AdminService, type ProjectStats } from '../services/AdminService'
 import { FpCard, FpButton, FpSpinner, FpConfirmationModal, FpInput, FpPageHeader } from '@/design-system'
-import { Clock, MapPin, User as UserIcon, ChevronRight, Check, X, AlertTriangle, Activity, Users, ShieldAlert, Search } from 'lucide-vue-next'
+import { Clock, MapPin, User as UserIcon, ChevronRight, Check, X, AlertTriangle, Activity, Users, ShieldAlert, Search, Camera } from 'lucide-vue-next'
 
 const router = useRouter()
 const routes = ref<ModerationRoute[]>([])
@@ -19,7 +19,11 @@ const selectedRouteId = ref<string | null>(null)
 const rejectReason = ref('')
 
 // Tabs state
-const activeTab = ref<'stats' | 'routes' | 'reports' | 'users'>('stats')
+const activeTab = ref<'stats' | 'routes' | 'reports' | 'users' | 'artifacts'>('stats')
+const artifacts = ref<CheckpointArtifact[]>([])
+const showRejectArtifactModal = ref(false)
+const selectedArtifactId = ref<string | null>(null)
+const artifactRejectReason = ref('')
 const reports = ref<Report[]>([])
 const stats = ref<ProjectStats | null>(null)
 
@@ -34,14 +38,16 @@ const userBlockReason = ref('')
 async function load() {
     isLoading.value = true
     try {
-        const [routesData, reportsData, statsData] = await Promise.all([
+        const [routesData, reportsData, statsData, artifactsData] = await Promise.all([
             ModerationService.getPendingRoutes(),
             ReportsService.getActiveReports(),
-            AdminService.getProjectStats()
+            AdminService.getProjectStats(),
+            ModerationService.getPendingArtifacts()
         ])
         routes.value = routesData
         reports.value = reportsData
         stats.value = statsData
+        artifacts.value = artifactsData
     } catch (e: any) {
         error.value = 'Ошибка загрузки данных'
         console.error(e)
@@ -112,6 +118,38 @@ async function handleBlockRoute(report: Report) {
         alert('Маршрут заблокирован')
     } catch (e) {
         alert('Ошибка блокировки маршрута')
+    } finally {
+        isProcessing.value = false
+    }
+}
+
+async function handleApproveArtifact(id: string) {
+    isProcessing.value = true
+    try {
+        await ModerationService.approveArtifact(id)
+        artifacts.value = artifacts.value.filter(a => a.id !== id)
+    } catch (e) {
+        alert('Ошибка при одобрении')
+    } finally {
+        isProcessing.value = false
+    }
+}
+
+function openRejectArtifactModal(id: string) {
+    selectedArtifactId.value = id
+    artifactRejectReason.value = ''
+    showRejectArtifactModal.value = true
+}
+
+async function handleRejectArtifact() {
+    if (!selectedArtifactId.value || !artifactRejectReason.value.trim()) return
+    isProcessing.value = true
+    try {
+        await ModerationService.rejectArtifact(selectedArtifactId.value, artifactRejectReason.value)
+        artifacts.value = artifacts.value.filter(a => a.id !== selectedArtifactId.value)
+        showRejectArtifactModal.value = false
+    } catch (e) {
+        alert('Ошибка при отклонении')
     } finally {
         isProcessing.value = false
     }
@@ -194,12 +232,20 @@ onMounted(load)
                 <AlertTriangle :size="18" /> Жалобы
                 <span class="badge danger" v-if="reports.length">{{ reports.length }}</span>
             </button>
-            <button 
-                class="tab-btn" 
+            <button
+                class="tab-btn"
                 :class="{ active: activeTab === 'users' }"
                 @click="activeTab = 'users'"
             >
                 <Users :size="18" /> Юзеры
+            </button>
+            <button
+                class="tab-btn"
+                :class="{ active: activeTab === 'artifacts' }"
+                @click="activeTab = 'artifacts'"
+            >
+                <Camera :size="18" /> Фото
+                <span class="badge" v-if="artifacts.length">{{ artifacts.length }}</span>
             </button>
         </div>
 
@@ -388,6 +434,41 @@ onMounted(load)
             </div>
         </div>
 
+        <!-- Artifacts Tab -->
+        <div v-else-if="activeTab === 'artifacts'">
+            <div v-if="artifacts.length === 0" class="empty-state">
+                <div class="empty-icon">📷</div>
+                <h3>Фото на проверке нет</h3>
+                <p>Все пользовательские фото проверены</p>
+            </div>
+
+            <div v-else class="artifacts-mod-list">
+                <div v-for="artifact in artifacts" :key="artifact.id" class="artifact-mod-card">
+                    <FpCard>
+                        <div class="artifact-preview">
+                            <img :src="artifact.photoUrl" class="artifact-img" />
+                        </div>
+                        <div class="artifact-meta">
+                            <div class="artifact-info">
+                                <span class="checkpoint-name">{{ artifact.checkpointTitle }}</span>
+                                <span class="author-name"><UserIcon :size="12" /> {{ artifact.authorName }}</span>
+                                <span class="artifact-date"><Clock :size="12" /> {{ formatDate(artifact.createdAt) }}</span>
+                            </div>
+                            <p v-if="artifact.caption" class="artifact-caption-text">{{ artifact.caption }}</p>
+                        </div>
+                        <div class="card-actions">
+                            <FpButton variant="danger" class="action-btn" @click="openRejectArtifactModal(artifact.id)">
+                                <X :size="18" /> Отклонить
+                            </FpButton>
+                            <FpButton variant="primary" class="action-btn" :disabled="isProcessing" @click="handleApproveArtifact(artifact.id)">
+                                <Check :size="18" /> Одобрить
+                            </FpButton>
+                        </div>
+                    </FpCard>
+                </div>
+            </div>
+        </div>
+
         <FpConfirmationModal
             v-model:visible="showRejectModal"
             title="Причина отклонения"
@@ -402,6 +483,27 @@ onMounted(load)
                     <FpInput 
                         v-model="rejectReason" 
                         placeholder="Например: Точка #2 недоступна" 
+                        autofocus
+                    />
+                </div>
+            </template>
+        </FpConfirmationModal>
+
+        <!-- Artifact Reject Modal -->
+        <FpConfirmationModal
+            v-model:visible="showRejectArtifactModal"
+            title="Причина отклонения фото"
+            message="Укажите автору, что не так с фотографией"
+            confirmText="Отклонить"
+            variant="danger"
+            :confirmDisabled="!artifactRejectReason.trim() || isProcessing"
+            @confirm="handleRejectArtifact"
+        >
+            <template #default>
+                <div style="margin-top: 16px;">
+                    <FpInput
+                        v-model="artifactRejectReason"
+                        placeholder="Например: Фото не относится к точке маршрута"
                         autofocus
                     />
                 </div>
@@ -710,6 +812,70 @@ onMounted(load)
     display: flex;
     flex-direction: column;
     gap: 16px;
+}
+
+.artifacts-mod-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.artifact-mod-card {
+    .artifact-preview {
+        width: 100%;
+        aspect-ratio: 16/9;
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 12px;
+        background: var(--color-background);
+
+        .artifact-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+    }
+
+    .artifact-meta {
+        margin-bottom: 16px;
+
+        .artifact-info {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+
+            .checkpoint-name {
+                font-size: 15px;
+                font-weight: 700;
+                color: var(--color-text-primary);
+            }
+
+            .author-name, .artifact-date {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                font-size: 12px;
+                color: var(--color-text-tertiary);
+            }
+        }
+
+        .artifact-caption-text {
+            font-size: 14px;
+            color: var(--color-text-secondary);
+            margin: 0;
+            font-style: italic;
+        }
+    }
+
+    .card-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+
+        .action-btn { width: 100%; }
+    }
 }
 
 .report-card-item {

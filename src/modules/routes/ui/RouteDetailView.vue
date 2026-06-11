@@ -3,7 +3,7 @@ import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRoutesStore } from '../state/useRoutesStore'
 import { routeService } from '../services/routeService'
-import { FpSpinner, FpBackButton, FpConfirmationModal, FpPullToRefresh, FpButton, FpCard, FpInput } from '@/design-system'
+import { FpSpinner, FpBackButton, FpConfirmationModal, FpPullToRefresh, FpButton, FpCard, FpInput, FpImageUpload } from '@/design-system'
 import ArtMap from '@/shared/ui/ArtMap.vue'
 import { useNotify } from '@/composables/useNotify'
 import { useSocialStore, RouteComments } from '@/modules/social'
@@ -15,6 +15,7 @@ import { getDistance, formatDistance } from '@/shared/lib/geoUtils'
 import { Haptics, ImpactStyle } from '@capacitor/haptics'
 import { RewardsService } from '@/modules/rewards/services/RewardsService'
 import { ReportsService } from '@/modules/admin/services/ReportsService'
+import { CheckpointArtifactService, type CheckpointArtifact } from '@/modules/checkpoints/services/CheckpointArtifactService'
 import {
   Heart,
   Bookmark,
@@ -32,7 +33,9 @@ import {
   Tag,
   X,
   QrCode,
-  AlertTriangle
+  AlertTriangle,
+  Camera,
+  ImagePlus
 } from 'lucide-vue-next'
 
 const route = useRoute()
@@ -60,6 +63,37 @@ const isArMode = ref(false)
 // Social state
 const isLiked = ref(false)
 const isFavorite = ref(false)
+
+// Checkpoint artifacts
+const checkpointArtifacts = ref<CheckpointArtifact[]>([])
+const isLoadingArtifacts = ref(false)
+const artifactUploaded = ref(false)
+
+async function loadArtifacts(checkpointId: string) {
+  isLoadingArtifacts.value = true
+  artifactUploaded.value = false
+  try {
+    checkpointArtifacts.value = await CheckpointArtifactService.getApprovedForCheckpoint(checkpointId)
+  } catch (e) {
+    checkpointArtifacts.value = []
+  } finally {
+    isLoadingArtifacts.value = false
+  }
+}
+
+async function handleArtifactUploaded(url: string) {
+  if (!selectedCheckpoint.value) return
+  try {
+    await CheckpointArtifactService.submit(
+      selectedCheckpoint.value.id,
+      routeId,
+      url
+    )
+    artifactUploaded.value = true
+  } catch (e) {
+    notify('Ошибка при отправке артефакта', 'error')
+  }
+}
 
 // Reporting
 const showReportModal = ref(false)
@@ -130,6 +164,11 @@ const totalSeconds = ref(0)
 let timerInterval: any = null
 let locationWatchId: string | null = null
 const selectedCheckpoint = ref<any | null>(null)
+
+watch(selectedCheckpoint, (cp) => {
+  if (cp) loadArtifacts(cp.id)
+  else checkpointArtifacts.value = []
+})
 const isFollowMode = ref(true)
 const isCompassMode = ref(false)
 const initialActiveCenter = ref<[number, number] | undefined>(undefined)
@@ -759,6 +798,46 @@ onUnmounted(() => {
 
             <h3 class="panel-title">{{ selectedCheckpoint.title }}</h3>
             <p class="panel-desc">{{ selectedCheckpoint.description || 'Описание отсутствует' }}</p>
+
+            <!-- Артефакты сообщества -->
+            <div class="community-artifacts">
+              <div class="artifacts-header">
+                <Camera :size="16" />
+                <span>Артефакты сообщества</span>
+                <span v-if="checkpointArtifacts.length" class="artifacts-count">{{ checkpointArtifacts.length }}</span>
+              </div>
+
+              <div v-if="isLoadingArtifacts" class="artifacts-loading">
+                <FpSpinner size="sm" />
+              </div>
+
+              <div v-else-if="checkpointArtifacts.length" class="artifacts-grid">
+                <div v-for="artifact in checkpointArtifacts" :key="artifact.id" class="artifact-thumb">
+                  <img :src="artifact.photoUrl" :alt="artifact.caption || ''" />
+                  <div v-if="artifact.caption" class="artifact-caption">{{ artifact.caption }}</div>
+                  <div class="artifact-author">{{ artifact.authorName }}</div>
+                </div>
+              </div>
+
+              <div v-else class="artifacts-empty">
+                Будьте первым, кто добавит фото этого места
+              </div>
+
+              <!-- Загрузка нового артефакта -->
+              <template v-if="authStore.isAuthenticated.value">
+                <div v-if="artifactUploaded" class="artifact-sent">
+                  <ImagePlus :size="16" />
+                  Фото отправлено на модерацию
+                </div>
+                <FpImageUpload
+                  v-else
+                  label="Добавить своё фото"
+                  bucket="checkpoint-artifacts"
+                  size="sm"
+                  @uploaded="handleArtifactUploaded"
+                />
+              </template>
+            </div>
           </div>
 
           <div class="panel-footer">
@@ -1559,6 +1638,104 @@ onUnmounted(() => {
     margin: 0 0 24px;
     max-height: 180px;
     overflow-y: auto;
+  }
+
+  .community-artifacts {
+    margin-top: 8px;
+    padding-top: 16px;
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    .artifacts-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-tertiary);
+
+      .artifacts-count {
+        background: var(--color-primary);
+        color: var(--color-on-primary);
+        font-size: 10px;
+        padding: 1px 6px;
+        border-radius: 6px;
+      }
+    }
+
+    .artifacts-loading {
+      display: flex;
+      justify-content: center;
+      padding: 8px 0;
+    }
+
+    .artifacts-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+
+      .artifact-thumb {
+        position: relative;
+        border-radius: 12px;
+        overflow: hidden;
+        aspect-ratio: 1;
+        background: var(--color-background);
+
+        img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .artifact-caption {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          background: linear-gradient(transparent, rgba(0,0,0,0.7));
+          color: white;
+          font-size: 11px;
+          padding: 16px 8px 6px;
+          line-height: 1.3;
+        }
+
+        .artifact-author {
+          position: absolute;
+          top: 6px;
+          right: 6px;
+          background: rgba(0,0,0,0.5);
+          backdrop-filter: blur(4px);
+          color: white;
+          font-size: 10px;
+          font-weight: 700;
+          padding: 2px 6px;
+          border-radius: 6px;
+        }
+      }
+    }
+
+    .artifacts-empty {
+      font-size: 13px;
+      color: var(--color-text-tertiary);
+      text-align: center;
+      padding: 4px 0 8px;
+    }
+
+    .artifact-sent {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--color-success);
+      background: color-mix(in srgb, var(--color-success) 10%, transparent);
+      border-radius: 10px;
+      padding: 10px 14px;
+    }
   }
 
   .panel-footer {

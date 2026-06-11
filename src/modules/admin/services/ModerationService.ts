@@ -1,5 +1,8 @@
 import { supabase } from '@/api/supabase'
 import type { RouteDTO } from '@/modules/routes/types'
+import { CheckpointArtifactService, type CheckpointArtifact } from '@/modules/checkpoints/services/CheckpointArtifactService'
+
+export type { CheckpointArtifact }
 
 export interface ModerationRoute extends RouteDTO {
     author_name?: string
@@ -41,12 +44,16 @@ export const ModerationService = {
     async rejectRoute(id: string, reason: string): Promise<void> {
         const { error } = await supabase
             .from('routes')
-            .update({ 
-                status: 'draft', // Возвращаем в черновики для исправления
-                moderation_comment: reason 
+            .update({
+                status: 'draft',
+                moderation_comment: reason
             })
             .eq('id', id)
 
         if (error) throw error
-    }
+    },
+
+    getPendingArtifacts: () => CheckpointArtifactService.getPendingForModeration(),
+    approveArtifact: (id: string) => CheckpointArtifactService.approve(id),
+    rejectArtifact: (id: string, reason: string) => CheckpointArtifactService.reject(id, reason)
 }
