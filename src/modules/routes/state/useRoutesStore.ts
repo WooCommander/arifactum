@@ -3,6 +3,7 @@ import type { Route, Checkpoint } from '../types'
 import { routeService } from '../services/routeService'
 import { routeAdapter } from '../adapters/routeAdapter'
 import { authStore } from '@/modules/auth/store/authStore'
+import { supabase } from '@/api/supabase'
 
 const routes = ref<Route[]>([])
 const currentRoute = ref<Route | null>(null)
@@ -62,6 +63,10 @@ export const useRoutesStore = () => {
         const newStatus: Route['status'] = isTrusted ? 'published' : 'pending'
 
         await routeService.updateRouteStatus(id, newStatus)
+
+        if (newStatus === 'published') {
+            supabase.rpc('recalculate_creator_score', { p_user_id: userId }).then()
+        }
 
         if (currentRoute.value && currentRoute.value.id === id) {
             currentRoute.value = { ...currentRoute.value, status: newStatus }

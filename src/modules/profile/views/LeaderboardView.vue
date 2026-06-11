@@ -8,6 +8,7 @@ const categories: { key: LeaderboardCategory; label: string; unit: string; icon:
     { key: 'xp', label: 'Опыт', unit: 'XP', icon: '✨' },
     { key: 'distance', label: 'Дистанция', unit: 'км', icon: '🏃' },
     { key: 'routes', label: 'Маршруты', unit: 'шт', icon: '🗺️' },
+    { key: 'creators', label: 'Создатели', unit: 'очков', icon: '🏗️' },
 ]
 
 const LEVEL_COLORS: Record<number, string> = {
@@ -99,13 +100,20 @@ onMounted(load)
                             :title="entry.displayName">
                             {{ entry.displayName }}
                         </span>
+                        <span v-if="entry.isTrustedCreator && activeCategory === 'creators'" class="trusted-badge" title="Доверенный создатель">⭐</span>
                         <span class="level-badge" :style="{ color: LEVEL_COLORS[Math.min(entry.level, 5)] }">
                             Lvl {{ entry.level }}
                         </span>
                     </div>
                     <div class="entry-sub">
-                        <span>🏃 {{ entry.distance.toFixed(1) }} км</span>
-                        <span>🗺️ {{ entry.routesCount }}</span>
+                        <template v-if="activeCategory === 'creators'">
+                            <span>📦 {{ entry.routesPublished }} опубл.</span>
+                            <span>✨ {{ entry.xp }} XP</span>
+                        </template>
+                        <template v-else>
+                            <span>🏃 {{ entry.distance.toFixed(1) }} км</span>
+                            <span>🗺️ {{ entry.routesCount }}</span>
+                        </template>
                     </div>
                 </div>
 
@@ -235,6 +243,11 @@ onMounted(load)
     font-size: 11px;
     font-weight: 500;
     white-space: nowrap;
+}
+
+.trusted-badge {
+    font-size: 14px;
+    line-height: 1;
 }
 
 .entry-sub {

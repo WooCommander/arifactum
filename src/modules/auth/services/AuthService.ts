@@ -68,15 +68,19 @@ class AuthService {
             else if (level >= 5) title = 'Хранитель'
             else if (level >= 3) title = 'Исследователь'
 
+            const creatorScore = profile?.creator_score || 0
             return {
                 joinedDate: new Date(user.created_at || Date.now()),
                 xp,
                 level,
                 levelTitle: title,
                 nextLevelThreshold: nextLevelXP,
-                totalDistance: (profile?.total_distance_meters || 0) / 1000, // km
+                totalDistance: (profile?.total_distance_meters || 0) / 1000,
                 routesCompleted: profile?.routes_completed_count || 0,
-                avgSpeed: (profile?.total_seconds_spent || 0) > 0 
+                routesPublished: profile?.routes_published_count || 0,
+                creatorScore,
+                isTrustedCreator: creatorScore >= 30 || level >= 5,
+                avgSpeed: (profile?.total_seconds_spent || 0) > 0
                     ? ((profile?.total_distance_meters || 0) / 1000) / ((profile?.total_seconds_spent || 0) / 3600)
                     : 0
             }

@@ -2,6 +2,8 @@ import { supabase } from '@/api/supabase'
 import type { RouteDTO } from '@/modules/routes/types'
 import { CheckpointArtifactService, type CheckpointArtifact } from '@/modules/checkpoints/services/CheckpointArtifactService'
 
+type RouteWithAuthor = { author_id: string | null }
+
 export type { CheckpointArtifact }
 
 export interface ModerationRoute extends RouteDTO {
@@ -30,15 +32,22 @@ export const ModerationService = {
     },
 
     async approveRoute(id: string): Promise<void> {
+        const { data: route } = await supabase
+            .from('routes')
+            .select('author_id')
+            .eq('id', id)
+            .single<RouteWithAuthor>()
+
         const { error } = await supabase
             .from('routes')
-            .update({ 
-                status: 'published',
-                // moderation_date: new Date().toISOString() // Можно добавить позже
-            })
+            .update({ status: 'published' })
             .eq('id', id)
 
         if (error) throw error
+
+        if (route?.author_id) {
+            supabase.rpc('recalculate_creator_score', { p_user_id: route.author_id }).then()
+        }
     },
 
     async rejectRoute(id: string, reason: string): Promise<void> {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { Edit2, Camera } from 'lucide-vue-next'
+import { Edit2, Camera, Star } from 'lucide-vue-next'
 import { AuthService } from '@/modules/auth/services/AuthService'
 import FpCard from '@/design-system/components/FpCard.vue'
 import FpButton from '@/design-system/components/FpButton.vue'
@@ -33,6 +33,9 @@ interface UserStats {
   nextLevelThreshold: number
   totalDistance: number
   routesCompleted: number
+  routesPublished: number
+  creatorScore: number
+  isTrustedCreator: boolean
 }
 
 const isLoading = ref(true)
@@ -181,6 +184,10 @@ onMounted(async () => {
       <div class="user-info">
         <div v-if="!isEditingProfile" class="display-name-row">
           <span class="user-name-text">{{ displayName || user.email.split('@')[0] }}</span>
+          <span v-if="stats?.isTrustedCreator" class="trusted-creator-badge" title="Доверенный создатель">
+            <Star :size="12" fill="currentColor" />
+            Создатель
+          </span>
         </div>
         <div v-else class="display-name-edit">
           <input v-model="profileEdit.first_name" class="name-input" :placeholder="t('profile.personal.name')"
@@ -218,12 +225,17 @@ onMounted(async () => {
 
       <FpCard class="stat-card">
         <div class="stat-value">{{ stats.routesCompleted }}</div>
-        <div class="stat-label">Маршрутов</div>
+        <div class="stat-label">Пройдено</div>
       </FpCard>
 
       <FpCard class="stat-card">
         <div class="stat-value">{{ totalBonuses }}</div>
         <div class="stat-label">Бонусов</div>
+      </FpCard>
+
+      <FpCard class="stat-card" :class="{ 'stat-card--creator': stats.routesPublished > 0 }">
+        <div class="stat-value">{{ stats.routesPublished }}</div>
+        <div class="stat-label">Создано</div>
       </FpCard>
     </section>
 
@@ -392,10 +404,31 @@ onMounted(async () => {
     flex: 1;
     min-width: 0;
 
+    .display-name-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
     .user-name-text {
       font-size: 20px;
       font-weight: 800;
       color: var(--color-text-primary);
+    }
+
+    .trusted-creator-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--color-primary);
+      background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+      border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
+      padding: 2px 6px;
+      border-radius: 6px;
+      white-space: nowrap;
     }
 
     .email {
@@ -498,7 +531,7 @@ onMounted(async () => {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
 
   .stat-card {
@@ -523,6 +556,10 @@ onMounted(async () => {
       text-transform: uppercase;
       color: var(--color-text-tertiary);
       margin-top: 4px;
+    }
+
+    &--creator .stat-value {
+      color: var(--color-secondary, #a29bfe);
     }
   }
 }

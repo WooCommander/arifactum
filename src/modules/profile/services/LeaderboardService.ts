@@ -1,6 +1,6 @@
 import { supabase } from '@/api/supabase'
 
-export type LeaderboardCategory = 'xp' | 'distance' | 'routes'
+export type LeaderboardCategory = 'xp' | 'distance' | 'routes' | 'creators'
 
 export interface LeaderboardEntry {
     userId: string
@@ -14,8 +14,12 @@ export interface LeaderboardEntry {
     routesCount: number
     level: number
     levelTitle: string
+    creatorScore: number
+    routesPublished: number
+    isTrustedCreator: boolean
 }
 
+const CREATOR_SCORE_THRESHOLD = 30
 
 class LeaderboardServiceImpl {
     async getLeaderboard(category: LeaderboardCategory): Promise<LeaderboardEntry[]> {
@@ -25,10 +29,11 @@ class LeaderboardServiceImpl {
         let orderBy = 'xp'
         if (category === 'distance') orderBy = 'total_distance_meters'
         if (category === 'routes') orderBy = 'routes_completed_count'
+        if (category === 'creators') orderBy = 'creator_score'
 
         const { data, error } = await supabase
             .from('profiles')
-            .select('id, display_name, first_name, avatar_url, xp, level, total_distance_meters, routes_completed_count')
+            .select('id, display_name, first_name, avatar_url, xp, level, total_distance_meters, routes_completed_count, creator_score, routes_published_count')
             .order(orderBy, { ascending: false })
             .limit(50)
 
@@ -36,17 +41,18 @@ class LeaderboardServiceImpl {
 
         return (data || []).map((entry, index) => {
             const isCurrentUser = entry.id === currentUserId
-            
-            // Fallback for name
             const name = entry.display_name || entry.first_name || (isCurrentUser ? 'Вы' : `Участник #${entry.id.slice(-4).toUpperCase()}`)
 
-            let score = entry.xp || 0
-            if (category === 'distance') score = (entry.total_distance_meters || 0) / 1000 // Convert to km
-            if (category === 'routes') score = entry.routes_completed_count || 0
-
-            // Reuse same logic for titles
-            let title = 'Новичок'
+            const creatorScore = entry.creator_score || 0
+            const routesPublished = entry.routes_published_count || 0
             const level = entry.level || 1
+
+            let score = entry.xp || 0
+            if (category === 'distance') score = (entry.total_distance_meters || 0) / 1000
+            if (category === 'routes') score = entry.routes_completed_count || 0
+            if (category === 'creators') score = creatorScore
+
+            let title = 'Новичок'
             if (level >= 10) title = 'Артефактор'
             else if (level >= 7) title = 'Легенда'
             else if (level >= 5) title = 'Хранитель'
@@ -63,7 +69,10 @@ class LeaderboardServiceImpl {
                 distance: (entry.total_distance_meters || 0) / 1000,
                 routesCount: entry.routes_completed_count || 0,
                 level,
-                levelTitle: title
+                levelTitle: title,
+                creatorScore,
+                routesPublished,
+                isTrustedCreator: creatorScore >= CREATOR_SCORE_THRESHOLD || level >= 5
             }
         })
     }
