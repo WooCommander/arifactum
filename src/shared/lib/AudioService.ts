@@ -1,9 +1,15 @@
+declare global {
+  interface Window { webkitAudioContext?: typeof AudioContext }
+}
+
 export class AudioService {
   private static audioCtx: AudioContext | null = null
 
   private static init() {
     if (!this.audioCtx) {
-      this.audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)()
+      const AudioCtx = window.AudioContext || window.webkitAudioContext
+      if (!AudioCtx) return
+      this.audioCtx = new AudioCtx()
     }
   }
 

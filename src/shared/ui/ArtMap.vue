@@ -107,6 +107,7 @@ const markersMap = new Map<string, L.Marker>()
 const markersList = ref<L.Marker[]>([]) // Для совместимости с другими частями кода, если нужно
 const userMarker = shallowRef<L.Marker | null>(null)
 const teammateMarkers = ref<Map<string, L.Marker>>(new Map())
+const markerShowNamesState = new WeakMap<L.Marker, boolean>()
 const clusterMarkers = ref<L.Marker[]>([])
 const navLine = shallowRef<L.Polyline | null>(null)
 const routeLine = shallowRef<L.Polyline | null>(null)
@@ -408,9 +409,6 @@ function setupMarkerEvents(marker: L.Marker, p: Point) {
       }
       L.DomEvent.stopPropagation(e)
       
-      if ((window as any).artSelectCheckpoint) {
-        (window as any).artSelectCheckpoint(String(p.id))
-      }
       emit('markerClick', String(p.id))
     })
 
@@ -584,16 +582,16 @@ const updateTeammateMarkers = () => {
     const existing = teammateMarkers.value.get(t.user_id)
     if (existing) {
       existing.setLatLng([t.lat, t.lng])
-      if (props.showNames !== (existing as any)._wasShowingNames) {
+      if (props.showNames !== markerShowNamesState.get(existing)) {
         existing.setIcon(createTeammateIcon(t))
-        ;(existing as any)._wasShowingNames = props.showNames
+        markerShowNamesState.set(existing, props.showNames)
       }
     } else {
       const marker = L.marker([t.lat, t.lng], {
         icon: createTeammateIcon(t),
         zIndexOffset: 500
       }).addTo(map.value as L.Map)
-      ;(marker as any)._wasShowingNames = props.showNames
+      markerShowNamesState.set(marker, props.showNames)
       teammateMarkers.value.set(t.user_id, marker)
     }
   })

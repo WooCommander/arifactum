@@ -1,15 +1,22 @@
 import type { RouteDTO, Route, CheckpointDTO, Checkpoint } from '../types'
 
+type RouteDTOWithJoins = RouteDTO & {
+    checkpoints_count?: Array<{ count: number }> | number
+    start_point?: Array<{ lat: number; lng: number }>
+}
+
 export const routeAdapter = {
-    toUI(dto: RouteDTO): Route {
+    toUI(dto: RouteDTOWithJoins): Route {
+        const checkpointsCount = Array.isArray(dto.checkpoints_count)
+            ? dto.checkpoints_count[0]?.count || 0
+            : Number(dto.checkpoints_count) || 0
+
         return {
             id: dto.id,
             title: dto.title,
             description: dto.description,
             authorId: dto.author_id,
-            checkpointsCount: typeof dto.checkpoints_count === 'object' 
-                ? (dto.checkpoints_count as any)?.[0]?.count || 0 
-                : (Number(dto.checkpoints_count) || 0),
+            checkpointsCount,
             rating: dto.rating_avg,
             difficulty: dto.difficulty,
             imageUrl: dto.image_url,
@@ -23,8 +30,8 @@ export const routeAdapter = {
             authorName: dto.profiles?.display_name || 'Неизвестный автор',
             authorAvatar: dto.profiles?.avatar_url,
             createdAt: dto.created_at,
-            startLat: (dto as any).start_point?.[0]?.lat,
-            startLng: (dto as any).start_point?.[0]?.lng
+            startLat: dto.start_point?.[0]?.lat,
+            startLng: dto.start_point?.[0]?.lng
         }
     },
 

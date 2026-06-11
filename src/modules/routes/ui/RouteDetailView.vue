@@ -52,11 +52,6 @@ const unlockedArtifact = ref<any>(null)
 const routeStats = ref<any>(null)
 const showExitConfirm = ref(false)
 
-  // Регистрируем глобальный обработчик для гарантированной связи
-  ; (window as any).artSelectCheckpoint = (id: string) => {
-    handleMarkerClick(id)
-  }
-
 // AR State
 const isArMode = ref(false)
 
