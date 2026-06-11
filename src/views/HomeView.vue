@@ -9,7 +9,7 @@ import { authStore } from '@/modules/auth/store/authStore'
 import { useRoutesStore } from '@/modules/routes/state/useRoutesStore'
 import ArtMap from '@/shared/ui/ArtMap.vue'
 import { LocationService } from '@/shared/lib/LocationService'
-import { getDistance } from '@/shared/lib/geoUtils'
+import { getNearestPoint } from '@/shared/lib/geoUtils'
 import type { Route } from '@/modules/routes/types'
 
 const router = useRouter()
@@ -83,20 +83,14 @@ const userLocation = ref<{ lat: number; lng: number } | null>(null)
 const nearestRoute = computed(() => {
   if (!userLocation.value || !routes.value.length) return null
 
-  const routesWithDistance = routes.value
-    .filter(r => r.startLat && r.startLng)
-    .map(r => ({
-      ...r,
-      distance: getDistance(
-        userLocation.value!.lat,
-        userLocation.value!.lng,
-        r.startLat!,
-        r.startLng!
-      ) / 1000
-    }))
-    .sort((a, b) => a.distance - b.distance)
+  const points = routes.value
+    .filter(r => r.startLat != null && r.startLng != null)
+    .map(r => ({ ...r, lat: r.startLat!, lng: r.startLng! }))
 
-  return routesWithDistance[0] || null
+  const nearest = getNearestPoint(points, userLocation.value.lat, userLocation.value.lng)
+  if (!nearest) return null
+
+  return { ...nearest, distance: nearest.distanceKm }
 })
 
 // Personalized Data

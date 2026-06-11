@@ -44,3 +44,22 @@ export function formatDistance(meters: number): string {
     if (meters >= 1000) return `${(meters / 1000).toFixed(1)} км`
     return `${Math.round(meters)} м`
 }
+
+export function getNearestPoint<T extends { lat: number; lng: number }>(
+    points: T[],
+    userLat: number,
+    userLng: number
+): (T & { distanceKm: number }) | null {
+    if (!points.length) return null
+
+    let nearest: (T & { distanceKm: number }) | null = null
+
+    for (const point of points) {
+        const distanceKm = getDistance(userLat, userLng, point.lat, point.lng) / 1000
+        if (!nearest || distanceKm < nearest.distanceKm) {
+            nearest = { ...point, distanceKm }
+        }
+    }
+
+    return nearest
+}
