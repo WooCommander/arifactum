@@ -9,6 +9,7 @@ import { authStore } from '@/modules/auth/store/authStore'
 import { useRoutesStore } from '@/modules/routes/state/useRoutesStore'
 import ArtMap from '@/shared/ui/ArtMap.vue'
 import { LocationService } from '@/shared/lib/LocationService'
+import { getDistance } from '@/shared/lib/geoUtils'
 import type { Route } from '@/modules/routes/types'
 
 const router = useRouter()
@@ -79,17 +80,6 @@ const dailyTip = computed(() => {
 // Location & Nearest Route
 const userLocation = ref<{ lat: number; lng: number } | null>(null)
 
-function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371
-  const dLat = (lat2 - lat1) * (Math.PI / 180)
-  const dLon = (lon2 - lon1) * (Math.PI / 180)
-  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2)
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-  return R * c
-}
-
 const nearestRoute = computed(() => {
   if (!userLocation.value || !routes.value.length) return null
 
@@ -97,12 +87,12 @@ const nearestRoute = computed(() => {
     .filter(r => r.startLat && r.startLng)
     .map(r => ({
       ...r,
-      distance: calculateDistance(
+      distance: getDistance(
         userLocation.value!.lat,
         userLocation.value!.lng,
         r.startLat!,
         r.startLng!
-      )
+      ) / 1000
     }))
     .sort((a, b) => a.distance - b.distance)
 

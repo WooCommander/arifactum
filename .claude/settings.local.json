@@ -9,7 +9,8 @@
       "Bash(./gradlew assembleDebug)",
       "Bash(\"/c/Program Files/Android/Android Studio/jbr/bin/java\" -version)",
       "Bash(npm uninstall @capgo/capacitor-updater)",
-      "Bash(npm run update-android)"
+      "Bash(npm run update-android)",
+      "Bash(dir /b E:\\\\projects\\\\2026\\\\artifactum)"
     ]
   }
 }

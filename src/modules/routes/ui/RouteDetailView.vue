@@ -11,6 +11,7 @@ import { MuseumService } from '@/modules/profile/services/MuseumService'
 import { authStore } from '@/modules/auth/store/authStore'
 import ArOverlay from '@/modules/ar/ui/ArOverlay.vue'
 import { LocationService, type LocationCoords } from '@/shared/lib/LocationService'
+import { getDistance, formatDistance } from '@/shared/lib/geoUtils'
 import { Haptics, ImpactStyle } from '@capacitor/haptics'
 import { RewardsService } from '@/modules/rewards/services/RewardsService'
 import { ReportsService } from '@/modules/admin/services/ReportsService'
@@ -222,7 +223,7 @@ const nextCheckpointLocation = computed<[number, number] | null>(() => {
 
 const distanceToNext = computed(() => {
   if (!userLocation.value || !nextCheckpointLocation.value) return Infinity
-  return calculateDistance(
+  return getDistance(
     userLocation.value.latitude, userLocation.value.longitude,
     nextCheckpointLocation.value[0], nextCheckpointLocation.value[1]
   )
@@ -232,23 +233,6 @@ const isNearNext = computed(() => distanceToNext.value < 50) // 50 meters
 
 
 
-function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371e3
-  const φ1 = lat1 * Math.PI / 180
-  const φ2 = lat2 * Math.PI / 180
-  const Δφ = (lat2 - lat1) * Math.PI / 180
-  const Δλ = (lon2 - lon1) * Math.PI / 180
-  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-    Math.cos(φ1) * Math.cos(φ2) *
-    Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-  return R * c
-}
-
-function formatDistance(meters: number) {
-  if (meters >= 1000) return `${(meters / 1000).toFixed(1)} км`
-  return `${Math.round(meters)} м`
-}
 
 async function fetchRouteDetails() {
   try {

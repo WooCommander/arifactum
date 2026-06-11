@@ -10,6 +10,7 @@ import ArtMap from '@/shared/ui/ArtMap.vue'
 import { Save, Plus, Trash2, MapPin, Star, X as CloseIcon, MapPinOff } from 'lucide-vue-next'
 import { Haptics } from '@capacitor/haptics'
 import { LocationService } from '@/shared/lib/LocationService'
+import { getDistance, formatDistance } from '@/shared/lib/geoUtils'
 
 const router = useRouter()
 const route = useRoute()
@@ -177,30 +178,13 @@ const indexToDelete = ref<number | null>(null)
 const draggedIndex = ref<number | null>(null)
 const geocodingIndices = ref<Set<number>>(new Set())
 
-function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371e3
-  const φ1 = lat1 * Math.PI / 180
-  const φ2 = lat2 * Math.PI / 180
-  const Δφ = (lat2 - lat1) * Math.PI / 180
-  const Δλ = (lon2 - lon1) * Math.PI / 180
-  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-    Math.cos(φ1) * Math.cos(φ2) *
-    Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-  return R * c
-}
-
-function formatDistance(meters: number) {
-  if (meters >= 1000) return `${(meters / 1000).toFixed(1)} км`
-  return `${Math.round(meters)} м`
-}
 
 const checkpointDistances = computed(() => {
   return checkpoints.value.map((cp, index) => {
     if (index === checkpoints.value.length - 1) return null
     const next = checkpoints.value[index + 1]
     if (!cp.lat || !cp.lng || !next.lat || !next.lng) return null
-    return calculateDistance(cp.lat, cp.lng, next.lat, next.lng)
+    return getDistance(cp.lat, cp.lng, next.lat, next.lng)
   })
 })
 
