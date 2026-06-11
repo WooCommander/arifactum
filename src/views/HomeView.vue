@@ -123,19 +123,19 @@ const handleMarkerClick = (id: string) => {
 const loadData = async () => {
   isLoading.value = true
   try {
-    const [stats, profile, loc, teams] = await Promise.all([
+    const [statsRes, profileRes, locRes, , teamsRes] = await Promise.allSettled([
       AuthService.getUserStats(),
       AuthService.getProfile(),
-      LocationService.getCurrentPosition().catch(() => null),
+      LocationService.getCurrentPosition(),
       fetchRoutes(),
       authStore.currentUserId.value ? teamService.getMyTeams() : Promise.resolve([])
     ])
-    userStats.value = stats
-    userProfile.value = profile
-    userTeams.value = Array.isArray(teams) ? teams : []
-    if (loc) {
-      userLocation.value = { lat: loc.latitude, lng: loc.longitude }
+    if (statsRes.status === 'fulfilled') userStats.value = statsRes.value
+    if (profileRes.status === 'fulfilled') userProfile.value = profileRes.value
+    if (locRes.status === 'fulfilled' && locRes.value) {
+      userLocation.value = { lat: locRes.value.latitude, lng: locRes.value.longitude }
     }
+    if (teamsRes.status === 'fulfilled') userTeams.value = Array.isArray(teamsRes.value) ? teamsRes.value : []
   } catch (e) {
     console.error('Failed to load home data', e)
   } finally {

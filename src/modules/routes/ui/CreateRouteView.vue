@@ -11,11 +11,13 @@ import { Save, Plus, Trash2, MapPin, Star, X as CloseIcon, MapPinOff } from 'luc
 import { Haptics } from '@capacitor/haptics'
 import { LocationService } from '@/shared/lib/LocationService'
 import { getDistance, formatDistance } from '@/shared/lib/geoUtils'
+import { useNotify } from '@/composables/useNotify'
 
 const router = useRouter()
 const route = useRoute()
 const { fetchRoutes } = useRoutesStore()
 const { categoryNames, addCategory, init: initCategories } = useCategoryStore()
+const { notify } = useNotify()
 
 const routeId = computed(() => route.params.id as string | undefined)
 const isEditMode = computed(() => !!routeId.value)
@@ -240,7 +242,7 @@ onMounted(async () => {
       }
     } catch (err) {
       console.error('Failed to load route for editing:', err)
-      alert('Ошибка при загрузке маршрута')
+      notify('Ошибка при загрузке маршрута', 'error')
       router.back()
     } finally {
       isLoading.value = false
@@ -430,7 +432,7 @@ const captureCurrentLocation = async (index: number) => {
     await Haptics.vibrate()
   } catch (e) {
     console.error('Failed to get location:', e)
-    alert('Не удалось определить местоположение. Проверьте разрешения GPS.')
+    notify('Не удалось определить местоположение. Проверьте разрешения GPS.', 'error')
   } finally {
     isLocating.value = null
   }
@@ -514,7 +516,7 @@ const handleSave = async () => {
   } catch (err: any) {
     console.error('Failed to save route:', err)
     const errorMsg = err.message || 'Ошибка при сохранении'
-    alert(`Ошибка: ${errorMsg}`)
+    notify(`Ошибка: ${errorMsg}`, 'error')
   } finally {
     isSaving.value = false
   }

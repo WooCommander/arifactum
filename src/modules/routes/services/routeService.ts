@@ -151,19 +151,7 @@ export const routeService = {
     },
 
     async incrementCompletionsCount(id: string): Promise<void> {
-        // We can use a simple update with a fetch, but for high concurrency RPC is better.
-        // For now, let's use a straightforward approach.
-        const { data } = await supabase
-            .from('routes')
-            .select('completions_count')
-            .eq('id', id)
-            .single()
-        
-        const currentCount = data?.completions_count || 0
-        
-        await supabase
-            .from('routes')
-            .update({ completions_count: currentCount + 1 })
-            .eq('id', id)
+        const { error } = await supabase.rpc('increment_route_completions', { route_id: id })
+        if (error) throw error
     }
 }

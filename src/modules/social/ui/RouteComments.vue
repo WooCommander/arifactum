@@ -2,7 +2,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useSocialStore } from '../state/useSocialStore'
 import { authStore } from '@/modules/auth/store/authStore'
-import { FpSpinner } from '@/design-system'
+import { FpSpinner, FpConfirmationModal } from '@/design-system'
 import { MessageSquare, Send, ChevronDown, Trash2, CornerUpLeft } from 'lucide-vue-next'
 import { useNotify } from '@/composables/useNotify'
 
@@ -18,6 +18,7 @@ const { notify } = useNotify()
 const commentText = ref('')
 const isSubmitting = ref(false)
 const visibleLimit = ref(3)
+const pendingDeleteId = ref<string | null>(null)
 const commentInputRef = ref<HTMLInputElement | null>(null)
 
 const currentUserId = computed(() => authStore.currentUserId.value)
@@ -77,14 +78,15 @@ async function onSubmit(): Promise<void> {
   }
 }
 
-async function onDelete(commentId: string): Promise<void> {
-  if (!confirm('Удалить комментарий?')) return
-
+async function confirmDelete(): Promise<void> {
+  if (!pendingDeleteId.value) return
   try {
-    await socialStore.deleteComment(commentId)
+    await socialStore.deleteComment(pendingDeleteId.value)
     notify('Комментарий удален', 'success')
   } catch (err) {
     notify('Ошибка при удалении комментария', 'error')
+  } finally {
+    pendingDeleteId.value = null
   }
 }
 
@@ -191,7 +193,7 @@ function formatCommentContent(text: string): string {
               </button>
 
               <button v-if="currentUserId === comment.userId" class="action-btn delete-btn"
-                @click="onDelete(comment.id)" title="Удалить комментарий">
+                @click="pendingDeleteId = comment.id" title="Удалить комментарий">
                 <Trash2 :size="13" />
               </button>
             </div>
@@ -231,6 +233,16 @@ function formatCommentContent(text: string): string {
       <p class="empty-msg">Пока нет комментариев. Станьте первым, кто поделится впечатлением!</p>
     </div>
   </div>
+
+  <FpConfirmationModal
+    :visible="!!pendingDeleteId"
+    title="Удалить комментарий?"
+    message="Это действие нельзя отменить"
+    confirmText="Удалить"
+    variant="danger"
+    @confirm="confirmDelete"
+    @update:visible="if (!$event) pendingDeleteId = null"
+  />
 </template>
 
 <style scoped lang="scss">

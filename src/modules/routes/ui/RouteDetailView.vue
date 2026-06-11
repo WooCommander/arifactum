@@ -337,7 +337,7 @@ async function handleShare() {
       notify('Ссылка скопирована в буфер обмена!', 'success')
     } catch (clipboardErr) {
       console.error('Share failed entirely', clipboardErr)
-      alert('Не удалось поделиться ссылкой')
+      notify('Не удалось поделиться ссылкой', 'error')
     }
   }
 }
@@ -367,19 +367,22 @@ async function onArtifactCapture() {
   await handleCheckIn()
 }
 
+const isFinishing = ref(false)
+
 async function handleCheckIn() {
-  if (!nextCheckpoint.value) return
+  if (!nextCheckpoint.value || isFinishing.value) return
 
   completedCheckpointIds.value.add(nextCheckpoint.value.id)
 
-  // If last point, finish route
   if (completedCheckpointIds.value.size === currentCheckpoints.value.length) {
+    isFinishing.value = true
     finishRoute()
   }
 }
 
 function handleConfirmExit() {
   isActiveMode.value = false
+  isFinishing.value = false
   showExitConfirm.value = false
   totalSeconds.value = 0
   elapsedTime.value = '00:00'
@@ -451,11 +454,13 @@ onMounted(async () => {
 
   // Location Tracking
   try {
-    locationWatchId = await LocationService.watchPosition((coords) => {
+    let lastCheckInTime = 0
+  locationWatchId = await LocationService.watchPosition((coords) => {
       userLocation.value = coords
 
-      // Check for completion
-      if (nextCheckpoint.value && distanceToNext.value < 20) {
+      const now = Date.now()
+      if (nextCheckpoint.value && distanceToNext.value < 20 && now - lastCheckInTime > 3000) {
+        lastCheckInTime = now
         handleCheckIn()
       }
     })

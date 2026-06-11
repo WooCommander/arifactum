@@ -5,9 +5,11 @@ import { ModerationService, type ModerationRoute, type CheckpointArtifact } from
 import { ReportsService, type Report } from '../services/ReportsService'
 import { AdminService, type ProjectStats } from '../services/AdminService'
 import { FpCard, FpButton, FpSpinner, FpConfirmationModal, FpInput, FpPageHeader } from '@/design-system'
+import { useNotify } from '@/composables/useNotify'
 import { Clock, MapPin, User as UserIcon, ChevronRight, Check, X, AlertTriangle, Activity, Users, ShieldAlert, Search, Camera } from 'lucide-vue-next'
 
 const router = useRouter()
+const { notify } = useNotify()
 const routes = ref<ModerationRoute[]>([])
 const isLoading = ref(true)
 const error = ref<string | null>(null)
@@ -62,7 +64,7 @@ async function handleSearchUsers() {
     try {
         foundUsers.value = await AdminService.searchUsers(userSearchQuery.value)
     } catch (e) {
-        alert('Ошибка поиска')
+        notify('Ошибка поиска', 'error')
     } finally {
         isSearchingUsers.value = false
     }
@@ -77,7 +79,7 @@ async function handleBlockUser() {
         showUserBlockModal.value = false
         userBlockReason.value = ''
     } catch (e) {
-        alert('Ошибка блокировки')
+        notify('Ошибка блокировки', 'error')
     } finally {
         isProcessing.value = false
     }
@@ -90,7 +92,7 @@ async function handleUnblockUser(userId: string) {
         const user = foundUsers.value.find(u => u.id === userId)
         if (user) user.is_blocked = false
     } catch (e) {
-        alert('Ошибка разблокировки')
+        notify('Ошибка разблокировки', 'error')
     } finally {
         isProcessing.value = false
     }
@@ -102,22 +104,21 @@ async function handleResolveReport(id: string, action: 'resolved' | 'ignored') {
         await ReportsService.resolveReport(id, action)
         reports.value = reports.value.filter(r => r.id !== id)
     } catch (e) {
-        alert('Ошибка при обработке жалобы')
+        notify('Ошибка при обработке жалобы', 'error')
     } finally {
         isProcessing.value = false
     }
 }
 
 async function handleBlockRoute(report: Report) {
-    if (!confirm(`Вы действительно хотите заблокировать маршрут "${report.route_title}"?`)) return
     isProcessing.value = true
     try {
         await AdminService.toggleRouteBlock(report.route_id, true)
         await ReportsService.resolveReport(report.id, 'resolved')
         reports.value = reports.value.filter(r => r.id !== report.id)
-        alert('Маршрут заблокирован')
+        notify('Маршрут заблокирован', 'success')
     } catch (e) {
-        alert('Ошибка блокировки маршрута')
+        notify('Ошибка блокировки маршрута', 'error')
     } finally {
         isProcessing.value = false
     }
@@ -129,7 +130,7 @@ async function handleApproveArtifact(id: string) {
         await ModerationService.approveArtifact(id)
         artifacts.value = artifacts.value.filter(a => a.id !== id)
     } catch (e) {
-        alert('Ошибка при одобрении')
+        notify('Ошибка при одобрении', 'error')
     } finally {
         isProcessing.value = false
     }
@@ -149,7 +150,7 @@ async function handleRejectArtifact() {
         artifacts.value = artifacts.value.filter(a => a.id !== selectedArtifactId.value)
         showRejectArtifactModal.value = false
     } catch (e) {
-        alert('Ошибка при отклонении')
+        notify('Ошибка при отклонении', 'error')
     } finally {
         isProcessing.value = false
     }
@@ -161,7 +162,7 @@ async function handleApprove(id: string) {
         await ModerationService.approveRoute(id)
         routes.value = routes.value.filter(r => r.id !== id)
     } catch (e) {
-        alert('Ошибка при одобрении')
+        notify('Ошибка при одобрении', 'error')
     } finally {
         isProcessing.value = false
     }
@@ -175,14 +176,14 @@ function openRejectModal(id: string) {
 
 async function handleReject() {
     if (!selectedRouteId.value || !rejectReason.value.trim()) return
-    
+
     isProcessing.value = true
     try {
         await ModerationService.rejectRoute(selectedRouteId.value, rejectReason.value)
         routes.value = routes.value.filter(r => r.id !== selectedRouteId.value)
         showRejectModal.value = false
     } catch (e) {
-        alert('Ошибка при отклонении')
+        notify('Ошибка при отклонении', 'error')
     } finally {
         isProcessing.value = false
     }

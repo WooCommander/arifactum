@@ -6,7 +6,10 @@ export class OfflineService {
   private static STORAGE_KEY = 'artifactum-downloaded-ids'
   private static MAX_DOWNLOADS = 5
   
-  static downloadedIds = ref<string[]>(JSON.parse(localStorage.getItem(this.STORAGE_KEY) || '[]'))
+  static downloadedIds = ref<string[]>((() => {
+    try { return JSON.parse(localStorage.getItem(OfflineService.STORAGE_KEY) || '[]') }
+    catch { return [] }
+  })())
 
   static isDownloaded(id: string): boolean {
     return this.downloadedIds.value.includes(id)
