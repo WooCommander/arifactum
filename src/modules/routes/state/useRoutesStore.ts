@@ -53,18 +53,17 @@ export const useRoutesStore = () => {
         routes.value = routes.value.filter(r => r.id !== id)
     }
 
-    const publishRoute = async (id: string) => {
-        // Auto-moderation for trusted users (Level 5+)
-        // For simplicity, we can fetch stats or use a flag. 
-        // Let's assume we'll check profile role or level.
-        const profile = await routeService.getUserProfile(authStore.currentUserId.value!)
+    const publishRoute = async (id: string): Promise<boolean> => {
+        const userId = authStore.currentUserId.value
+        if (!userId) throw new Error('Не авторизован')
+
+        const profile = await routeService.getUserProfile(userId)
         const isTrusted = (profile?.level || 1) >= 5 || profile?.role === 'admin'
-        const newStatus = isTrusted ? 'published' : 'pending'
+        const newStatus: Route['status'] = isTrusted ? 'published' : 'pending'
 
         await routeService.updateRouteStatus(id, newStatus)
-        
-        if (currentRoute.value?.id === id) {
-            // @ts-ignore
+
+        if (currentRoute.value && currentRoute.value.id === id) {
             currentRoute.value = { ...currentRoute.value, status: newStatus }
         }
 

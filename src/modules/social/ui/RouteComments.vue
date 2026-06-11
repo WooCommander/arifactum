@@ -78,6 +78,10 @@ async function onSubmit(): Promise<void> {
   }
 }
 
+function cancelDelete() {
+  pendingDeleteId.value = null
+}
+
 async function confirmDelete(): Promise<void> {
   if (!pendingDeleteId.value) return
   try {
@@ -241,7 +245,7 @@ function formatCommentContent(text: string): string {
     confirmText="Удалить"
     variant="danger"
     @confirm="confirmDelete"
-    @update:visible="if (!$event) pendingDeleteId = null"
+    @update:visible="cancelDelete"
   />
 </template>
 

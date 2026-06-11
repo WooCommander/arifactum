@@ -5,14 +5,14 @@ import 'leaflet/dist/leaflet.css'
 import { Navigation, LocateFixed, Compass } from 'lucide-vue-next'
 import { DbService } from '@/modules/offline/services/DbService'
 
-/**
- * Custom TileLayer that checks IndexedDB for cached tiles
- */
+type TileLayerConstructor = new (url: string, options?: L.TileLayerOptions) => L.TileLayer
+
 const OfflineTileLayer = L.TileLayer.extend({
-  createTile(coords: any, done: any) {
+  createTile(coords: L.Coords, done: L.DoneCallback) {
     const tile = document.createElement('img')
     tile.className = 'leaflet-tile'
     const tilePath = `${coords.z}/${coords.x}/${coords.y}`
+    const self = this as L.TileLayer
 
     DbService.get('tiles', tilePath).then(blob => {
       if (blob) {
@@ -23,25 +23,22 @@ const OfflineTileLayer = L.TileLayer.extend({
           URL.revokeObjectURL(url)
         }
       } else {
-        const url = (this as any).getTileUrl(coords)
-        tile.src = url
+        tile.src = self.getTileUrl(coords)
         tile.onload = () => done(null, tile)
       }
     }).catch(() => {
-      const url = (this as any).getTileUrl(coords)
-      tile.src = url
+      tile.src = self.getTileUrl(coords)
       tile.onload = () => done(null, tile)
     })
 
     tile.onerror = () => {
-      const url = (this as any).getTileUrl(coords)
-      tile.src = url
+      tile.src = self.getTileUrl(coords)
       tile.onload = () => done(null, tile)
     }
 
     return tile
   }
-})
+}) as unknown as TileLayerConstructor
 
 interface Point {
   lat: number
@@ -634,7 +631,6 @@ const initializeLeafletMap = () => {
     boxZoom: false
   }).setView(initialCenter as [number, number], props.zoom)
 
-  // @ts-ignore
   new OfflineTileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
     maxZoom: 19,
     crossOrigin: true
